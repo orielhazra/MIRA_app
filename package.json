@@ -11,9 +11,11 @@
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/cli": "^2.11.2",
+    "@tauri-apps/plugin-sql": "^2.4.0",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "tauri-plugin-sql-api": "github:tauri-apps/tauri-plugin-sql#v1",
     "vite": "latest"
   },
   "devDependencies": {
