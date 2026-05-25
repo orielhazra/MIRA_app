@@ -157,10 +157,10 @@ export function buildSmartPromptContext({ story, world, character, characters = 
   const triggerText = normalizeMatchText([
     story?.title,
     story?.scenario,
-    story?.storyMemory?.coreSummary,
-    story?.storyMemory?.recentEvents,
-    story?.storyMemory?.openThreads,
-    story?.storyMemory?.characterMemory,
+    story?.storyMemory?.summary,
+    ...(Array.isArray(story?.storyMemory?.generalJournal)
+      ? story.storyMemory.generalJournal.filter((e) => e.active !== false).map((e) => e.content)
+      : []),
     context.scene?.currentObjective,
     context.scene?.currentConflict,
     context.location?.name,
@@ -236,21 +236,35 @@ export function buildSmartPromptContext({ story, world, character, characters = 
 
 function formatStoryMemory(memory) {
   const source = memory && typeof memory === "object" ? memory : {};
-  const toggles = source.promptToggles && typeof source.promptToggles === "object" ? source.promptToggles : {};
-  const sections = [
-    ["Core Summary", source.coreSummary, toggles.coreSummary !== false],
-    ["Recent Events", source.recentEvents, toggles.recentEvents !== false],
-    ["Open Threads", source.openThreads, toggles.openThreads !== false],
-    ["Character Memory", source.characterMemory, toggles.characterMemory !== false],
-    ["Resolved / Archived", source.archived, toggles.archived === true]
-  ]
-    .filter(([, value, enabled]) => enabled && String(value || "").trim())
-    .map(([label, value]) => `${label}:
-${compactText(value, label === "Core Summary" ? 900 : 650)}`);
+  const sections = [];
+
+  if (String(source.summary || "").trim()) {
+    sections.push(`Core Summary:\n${compactText(source.summary, 900)}`);
+  }
+
+  const activeJournal = (Array.isArray(source.generalJournal) ? source.generalJournal : [])
+    .filter((entry) => entry.active !== false && String(entry.content || "").trim());
+  if (activeJournal.length) {
+    sections.push(`General Journal:\n${activeJournal.map((entry) => `- ${compactText(entry.content, 300)}`).join("\n")}`);
+  }
+
+  const charJournals = source.characterJournals && typeof source.characterJournals === "object" ? source.characterJournals : {};
+  const charEntries = Object.entries(charJournals)
+    .flatMap(([, entries]) => (Array.isArray(entries) ? entries : [])
+      .filter((entry) => entry.active !== false && String(entry.content || "").trim())
+      .map((entry) => `- ${compactText(entry.content, 300)}`));
+  if (charEntries.length) {
+    sections.push(`Character Journal:\n${charEntries.join("\n")}`);
+  }
+
+  const activeTasks = (Array.isArray(source.tasks) ? source.tasks : [])
+    .filter((task) => task.active !== false && String(task.content || "").trim());
+  if (activeTasks.length) {
+    sections.push(`Active Tasks:\n${activeTasks.map((task) => `- ${task.completed ? "[done] " : ""}${compactText(task.content, 300)}`).join("\n")}`);
+  }
 
   return sections.length ? sections.join("\n\n") : "No story memory included.";
 }
-
 function formatSmartCurrentContext(smartContext) {
   const { story, world, context, currentLocation, availableLocations, relevantObjects } = smartContext;
   const sceneLines = [

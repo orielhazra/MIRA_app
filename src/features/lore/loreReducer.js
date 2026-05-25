@@ -1,0 +1,4 @@
+// loreReducer.js
+// Reducer for lore state management.
+// Handles actions: UPDATE_STORY_LORE, UPDATE_WORLD_LORE, UPDATE_CHARACTER_LORE,
+// SAVE_TEMPORARY_LORE, CLEAR_TEMPORARY_LORE, REFRESH_ACTIVE_LORE, PRUNE_LORE

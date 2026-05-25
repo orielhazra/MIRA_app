@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import LoreEditor, { LoreInfoList } from "./LoreEditor.jsx";
+import { parseKeywords } from "../utils/helpers.js";
 
 const PANEL_LABELS = {
   context: "Scene Control",
@@ -233,8 +234,8 @@ function ControlPanelHome({
           onClick={() => onOpenPanel("context")}
         />
         <ControlButton
-          title="Story Memory"
-          description="Compact long-term story summary with prompt toggles."
+          title="Story Journal"
+          description="Story summary, character-wise journals, general notes, and task tracking for long-term continuity."
           onClick={() => onOpenPanel("memory")}
         />
         <ControlButton
@@ -390,8 +391,8 @@ function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTempl
         <ContextInput label="Short Description" value={draft.shortDescription || ""} onChange={(value) => update("shortDescription", value)} />
         <ContextInput label="Race / Type" value={draft.race || ""} onChange={(value) => update("race", value)} />
         <ContextInput label="Story Role" value={draft.role || ""} onChange={(value) => update("role", value)} />
-        <ContextInput label="Aliases" value={(draft.aliases || []).join(", ")} onChange={(value) => update("aliases", value)} />
-        <ContextInput label="Prompt Keywords" value={(draft.promptKeywords || []).join(", ")} onChange={(value) => update("promptKeywords", value)} />
+        <ContextInput label="Aliases" value={(draft.aliases || []).join(", ")} onChange={(value) => update("aliases", parseKeywords(value))} />
+        <ContextInput label="Prompt Keywords" value={(draft.promptKeywords || []).join(", ")} onChange={(value) => update("promptKeywords", parseKeywords(value))} />
         <ContextTextarea label="Smart Prompt Summary" value={draft.profileSummary || ""} onChange={(value) => update("profileSummary", value)} />
         <ContextTextarea label="Default Outfit" value={draft.defaultOutfit || ""} onChange={(value) => update("defaultOutfit", value)} />
         <ContextTextarea label="Description" value={draft.description || ""} onChange={(value) => update("description", value)} />
