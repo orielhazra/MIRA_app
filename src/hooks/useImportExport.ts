@@ -1,14 +1,14 @@
 // Import/Export hook — JSON file handling for stories, characters, and worlds.
 
-import { normalizeCharacter, normalizeChatMessage, normalizeStory, normalizeWorld } from "../services/normalizers.js";
-import { buildOpeningMessage } from "../services/prompt.js";
-import { cloneJson, createId, downloadJson, readJsonFile, safeFileName } from "../utils/helpers.js";
+import { normalizeCharacter, normalizeChatMessage, normalizeStory, normalizeWorld } from "../services/normalizers";
+import { buildOpeningMessage } from "../services/prompt";
+import { cloneJson, createId, downloadJson, readJsonFile, safeFileName } from "../utils/helpers";
 import {
   validateIncomingCharacterBundle, validateIncomingWorldBundle,
   validateStoryExportBundle, validateIncomingStoryBundle,
   hydrateBundleLore, remapImportedContextCastIds, remapImportedCastStateIds,
   buildStoryExportBundle
-} from "../utils/appHelpers.js";
+} from "../utils/appHelpers";
 
 export default function useImportExport() {
 

@@ -1,19 +1,32 @@
 import { DEFAULT_KOBOLD_BASE_URL, GENERATION_SETTINGS } from "../constants/defaultData.js";
-import { repository } from "./repository.js";
+import { repository } from "./repository";
+import { ChatMessage } from "../types/index.js";
 
-export function getKoboldBaseUrl() {
+export function getKoboldBaseUrl(): string {
   return repository.settings.getKoboldBaseUrl(DEFAULT_KOBOLD_BASE_URL);
 }
 
-export function getKoboldChatUrl() {
+export function getKoboldChatUrl(): string {
   return `${getKoboldBaseUrl()}/v1/chat/completions`;
 }
 
-export function getKoboldTokenCountUrl() {
+export function getKoboldTokenCountUrl(): string {
   return `${getKoboldBaseUrl()}/api/extra/tokencount`;
 }
 
-export function buildGenerationBody(messages) {
+interface GenerationBody {
+  model: string;
+  messages: any[];
+  temperature: number;
+  top_p: number;
+  min_p: number;
+  repetition_penalty: number;
+  max_tokens: number;
+  stream: boolean;
+  stop: string[];
+}
+
+export function buildGenerationBody(messages: any[]): GenerationBody {
   return {
     model: GENERATION_SETTINGS.model,
     messages,
@@ -27,7 +40,11 @@ export function buildGenerationBody(messages) {
   };
 }
 
-export async function countPromptTokens(messages, options = {}) {
+interface ApiOptions {
+  signal?: AbortSignal;
+}
+
+export async function countPromptTokens(messages: any[], options: ApiOptions = {}): Promise<number> {
   const promptText = messagesToPromptText(messages);
   const response = await fetch(getKoboldTokenCountUrl(), {
     method: "POST",
@@ -40,7 +57,11 @@ export async function countPromptTokens(messages, options = {}) {
   return data.value ?? data.tokens ?? data.count ?? 0;
 }
 
-export async function streamChatCompletion(messages, onChunk, options = {}) {
+export async function streamChatCompletion(
+  messages: any[],
+  onChunk?: (fullReply: string, chunk: string) => void,
+  options: ApiOptions = {}
+): Promise<string> {
   const response = await fetch(getKoboldChatUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -87,7 +108,7 @@ export async function streamChatCompletion(messages, onChunk, options = {}) {
   return fullReply;
 }
 
-function parseStreamingChunk(line) {
+function parseStreamingChunk(line: string): string | null {
   const trimmed = String(line || "").trim();
   if (!trimmed) return null;
 
@@ -110,7 +131,7 @@ function parseStreamingChunk(line) {
   }
 }
 
-export function cleanGeneratedReply(text) {
+export function cleanGeneratedReply(text: string): string {
   let cleaned = String(text || "").trim();
   let cutIndex = -1;
 
@@ -140,16 +161,16 @@ export function cleanGeneratedReply(text) {
   return cleaned;
 }
 
-export function messagesToPromptText(messages) {
+export function messagesToPromptText(messages: any[]): string {
   return messages
     .map((message) => `<|im_start|>${message.role}\n${message.content}\n<|im_end|>`)
     .join("\n");
 }
 
-export function estimateGeneratedTokens(text) {
+export function estimateGeneratedTokens(text: string): number {
   return Math.max(1, Math.round(String(text || "").length / 4));
 }
 
-function escapeRegExp(value) {
+function escapeRegExp(value: string): string {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

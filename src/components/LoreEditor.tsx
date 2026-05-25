@@ -1,5 +1,5 @@
-import { createBlankLoreEntry } from "../services/normalizers.js";
-import { parseKeywords } from "../utils/helpers.js";
+import { createBlankLoreEntry } from "../services/normalizers";
+import { parseKeywords } from "../utils/helpers";
 
 export default function LoreEditor({ lorebook = [], onChange }) {
   const entries = Array.isArray(lorebook) ? lorebook : [];

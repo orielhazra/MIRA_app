@@ -1,25 +1,25 @@
 import { useMemo, useRef, useReducer } from "react";
-import { defaultCharacters, defaultStories, defaultWorlds } from "../constants/defaultData.js";
-import { normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers.js";
-import { buildOpeningMessage } from "../services/prompt.js";
-import { repository } from "../services/repository.js";
-import { cloneJson } from "../utils/helpers.js";
+import { defaultCharacters, defaultStories, defaultWorlds } from "../constants/defaultData";
+import { normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
+import { buildOpeningMessage } from "../services/prompt";
+import { repository } from "../services/repository";
+import { cloneJson } from "../utils/helpers";
 import { isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
-import { chooseActiveCastLead, loadInitialState, getStoryCharactersFromLists, uniqueCompact, loadChatForStory } from "../utils/appHelpers.js";
+import { chooseActiveCastLead, loadInitialState, getStoryCharactersFromLists, uniqueCompact, loadChatForStory } from "../utils/appHelpers";
 
-import { storyReducer, storyInitialState } from "../reducers/storyReducer.js";
-import { chatReducer, chatInitialState } from "../reducers/chatReducer.js";
-import { loreReducer, loreInitialState } from "../reducers/loreReducer.js";
-import { generationReducer, generationInitialState } from "../reducers/generationReducer.js";
+import { storyReducer, storyInitialState } from "../reducers/storyReducer";
+import { chatReducer, chatInitialState } from "../reducers/chatReducer";
+import { loreReducer, loreInitialState } from "../reducers/loreReducer";
+import { generationReducer, generationInitialState } from "../reducers/generationReducer";
 
-import useGeneration from "./useGeneration.js";
-import useChatActions from "./useChatActions.js";
-import useStoryActions from "./useStoryActions.js";
-import useCharacterActions from "./useCharacterActions.js";
-import useWorldActions from "./useWorldActions.js";
-import useLoreActions from "./useLoreActions.js";
-import useStateUpdates from "./useStateUpdates.js";
-import useImportExport from "./useImportExport.js";
+import useGeneration from "./useGeneration";
+import useChatActions from "./useChatActions";
+import useStoryActions from "./useStoryActions";
+import useCharacterActions from "./useCharacterActions";
+import useWorldActions from "./useWorldActions";
+import useLoreActions from "./useLoreActions";
+import useStateUpdates from "./useStateUpdates";
+import useImportExport from "./useImportExport";
 
 export default function useAppManager() {
   // ─── Initial state ───
@@ -179,7 +179,7 @@ export default function useAppManager() {
   // ─── Wire generation into chat actions (bound wrappers) ───
   async function sendMessage(text) {
     if (!activeStory || !activeWorld || activeStoryCharacters.length === 0 || isGenerating) return;
-    const { commitLastAssistantChoice, createAssistantReply } = await import("../utils/appHelpers.js");
+    const { commitLastAssistantChoice, createAssistantReply } = await import("../utils/appHelpers");
     const committed = commitLastAssistantChoice(chatHistory);
     const baseHistory = [...committed, { role: "user", content: text }];
     saveChatForActiveStory(baseHistory);
@@ -201,7 +201,7 @@ export default function useAppManager() {
   }
 
   async function continueLastReply() {
-    const { commitLastAssistantChoice, appendGeneratedReplyToLastAssistant, findLastAssistantIndex } = await import("../utils/appHelpers.js");
+    const { commitLastAssistantChoice, appendGeneratedReplyToLastAssistant, findLastAssistantIndex } = await import("../utils/appHelpers");
     if (isGenerating) return;
     const lastAssistantIndex = findLastAssistantIndex(chatHistory);
     if (lastAssistantIndex === -1) return alert("Nothing to continue.");
@@ -226,7 +226,7 @@ export default function useAppManager() {
   }
 
   async function elaborateLastReply() {
-    const { addAlternativeToLastAssistant } = await import("../utils/appHelpers.js");
+    const { addAlternativeToLastAssistant } = await import("../utils/appHelpers");
     const { getMessageDisplayText } = await import("../features/chat/ChatView.jsx");
     if (isGenerating) return;
     const lastMessage = chatHistory[chatHistory.length - 1];
@@ -252,7 +252,7 @@ export default function useAppManager() {
   }
 
   async function rerollLastReply() {
-    const { addAlternativeToLastAssistant } = await import("../utils/appHelpers.js");
+    const { addAlternativeToLastAssistant } = await import("../utils/appHelpers");
     if (isGenerating) return;
     if (chatHistory.length <= 1) return alert("Nothing to reroll.");
     const lastMessage = chatHistory[chatHistory.length - 1];
@@ -277,7 +277,7 @@ export default function useAppManager() {
   }
 
   async function regenerateFromMessage(index) {
-    const { commitLastAssistantChoice, createAssistantReply } = await import("../utils/appHelpers.js");
+    const { commitLastAssistantChoice, createAssistantReply } = await import("../utils/appHelpers");
     if (isGenerating) return;
     const targetMessage = chatHistory[index];
     if (!targetMessage) return;
@@ -338,7 +338,7 @@ export default function useAppManager() {
     });
     dispatchChat({ type: "FINISH_EDITING", payload: nextHistory }); repository.chats.save(activeStoryId, nextHistory);
     if (regenerateAfterSave && nextHistory[index]?.role === "user") {
-      const { createAssistantReply, commitLastAssistantChoice } = await import("../utils/appHelpers.js");
+      const { createAssistantReply, commitLastAssistantChoice } = await import("../utils/appHelpers");
       const baseHistory = nextHistory.slice(0, index + 1);
       await generation.generateAssistantReply({
         visibleHistory: [...baseHistory, { role: "assistant", content: "Thinking..." }],

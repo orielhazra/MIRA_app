@@ -1,8 +1,8 @@
 // Character CRUD hook — creation, editing, deletion, presence, story membership.
 
-import { normalizeCastState, normalizeCharacter, normalizeCurrentContext } from "../services/normalizers.js";
-import { createId } from "../utils/helpers.js";
-import { normalizeCastPresence, uniqueCompact } from "../utils/appHelpers.js";
+import { normalizeCastState, normalizeCharacter, normalizeCurrentContext } from "../services/normalizers";
+import { createId } from "../utils/helpers";
+import { normalizeCastPresence, uniqueCompact } from "../utils/appHelpers";
 
 export default function useCharacterActions() {
 

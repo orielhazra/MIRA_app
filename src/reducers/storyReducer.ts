@@ -1,8 +1,19 @@
 // Story, world, character, and UI navigation state reducer.
-// Replaces 9 useState blocks: worlds, characters, stories, activeStoryId,
-// activeView, selectedCharacterSheetId, selectedWorldSheetId, storyDraft, debugOpen.
+import { World, Character, Story } from "../types/index.js";
 
-export const storyInitialState = {
+export interface StoryState {
+  worlds: World[];
+  characters: Character[];
+  stories: Story[];
+  activeStoryId: string | null;
+  activeView: string;
+  selectedCharacterSheetId: string;
+  selectedWorldSheetId: string;
+  storyDraft: any;
+  debugOpen: boolean;
+}
+
+export const storyInitialState: StoryState = {
   worlds: [],
   characters: [],
   stories: [],
@@ -14,7 +25,7 @@ export const storyInitialState = {
   debugOpen: false,
 };
 
-export function storyReducer(state, action) {
+export function storyReducer(state: StoryState, action: { type: string; payload?: any }): StoryState {
   switch (action.type) {
     case "SAVE_WORLDS":
       return { ...state, worlds: action.payload };

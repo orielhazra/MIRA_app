@@ -1,15 +1,21 @@
 // Lore state reducer.
-// Replaces 4 useState blocks: activeLoreMemory, pendingUpdates,
-// selectedPendingUpdateIds, pendingUpdateStatus.
+import { LoreEntry } from "../types/index.js";
 
-export const loreInitialState = {
+export interface LoreState {
+  activeLoreMemory: LoreEntry[];
+  pendingUpdates: any[];
+  selectedPendingUpdateIds: string[];
+  pendingUpdateStatus: string;
+}
+
+export const loreInitialState: LoreState = {
   activeLoreMemory: [],
   pendingUpdates: [],
   selectedPendingUpdateIds: [],
   pendingUpdateStatus: "idle",
 };
 
-export function loreReducer(state, action) {
+export function loreReducer(state: LoreState, action: { type: string; payload?: any }): LoreState {
   switch (action.type) {
     case "SET_ACTIVE_LORE":
       return { ...state, activeLoreMemory: action.payload };

@@ -1,7 +1,10 @@
+import { 
+  Story, World, Character, LoreEntry, DirectorNotes
+} from "../types/index.js";
 import { LORE_SCAN_MESSAGES, MAX_ACTIVE_LORE, MAX_LORE_PROMPT_CHARS } from "../constants/defaultData.js";
-import { normalizeStoredLorebook } from "./normalizers.js";
+import { normalizeStoredLorebook } from "./normalizers";
 
-export function normalizeLoreMatchText(text) {
+export function normalizeLoreMatchText(text: string | undefined): string {
   return String(text || "")
     .toLowerCase()
     .replace(/[“”]/g, '"')
@@ -10,17 +13,18 @@ export function normalizeLoreMatchText(text) {
     .trim();
 }
 
-export function buildDirectorNotesPrompt(notes) {
+export function buildDirectorNotesPrompt(notes: DirectorNotes | undefined): string {
+  if (!notes) return "";
   const lines = [
-    ["Time of Day", notes?.timeOfDay],
-    ["Current Location", notes?.currentLocation],
-    ["Scene Mood", notes?.sceneMood],
-    ["Character Motivation", notes?.characterMotivation],
-    ["User's Plan", notes?.userPlan],
-    ["Current Conflict", notes?.currentConflict],
-    ["Next Story Beat", notes?.nextStoryBeat],
-    ["Avoid / Do Not Reveal Yet", notes?.avoid],
-    ["Custom Notes", notes?.customNotes]
+    ["Time of Day", notes.timeOfDay],
+    ["Current Location", notes.currentLocation],
+    ["Scene Mood", notes.sceneMood],
+    ["Character Motivation", notes.characterMotivation],
+    ["User's Plan", notes.userPlan],
+    ["Current Conflict", notes.currentConflict],
+    ["Next Story Beat", notes.nextStoryBeat],
+    ["Avoid / Do Not Reveal Yet", notes.avoid],
+    ["Custom Notes", notes.customNotes]
   ]
     .filter(([, value]) => String(value || "").trim())
     .map(([label, value]) => `${label}:\n${String(value).trim()}`);
@@ -28,7 +32,7 @@ export function buildDirectorNotesPrompt(notes) {
   return lines.join("\n\n");
 }
 
-export function getRecentLoreTriggerText(history, directorNotes) {
+export function getRecentLoreTriggerText(history: any[] = [], directorNotes: DirectorNotes | undefined): string {
   const recentChatText = (history || [])
     .slice(-LORE_SCAN_MESSAGES)
     .map((message) => message?.content || "")
@@ -37,7 +41,14 @@ export function getRecentLoreTriggerText(history, directorNotes) {
   return normalizeLoreMatchText(`${recentChatText}\n${buildDirectorNotesPrompt(directorNotes)}`);
 }
 
-export function getCombinedRuntimeLorebook({ story, world, character, characters = [] }) {
+interface CombinedParams {
+  story: Story;
+  world: World;
+  character: Character;
+  characters?: Character[];
+}
+
+export function getCombinedRuntimeLorebook({ story, world, character, characters = [] }: CombinedParams): LoreEntry[] {
   const temporaryLore = normalizeRuntimeLorebook(story?.temporaryLorebook || [], "Temporary", story?.id || "temporary");
   const storyLore = normalizeRuntimeLorebook(story?.storyLorebook || [], "Story", story?.id || "story");
   const worldLore = normalizeRuntimeLorebook(world?.worldLorebook || [], "World", world?.id || "world");
@@ -52,7 +63,7 @@ export function getCombinedRuntimeLorebook({ story, world, character, characters
   return [...temporaryLore, ...storyLore, ...worldLore, ...characterLore];
 }
 
-export function normalizeRuntimeLorebook(lorebook, source, sourceId) {
+export function normalizeRuntimeLorebook(lorebook: any[], source: string, sourceId: string): LoreEntry[] {
   return normalizeStoredLorebook(lorebook).map((entry, index) => ({
     ...entry,
     id: makeLoreRuntimeId(entry, source, sourceId, index),
@@ -63,7 +74,7 @@ export function normalizeRuntimeLorebook(lorebook, source, sourceId) {
   }));
 }
 
-export function makeLoreRuntimeId(entry, source, sourceId, index) {
+export function makeLoreRuntimeId(entry: LoreEntry, source: string, sourceId: string, index: number): string {
   if (entry.id) return `${source}:${sourceId}:${entry.id}`;
   const base = entry.name || entry.keywords?.[0] || `lore-${index}`;
   return `${source}:${sourceId}:${base}`
@@ -71,7 +82,16 @@ export function makeLoreRuntimeId(entry, source, sourceId, index) {
     .replace(/[^a-z0-9:_-]+/g, "-");
 }
 
-export function inspectLoreInjection({ story, world, character, characters = [], history, activeLoreMemory }) {
+interface InspectParams {
+  story: Story;
+  world: World;
+  character: Character;
+  characters?: Character[];
+  history: any[];
+  activeLoreMemory: LoreEntry[];
+}
+
+export function inspectLoreInjection({ story, world, character, characters = [], history, activeLoreMemory }: InspectParams) {
   const triggerText = getRecentLoreTriggerText(history, story?.directorNotes);
   const combinedLorebook = getCombinedRuntimeLorebook({ story, world, character, characters });
 
@@ -100,13 +120,13 @@ export function inspectLoreInjection({ story, world, character, characters = [],
   };
 }
 
-export function explainLoreEntryMatch(entry, triggerText) {
+export function explainLoreEntryMatch(entry: LoreEntry, triggerText: string) {
   if (!entry.enabled) {
     return {
       matched: false,
       status: "disabled",
       reason: "Disabled lore is ignored.",
-      matchedKeywords: []
+      matchedKeywords: [] as string[]
     };
   }
 
@@ -115,7 +135,7 @@ export function explainLoreEntryMatch(entry, triggerText) {
       matched: true,
       status: "always-on",
       reason: "Always on.",
-      matchedKeywords: []
+      matchedKeywords: [] as string[]
     };
   }
 
@@ -124,7 +144,7 @@ export function explainLoreEntryMatch(entry, triggerText) {
       matched: false,
       status: "no-keywords",
       reason: "No keywords and not always on.",
-      matchedKeywords: []
+      matchedKeywords: [] as string[]
     };
   }
 
@@ -143,11 +163,11 @@ export function explainLoreEntryMatch(entry, triggerText) {
     matched: false,
     status: "not-triggered",
     reason: "No keywords matched recent chat or Director Notes.",
-    matchedKeywords: []
+    matchedKeywords: [] as string[]
   };
 }
 
-export function loreKeywordMatches(keyword, triggerText) {
+export function loreKeywordMatches(keyword: string, triggerText: string): boolean {
   const cleanKeyword = normalizeLoreMatchText(keyword);
   if (!cleanKeyword || !triggerText) return false;
   if (cleanKeyword.includes(" ")) return triggerText.includes(cleanKeyword);
@@ -157,8 +177,8 @@ export function loreKeywordMatches(keyword, triggerText) {
   return pattern.test(triggerText);
 }
 
-export function buildNextActiveLoreMemory(currentMemory, newEntries, combinedLorebook) {
-  const currentById = new Map();
+export function buildNextActiveLoreMemory(currentMemory: LoreEntry[] = [], newEntries: any[] = [], combinedLorebook: LoreEntry[] = []): LoreEntry[] {
+  const currentById = new Map<string, LoreEntry>();
 
   for (const entry of currentMemory || []) {
     if (entry?.id) currentById.set(entry.id, entry);
@@ -166,48 +186,50 @@ export function buildNextActiveLoreMemory(currentMemory, newEntries, combinedLor
 
   const now = Date.now();
   for (const entry of newEntries || []) {
-    currentById.set(entry.id, {
-      id: entry.id,
-      source: entry.source,
-      sourceKey: entry.sourceKey,
-      sourceId: entry.sourceId,
-      originalIndex: entry.originalIndex,
-      name: entry.name,
-      keywords: entry.keywords,
-      content: entry.content,
-      enabled: entry.enabled,
-      alwaysOn: entry.alwaysOn,
-      priority: Number(entry.priority || 0),
-      triggeredAt: now
-    });
+    if (entry.id) {
+      currentById.set(entry.id, {
+        id: entry.id,
+        source: entry.source,
+        sourceKey: entry.sourceKey,
+        sourceId: entry.sourceId,
+        originalIndex: entry.originalIndex,
+        name: entry.name,
+        keywords: entry.keywords,
+        content: entry.content,
+        enabled: entry.enabled,
+        alwaysOn: entry.alwaysOn,
+        priority: Number(entry.priority || 0),
+        triggeredAt: now
+      });
+    }
   }
 
-  const validIds = new Set(
+  const validIds = new Set<string>(
     (combinedLorebook || [])
       .filter((entry) => entry.enabled)
-      .map((entry) => entry.id)
+      .map((entry) => entry.id as string)
   );
 
   return Array.from(currentById.values())
-    .filter((entry) => validIds.has(entry.id))
+    .filter((entry) => entry.id && validIds.has(entry.id))
     .filter((entry) => String(entry.content || "").trim())
     .sort(sortLoreEntries)
     .slice(0, MAX_ACTIVE_LORE);
 }
 
-export function pruneActiveLoreMemory(currentMemory, combinedLorebook) {
-  const validIds = new Set(
+export function pruneActiveLoreMemory(currentMemory: LoreEntry[] = [], combinedLorebook: LoreEntry[] = []): LoreEntry[] {
+  const validIds = new Set<string>(
     (combinedLorebook || [])
       .filter((entry) => entry.enabled)
-      .map((entry) => entry.id)
+      .map((entry) => entry.id as string)
   );
 
-  return (currentMemory || []).filter((entry) => validIds.has(entry.id));
+  return (currentMemory || []).filter((entry) => entry.id && validIds.has(entry.id));
 }
 
-export function selectLoreForPrompt(entries) {
+export function selectLoreForPrompt(entries: LoreEntry[]): LoreEntry[] {
   let usedChars = 0;
-  const selected = [];
+  const selected: LoreEntry[] = [];
   const sortedEntries = [...(entries || [])].sort(sortLoreEntries);
 
   for (const entry of sortedEntries) {
@@ -227,7 +249,7 @@ export function selectLoreForPrompt(entries) {
   return selected;
 }
 
-export function sortLoreEntries(a, b) {
+export function sortLoreEntries(a: any, b: any): number {
   const alwaysOnDiff = Number(b.alwaysOn === true) - Number(a.alwaysOn === true);
   if (alwaysOnDiff !== 0) return alwaysOnDiff;
 
@@ -237,17 +259,17 @@ export function sortLoreEntries(a, b) {
   return Number(b.triggeredAt || 0) - Number(a.triggeredAt || 0);
 }
 
-export function formatLoreForPrompt(entries) {
+export function formatLoreForPrompt(entries: LoreEntry[]): string {
   return (entries || []).map(formatSingleLoreEntry).filter(Boolean).join("\n\n");
 }
 
-export function formatSingleLoreEntry(entry) {
+export function formatSingleLoreEntry(entry: LoreEntry): string {
   if (!entry || !entry.content) return "";
   return `[${entry.source}] ${entry.name}\n${String(entry.content).trim()}`;
 }
 
-function uniqueCharacters(characters = [], fallbackCharacter = null) {
-  const byId = new Map();
+function uniqueCharacters(characters: Character[] = [], fallbackCharacter: Character | null = null): Character[] {
+  const byId = new Map<string, Character>();
   for (const character of characters || []) {
     if (character?.id && !byId.has(character.id)) byId.set(character.id, character);
   }

@@ -1,16 +1,16 @@
-export function createId(prefix) {
+export function createId(prefix: string): string {
   if (globalThis.crypto?.randomUUID) {
     return `${prefix}_${globalThis.crypto.randomUUID()}`;
   }
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-export function cloneJson(value) {
+export function cloneJson<T>(value: T): T {
   if (value === undefined || value === null) return value;
   return JSON.parse(JSON.stringify(value));
 }
 
-export function safeFileName(name, fallback = "export") {
+export function safeFileName(name: string | undefined, fallback: string = "export"): string {
   return (
     String(name || fallback)
       .toLowerCase()
@@ -19,7 +19,7 @@ export function safeFileName(name, fallback = "export") {
   );
 }
 
-export function downloadJson(filename, data) {
+export function downloadJson(filename: string, data: any): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json"
   });
@@ -33,7 +33,7 @@ export function downloadJson(filename, data) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function readJsonFile(file) {
+export function readJsonFile(file: File | null): Promise<any> {
   return new Promise((resolve, reject) => {
     if (!file) {
       resolve(null);
@@ -42,8 +42,8 @@ export function readJsonFile(file) {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        resolve(JSON.parse(reader.result));
-      } catch (error) {
+        resolve(JSON.parse(reader.result as string));
+      } catch (error: any) {
         reject(new Error(`Could not read JSON file: ${error.message}`));
       }
     };
@@ -52,7 +52,7 @@ export function readJsonFile(file) {
   });
 }
 
-export function parseKeywords(value) {
+export function parseKeywords(value: any): string[] {
   if (Array.isArray(value)) {
     return value.map((keyword) => String(keyword).trim()).filter(Boolean);
   }
@@ -62,15 +62,30 @@ export function parseKeywords(value) {
   return [];
 }
 
-export function clampNumber(value, min, max) {
+export function clampNumber(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
 }
 
-export function playCompletionSound() {
+// Reuse singleton AudioContext to prevent leaked instance errors (Quality Issue #9 Resolved)
+let _audioCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext {
+  if (!_audioCtx) {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    _audioCtx = new AudioContextClass();
+  }
+  return _audioCtx;
+}
+
+export function playCompletionSound(): void {
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioContext = new AudioContext();
+    const audioContext = getAudioContext();
+    
+    // Resume if suspended by browser autoplay policy
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+    
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 

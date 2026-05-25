@@ -1,3 +1,5 @@
+import { World, Character, Story, StoryJournal, DirectorNotes } from "../types/index";
+
 export const STORAGE_KEYS = {
   stories: "roleplay_stories",
   activeStory: "active_story_id",
@@ -7,7 +9,18 @@ export const STORAGE_KEYS = {
 
 export const DEFAULT_KOBOLD_BASE_URL = "http://localhost:5001";
 
-export const GENERATION_SETTINGS = {
+interface GenSettings {
+  model: string;
+  maxTokens: number;
+  temperature: number;
+  topP: number;
+  minP: number;
+  repetitionPenalty: number;
+  stream: boolean;
+  stop: string[];
+}
+
+export const GENERATION_SETTINGS: GenSettings = {
   model: "koboldcpp",
   maxTokens: 350,
   temperature: 0.85,
@@ -48,7 +61,7 @@ export const MAX_ACTIVE_LORE = 5;
 export const LORE_SCAN_MESSAGES = 8;
 export const MAX_LORE_PROMPT_CHARS = 2048;
 
-export const defaultWorlds = [
+export const defaultWorlds: any[] = [
   {
     id: "liminal-station",
     name: "The Liminal Station",
@@ -73,7 +86,7 @@ export const defaultWorlds = [
   }
 ];
 
-export const defaultCharacters = [
+export const defaultCharacters: any[] = [
   {
     id: "mira",
     worldId: "liminal-station",
@@ -97,7 +110,7 @@ export const defaultCharacters = [
   }
 ];
 
-export const defaultStories = [
+export const defaultStories: any[] = [
   {
     id: "story_mira_station",
     title: "Mira at the Liminal Station",
@@ -118,14 +131,14 @@ export const defaultStories = [
   }
 ];
 
-export const DEFAULT_STORY_MEMORY = {
+export const DEFAULT_STORY_MEMORY: StoryJournal = {
   summary: "",
   generalJournal: [],
   characterJournals: {},
   tasks: []
 };
 
-export const DEFAULT_DIRECTOR_NOTES = {
+export const DEFAULT_DIRECTOR_NOTES: DirectorNotes = {
   timeOfDay: "",
   currentLocation: "",
   sceneMood: "",

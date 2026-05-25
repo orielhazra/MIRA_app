@@ -1,13 +1,13 @@
 // State update extraction hook — AI-suggested scene/cast/memory updates.
 
-import { normalizeCurrentContext, normalizeCastState, normalizeStoryMemory } from "../services/normalizers.js";
-import { streamChatCompletion } from "../services/koboldApi.js";
+import { normalizeCurrentContext, normalizeCastState, normalizeStoryMemory } from "../services/normalizers";
+import { streamChatCompletion } from "../services/koboldApi";
 import { getMessageDisplayText } from "../features/chat/ChatView.jsx";
 import {
   parseSuggestedUpdates, applyUpdatesToCurrentContext,
   applyUpdatesToCastState, applyUpdatesToStoryMemory,
   syncDirectorNotesFromContext
-} from "../utils/appHelpers.js";
+} from "../utils/appHelpers";
 
 export default function useStateUpdates() {
 

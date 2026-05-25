@@ -1,8 +1,22 @@
+import { 
+  Story, World, Character, CurrentContext, ChatMessage, LoreEntry
+} from "../types/index.js";
 import { CHAT_CONTEXT_MESSAGES } from "../constants/defaultData.js";
-import { buildDirectorNotesPrompt, formatLoreForPrompt } from "./lore.js";
+import { buildDirectorNotesPrompt, formatLoreForPrompt } from "./lore";
 
 const MAX_AVAILABLE_LOCATIONS = 6;
 const MAX_RELEVANT_OBJECTS = 8;
+
+interface RequestParams {
+  story: Story;
+  world: World;
+  character: Character;
+  characters?: Character[];
+  history?: ChatMessage[];
+  activeLoreMemory?: LoreEntry[];
+  privateInstruction?: string;
+  extraMessages?: ChatMessage[];
+}
 
 export function buildMessagesForRequest({
   story,
@@ -13,7 +27,7 @@ export function buildMessagesForRequest({
   activeLoreMemory = [],
   privateInstruction = "",
   extraMessages = []
-}) {
+}: RequestParams) {
   return [
     {
       role: "system",
@@ -32,11 +46,21 @@ export function buildMessagesForRequest({
   ];
 }
 
-export function toApiMessage(message) {
+export function toApiMessage(message: ChatMessage) {
   return {
     role: message.role === "user" ? "user" : "assistant",
     content: String(message.content || "")
   };
+}
+
+interface PromptParams {
+  story: Story;
+  world: World;
+  character: Character;
+  characters?: Character[];
+  history?: ChatMessage[];
+  injectedLoreText?: string;
+  privateInstruction?: string;
 }
 
 export function buildSystemPrompt({
@@ -47,7 +71,7 @@ export function buildSystemPrompt({
   history = [],
   injectedLoreText = "",
   privateInstruction = ""
-}) {
+}: PromptParams): string {
   const smartContext = buildSmartPromptContext({
     story,
     world,
@@ -126,12 +150,12 @@ ${formatCastRules([...smartContext.fullCharacters, ...smartContext.compactCharac
 `.trim();
 }
 
-export function section(title, value) {
+export function section(title: string, value: string | undefined): string {
   if (!value || !String(value).trim()) return "";
   return `${title}:\n${String(value).trim()}`;
 }
 
-export function buildOpeningMessage(story, character, world, characters = []) {
+export function buildOpeningMessage(story: Story, character: Character | null, world: World | null, characters: Character[] = []): string {
   const safeCharacter = character || { name: "The character" };
   const safeWorld = world || { name: "the world" };
   const castNames = normalizePromptCharacters(characters, character).map((item) => item.name).join(", ");
@@ -148,18 +172,27 @@ export function buildOpeningMessage(story, character, world, characters = []) {
     .replaceAll("{{worldName}}", safeWorld.name);
 }
 
-export function buildSmartPromptContext({ story, world, character, characters = [], history = [], privateInstruction = "" }) {
+interface SmartPromptParams {
+  story: Story;
+  world: World;
+  character: Character;
+  characters?: Character[];
+  history?: ChatMessage[];
+  privateInstruction?: string;
+}
+
+export function buildSmartPromptContext({ story, world, character, characters = [], history = [], privateInstruction = "" }: SmartPromptParams) {
   const allCharacters = normalizePromptCharacters(characters, character);
   const context = story?.currentContext || {};
   const castState = story?.castState || {};
-  const characterStateById = new Map((castState.activeCharacters || []).map((row) => [row.characterId, row]));
-  const relationshipById = new Map((castState.relationships || []).map((row) => [row.characterId, row]));
+  const characterStateById = new Map<string, any>((castState.activeCharacters || []).map((row: any) => [row.characterId, row]));
+  const relationshipById = new Map<string, any>((castState.relationships || []).map((row: any) => [row.characterId, row]));
   const triggerText = normalizeMatchText([
     story?.title,
     story?.scenario,
     story?.storyMemory?.summary,
     ...(Array.isArray(story?.storyMemory?.generalJournal)
-      ? story.storyMemory.generalJournal.filter((e) => e.active !== false).map((e) => e.content)
+      ? story.storyMemory.generalJournal.filter((e: any) => e.active !== false).map((e: any) => e.content)
       : []),
     context.scene?.currentObjective,
     context.scene?.currentConflict,
@@ -174,8 +207,8 @@ export function buildSmartPromptContext({ story, world, character, characters = 
     ...(history || []).slice(-CHAT_CONTEXT_MESSAGES).map((message) => message?.content || "")
   ].filter(Boolean).join("\n"));
 
-  const activeIds = new Set();
-  const nearbyIds = new Set();
+  const activeIds = new Set<string>();
+  const nearbyIds = new Set<string>();
   for (const row of castState.activeCharacters || []) {
     const presence = normalizePresence(row);
     if (!row?.characterId) continue;
@@ -184,15 +217,15 @@ export function buildSmartPromptContext({ story, world, character, characters = 
   }
   if (activeIds.size === 0 && allCharacters[0]?.id) activeIds.add(allCharacters[0].id);
 
-  const mentionedIds = new Set();
-  const pinnedIds = new Set();
+  const mentionedIds = new Set<string>();
+  const pinnedIds = new Set<string>();
   for (const castCharacter of allCharacters) {
     if (castCharacter.promptPinned) pinnedIds.add(castCharacter.id);
     if (doesTriggerMentionCharacter(triggerText, castCharacter)) mentionedIds.add(castCharacter.id);
   }
 
-  const fullCharacterIds = new Set([...activeIds, ...pinnedIds]);
-  const compactCharacterIds = new Set([...nearbyIds, ...mentionedIds].filter((id) => !fullCharacterIds.has(id)));
+  const fullCharacterIds = new Set<string>([...activeIds, ...pinnedIds]);
+  const compactCharacterIds = new Set<string>([...nearbyIds, ...mentionedIds].filter((id) => !fullCharacterIds.has(id)));
 
   const fullCharacters = allCharacters.filter((item) => fullCharacterIds.has(item.id));
   const compactCharacters = allCharacters.filter((item) => compactCharacterIds.has(item.id));
@@ -234,39 +267,40 @@ export function buildSmartPromptContext({ story, world, character, characters = 
   };
 }
 
-function formatStoryMemory(memory) {
+function formatStoryMemory(memory: any): string {
   const source = memory && typeof memory === "object" ? memory : {};
-  const sections = [];
+  const sections: string[] = [];
 
   if (String(source.summary || "").trim()) {
     sections.push(`Core Summary:\n${compactText(source.summary, 900)}`);
   }
 
   const activeJournal = (Array.isArray(source.generalJournal) ? source.generalJournal : [])
-    .filter((entry) => entry.active !== false && String(entry.content || "").trim());
+    .filter((entry: any) => entry.active !== false && String(entry.content || "").trim());
   if (activeJournal.length) {
-    sections.push(`General Journal:\n${activeJournal.map((entry) => `- ${compactText(entry.content, 300)}`).join("\n")}`);
+    sections.push(`General Journal:\n${activeJournal.map((entry: any) => `- ${compactText(entry.content, 300)}`).join("\n")}`);
   }
 
   const charJournals = source.characterJournals && typeof source.characterJournals === "object" ? source.characterJournals : {};
   const charEntries = Object.entries(charJournals)
     .flatMap(([, entries]) => (Array.isArray(entries) ? entries : [])
-      .filter((entry) => entry.active !== false && String(entry.content || "").trim())
-      .map((entry) => `- ${compactText(entry.content, 300)}`));
+      .filter((entry: any) => entry.active !== false && String(entry.content || "").trim())
+      .map((entry: any) => `- ${compactText(entry.content, 300)}`));
   if (charEntries.length) {
     sections.push(`Character Journal:\n${charEntries.join("\n")}`);
   }
 
   const activeTasks = (Array.isArray(source.tasks) ? source.tasks : [])
-    .filter((task) => task.active !== false && String(task.content || "").trim());
+    .filter((task: any) => task.active !== false && String(task.content || "").trim());
   if (activeTasks.length) {
-    sections.push(`Active Tasks:\n${activeTasks.map((task) => `- ${task.completed ? "[done] " : ""}${compactText(task.content, 300)}`).join("\n")}`);
+    sections.push(`Active Tasks:\n${activeTasks.map((task: any) => `- ${task.completed ? "[done] " : ""}${compactText(task.content, 300)}`).join("\n")}`);
   }
 
   return sections.length ? sections.join("\n\n") : "No story memory included.";
 }
-function formatSmartCurrentContext(smartContext) {
-  const { story, world, context, currentLocation, availableLocations, relevantObjects } = smartContext;
+
+function formatSmartCurrentContext(smartContext: any): string {
+  const { world, context, currentLocation, availableLocations, relevantObjects } = smartContext;
   const sceneLines = [
     context.scene?.timeOfDay ? `Time of Day: ${context.scene.timeOfDay}` : "",
     context.scene?.atmosphere ? `Atmosphere: ${context.scene.atmosphere}` : "",
@@ -288,7 +322,7 @@ function formatSmartCurrentContext(smartContext) {
     currentLocation?.hazards || context.location?.hazards ? `Hazards: ${currentLocation?.hazards || context.location.hazards}` : ""
   ].filter(Boolean);
 
-  const availableLines = availableLocations.map((location) => formatLocationCompact(location)).filter(Boolean);
+  const availableLines = availableLocations.map((location: any) => formatLocationCompact(location)).filter(Boolean);
   const objectLines = relevantObjects.map(formatObjectLine).filter(Boolean);
   const factLines = [
     context.recentFacts?.importantDiscoveries ? `Important Discoveries: ${context.recentFacts.importantDiscoveries}` : "",
@@ -296,7 +330,7 @@ function formatSmartCurrentContext(smartContext) {
     context.recentFacts?.openQuestions ? `Open Questions: ${context.recentFacts.openQuestions}` : ""
   ].filter(Boolean);
 
-  const blocks = [];
+  const blocks: string[] = [];
   if (worldLines.length) blocks.push(`[World Summary]\n${worldLines.join("\n")}`);
   if (sceneLines.length) blocks.push(`[Scene]\n${sceneLines.join("\n")}`);
   if (locationLines.length) blocks.push(`[Current Location]\n${locationLines.join("\n")}`);
@@ -307,7 +341,7 @@ function formatSmartCurrentContext(smartContext) {
   return blocks.join("\n\n") || "No current context saved.";
 }
 
-function formatFullCharacterProfiles(characters, characterStateById, relationshipById) {
+function formatFullCharacterProfiles(characters: Character[], characterStateById: Map<string, any>, relationshipById: Map<string, any>): string {
   if (!characters.length) return "No active character profile available.";
 
   return characters.map((character) => {
@@ -344,7 +378,7 @@ ${stateLines.length ? `Current State:\n${stateLines.join("\n")}` : ""}
   }).join("\n\n");
 }
 
-function formatCompactCharacterProfiles(characters, characterStateById, relationshipById) {
+function formatCompactCharacterProfiles(characters: Character[], characterStateById: Map<string, any>, relationshipById: Map<string, any>): string {
   if (!characters.length) return "None.";
   return characters.map((character) => {
     const state = characterStateById.get(character.id) || {};
@@ -364,7 +398,7 @@ function formatCompactCharacterProfiles(characters, characterStateById, relation
   }).join("\n");
 }
 
-function formatInactiveCast(characters) {
+function formatInactiveCast(characters: Character[]): string {
   if (!characters.length) return "None.";
   return characters.map((character) => {
     const label = [character.name, character.race, character.role || character.shortDescription]
@@ -374,7 +408,7 @@ function formatInactiveCast(characters) {
   }).join("\n");
 }
 
-function formatCastRules(characters) {
+function formatCastRules(characters: Character[]): string {
   const rules = characters
     .map((character) => {
       const text = String(character.characterRules || "").trim();
@@ -385,8 +419,8 @@ function formatCastRules(characters) {
   return rules.length ? rules.join("\n\n") : "None.";
 }
 
-function normalizePromptCharacters(characters = [], fallbackCharacter = null) {
-  const byId = new Map();
+function normalizePromptCharacters(characters: Character[] = [], fallbackCharacter: Character | null = null): Character[] {
+  const byId = new Map<string, Character>();
   for (const character of characters || []) {
     if (character?.id && !byId.has(character.id)) byId.set(character.id, character);
   }
@@ -394,7 +428,7 @@ function normalizePromptCharacters(characters = [], fallbackCharacter = null) {
   return Array.from(byId.values()).filter(Boolean);
 }
 
-function doesTriggerMentionCharacter(triggerText, character) {
+function doesTriggerMentionCharacter(triggerText: string, character: Character): boolean {
   const needles = [
     character.name,
     character.race,
@@ -405,7 +439,7 @@ function doesTriggerMentionCharacter(triggerText, character) {
   return needles.some((needle) => textIncludesNeedle(triggerText, needle));
 }
 
-function selectCurrentLocation(contextLocation = {}, worldLocations = [], triggerText = "") {
+function selectCurrentLocation(contextLocation: any = {}, worldLocations: any[] = [], triggerText: string = ""): any {
   const contextName = contextLocation?.name || "";
   const exact = worldLocations.find((location) => sameText(location.name, contextName));
   if (exact) {
@@ -431,7 +465,14 @@ function selectCurrentLocation(contextLocation = {}, worldLocations = [], trigge
   return worldLocations[0] || null;
 }
 
-function selectAvailableLocations({ contextLocation = {}, currentLocation = null, worldLocations = [], triggerText = "" }) {
+interface SelectLocationsParams {
+  contextLocation?: any;
+  currentLocation?: any;
+  worldLocations?: any[];
+  triggerText?: string;
+}
+
+function selectAvailableLocations({ contextLocation = {}, currentLocation = null, worldLocations = [], triggerText = "" }: SelectLocationsParams): any[] {
   const currentName = currentLocation?.name || contextLocation?.name || "";
   const explicitText = String(contextLocation?.availableLocations || "").trim();
   const explicitLocations = explicitText
@@ -463,7 +504,14 @@ function selectAvailableLocations({ contextLocation = {}, currentLocation = null
     .slice(0, MAX_AVAILABLE_LOCATIONS);
 }
 
-function selectRelevantObjects({ objects = [], triggerText = "", currentLocation = null, fullCharacters = [] }) {
+interface SelectObjectsParams {
+  objects?: any[];
+  triggerText?: string;
+  currentLocation?: any;
+  fullCharacters?: Character[];
+}
+
+function selectRelevantObjects({ objects = [], triggerText = "", currentLocation = null, fullCharacters = [] }: SelectObjectsParams): any[] {
   const currentLocationName = currentLocation?.name || "";
   const activeNames = new Set(fullCharacters.map((character) => normalizeMatchText(character.name)));
 
@@ -482,7 +530,7 @@ function selectRelevantObjects({ objects = [], triggerText = "", currentLocation
   }).slice(0, MAX_RELEVANT_OBJECTS);
 }
 
-function formatLocationCompact(location) {
+function formatLocationCompact(location: any): string {
   if (!location?.name) return "";
   const details = [
     location.summary || "",
@@ -493,7 +541,7 @@ function formatLocationCompact(location) {
   return `- ${location.name}${details ? `: ${compactText(details, 260)}` : ""}`;
 }
 
-function formatObjectLine(object) {
+function formatObjectLine(object: any): string {
   if (!object?.name) return "";
   const details = [
     object.locationOrHolder ? `where: ${object.locationOrHolder}` : "",
@@ -504,7 +552,7 @@ function formatObjectLine(object) {
   return `- ${object.name}${details ? ` (${details})` : ""}`;
 }
 
-function doesTriggerMentionLocation(triggerText, location) {
+function doesTriggerMentionLocation(triggerText: string, location: any): boolean {
   const needles = [
     location.name,
     ...(Array.isArray(location.keywords) ? location.keywords : [])
@@ -512,7 +560,7 @@ function doesTriggerMentionLocation(triggerText, location) {
   return needles.some((needle) => textIncludesNeedle(triggerText, needle));
 }
 
-function mergeLocation(worldLocation, contextLocation) {
+function mergeLocation(worldLocation: any, contextLocation: any): any {
   return {
     ...worldLocation,
     name: contextLocation.name || worldLocation.name,
@@ -523,8 +571,8 @@ function mergeLocation(worldLocation, contextLocation) {
   };
 }
 
-function uniqueLocations(locations) {
-  const byName = new Map();
+function uniqueLocations(locations: any[]): any[] {
+  const byName = new Map<string, any>();
   for (const location of locations || []) {
     const key = normalizeMatchText(location?.name || location?.id || "");
     if (key && !byName.has(key)) byName.set(key, location);
@@ -532,11 +580,11 @@ function uniqueLocations(locations) {
   return Array.from(byName.values());
 }
 
-function sameText(a, b) {
+function sameText(a: string, b: string): boolean {
   return normalizeMatchText(a) === normalizeMatchText(b) && normalizeMatchText(a) !== "";
 }
 
-function textIncludesNeedle(text, needle) {
+function textIncludesNeedle(text: string, needle: string): boolean {
   const cleanNeedle = normalizeMatchText(needle);
   if (!cleanNeedle || !text) return false;
   if (cleanNeedle.includes(" ")) return text.includes(cleanNeedle);
@@ -544,7 +592,7 @@ function textIncludesNeedle(text, needle) {
   return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
 }
 
-function normalizeMatchText(text) {
+function normalizeMatchText(text: string | undefined): string {
   return String(text || "")
     .toLowerCase()
     .replace(/[“”]/g, '"')
@@ -553,14 +601,13 @@ function normalizeMatchText(text) {
     .trim();
 }
 
-function compactText(text, maxLength = 500) {
+function compactText(text: string | undefined, maxLength: number = 500): string {
   const clean = String(text || "").trim();
   if (clean.length <= maxLength) return clean;
   return `${clean.slice(0, maxLength - 1).trim()}…`;
 }
 
-
-function normalizePresence(row = {}) {
+function normalizePresence(row: any = {}): string {
   const raw = String(row?.presence || "").trim().toLowerCase();
   if (["active", "nearby", "inactive"].includes(raw)) return raw;
   return row?.present === false ? "inactive" : "active";

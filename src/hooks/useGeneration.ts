@@ -3,11 +3,11 @@
 // Used by: useChatActions (generateAssistantReply).
 
 import { useRef } from "react";
-import { GENERATION_SETTINGS } from "../constants/defaultData.js";
-import { buildMessagesForRequest } from "../services/prompt.js";
-import { cleanGeneratedReply, countPromptTokens, estimateGeneratedTokens, streamChatCompletion } from "../services/koboldApi.js";
-import { inspectLoreInjection } from "../services/lore.js";
-import { playCompletionSound } from "../utils/helpers.js";
+import { GENERATION_SETTINGS } from "../constants/defaultData";
+import { buildMessagesForRequest } from "../services/prompt";
+import { cleanGeneratedReply, countPromptTokens, estimateGeneratedTokens, streamChatCompletion } from "../services/koboldApi";
+import { inspectLoreInjection } from "../services/lore";
+import { playCompletionSound } from "../utils/helpers";
 import { isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
 
 export default function useGeneration() {

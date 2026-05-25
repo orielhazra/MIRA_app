@@ -1,15 +1,15 @@
 // Story CRUD hook — creation, switching, deletion, context/director/memory saves.
 // Depends on: worlds, characters, stories, activeStory, isGenerating.
 
-import { defaultWorlds, defaultCharacters, DEFAULT_DIRECTOR_NOTES } from "../constants/defaultData.js";
-import { normalizeCastState, normalizeCharacter, normalizeCurrentContext, normalizeDirectorNotes, normalizeStory, normalizeStoryMemory, normalizeStoredLorebook } from "../services/normalizers.js";
-import { buildOpeningMessage } from "../services/prompt.js";
-import { createId } from "../utils/helpers.js";
+import { defaultWorlds, defaultCharacters, DEFAULT_DIRECTOR_NOTES } from "../constants/defaultData";
+import { normalizeCastState, normalizeCharacter, normalizeCurrentContext, normalizeDirectorNotes, normalizeStory, normalizeStoryMemory, normalizeStoredLorebook } from "../services/normalizers";
+import { buildOpeningMessage } from "../services/prompt";
+import { createId } from "../utils/helpers";
 import {
   createInitialCastState, createInitialCurrentContext, chooseActiveCastLead,
   loadChatForStory, getStoryCharactersFromLists, uniqueCompact,
   syncDirectorNotesFromContext, syncCurrentContextFromDirectorNotes
-} from "../utils/appHelpers.js";
+} from "../utils/appHelpers";
 
 export default function useStoryActions() {
 

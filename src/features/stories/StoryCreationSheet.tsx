@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import LoreEditor from "../../components/LoreEditor.jsx";
-import { uniqueCompact } from "../../utils/appHelpers.js";
+import { uniqueCompact } from "../utils/appHelpers";
 
 export default function StoryCreationSheet({ worlds, characters, initialDraft, onStart, onCancel, onImportStory }) {
   const [draft, setDraft] = useState(initialDraft);

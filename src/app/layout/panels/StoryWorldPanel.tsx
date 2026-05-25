@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import LoreEditor from "../../../components/LoreEditor.jsx";
-import { parseKeywords } from "../../../utils/helpers.js";
+import { parseKeywords } from "../utils/helpers";
 
 export default function StoryWorldPanel({
   activeStory,

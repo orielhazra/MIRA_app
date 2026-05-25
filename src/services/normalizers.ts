@@ -1,60 +1,81 @@
-import { defaultWorlds, defaultCharacters, DEFAULT_DIRECTOR_NOTES, DEFAULT_STORY_MEMORY } from "../constants/defaultData.js";
-import { clampNumber, createId, parseKeywords } from "../utils/helpers.js";
+import { 
+  DirectorNotes, StoryJournal, CurrentContext, CastState, 
+  LoreEntry, World, WorldLocation, Character, Story, ChatMessage,
+  CastMemberState, RelationshipState, ObjectContext
+} from "../types/index.js";
+import { defaultWorlds } from "../constants/defaultData.js";
+import { clampNumber, createId, parseKeywords } from "../utils/helpers";
 
-export function normalizeDirectorNotes(notes) {
+// Safe fallback defaults for normalization
+export const DEFAULT_DIRECTOR_NOTES: DirectorNotes = {
+  timeOfDay: "",
+  currentLocation: "",
+  sceneMood: "",
+  characterMotivation: "",
+  userPlan: "",
+  currentConflict: "",
+  nextStoryBeat: "",
+  avoid: "",
+  customNotes: ""
+};
+
+export const DEFAULT_STORY_MEMORY: StoryJournal = {
+  summary: "",
+  generalJournal: [],
+  characterJournals: {},
+  tasks: []
+};
+
+export function normalizeDirectorNotes(notes: any): DirectorNotes {
   const source = notes && typeof notes === "object" ? notes : {};
   return {
-    timeOfDay: String(source.timeOfDay || DEFAULT_DIRECTOR_NOTES.timeOfDay),
-    currentLocation: String(source.currentLocation || DEFAULT_DIRECTOR_NOTES.currentLocation),
-    sceneMood: String(source.sceneMood || DEFAULT_DIRECTOR_NOTES.sceneMood),
-    characterMotivation: String(source.characterMotivation || DEFAULT_DIRECTOR_NOTES.characterMotivation),
-    userPlan: String(source.userPlan || DEFAULT_DIRECTOR_NOTES.userPlan),
-    currentConflict: String(source.currentConflict || DEFAULT_DIRECTOR_NOTES.currentConflict),
-    nextStoryBeat: String(source.nextStoryBeat || DEFAULT_DIRECTOR_NOTES.nextStoryBeat),
-    avoid: String(source.avoid || DEFAULT_DIRECTOR_NOTES.avoid),
-    customNotes: String(source.customNotes || DEFAULT_DIRECTOR_NOTES.customNotes)
+    timeOfDay: String(source.timeOfDay || DEFAULT_DIRECTOR_NOTES.timeOfDay || ""),
+    currentLocation: String(source.currentLocation || DEFAULT_DIRECTOR_NOTES.currentLocation || ""),
+    sceneMood: String(source.sceneMood || DEFAULT_DIRECTOR_NOTES.sceneMood || ""),
+    characterMotivation: String(source.characterMotivation || DEFAULT_DIRECTOR_NOTES.characterMotivation || ""),
+    userPlan: String(source.userPlan || DEFAULT_DIRECTOR_NOTES.userPlan || ""),
+    currentConflict: String(source.currentConflict || DEFAULT_DIRECTOR_NOTES.currentConflict || ""),
+    nextStoryBeat: String(source.nextStoryBeat || DEFAULT_DIRECTOR_NOTES.nextStoryBeat || ""),
+    avoid: String(source.avoid || DEFAULT_DIRECTOR_NOTES.avoid || ""),
+    customNotes: String(source.customNotes || DEFAULT_DIRECTOR_NOTES.customNotes || "")
   };
 }
 
-export function normalizeStoryMemory(memory) {
+export function normalizeStoryMemory(memory: any): StoryJournal {
   const source = memory && typeof memory === "object" ? memory : {};
   
-  // Normalize summary
-  const summary = String(source.summary || source.coreSummary || DEFAULT_STORY_MEMORY.summary);
+  const summary = String(source.summary || source.coreSummary || DEFAULT_STORY_MEMORY.summary || "");
   
-  // Normalize general journal entries
   const generalJournal = Array.isArray(source.generalJournal)
-    ? source.generalJournal.map((entry, index) => ({
-        id: entry.id || `general-${index}`,
+    ? source.generalJournal.map((entry: any, index: number) => ({
+        id: String(entry.id || `general-${index}`),
         content: String(entry.content || ""),
         active: entry.active !== false,
-        createdAt: entry.createdAt || Date.now()
+        createdAt: Number(entry.createdAt || Date.now())
       }))
     : [];
   
-  // Normalize character journals
-  const characterJournals = {};
+  const characterJournals: Record<string, any[]> = {};
   if (source.characterJournals && typeof source.characterJournals === "object") {
     for (const [charId, entries] of Object.entries(source.characterJournals)) {
       if (Array.isArray(entries)) {
-        characterJournals[charId] = entries.map((entry, index) => ({
-          id: entry.id || `${charId}-${index}`,
+        characterJournals[charId] = entries.map((entry: any, index: number) => ({
+          id: String(entry.id || `${charId}-${index}`),
           content: String(entry.content || ""),
           active: entry.active !== false,
-          createdAt: entry.createdAt || Date.now()
+          createdAt: Number(entry.createdAt || Date.now())
         }));
       }
     }
   }
   
-  // Normalize tasks
   const tasks = Array.isArray(source.tasks)
-    ? source.tasks.map((task, index) => ({
-        id: task.id || `task-${index}`,
+    ? source.tasks.map((task: any, index: number) => ({
+        id: String(task.id || `task-${index}`),
         content: String(task.content || ""),
         active: task.active !== false,
         completed: task.completed === true,
-        createdAt: task.createdAt || Date.now()
+        createdAt: Number(task.createdAt || Date.now())
       }))
     : [];
   
@@ -66,9 +87,7 @@ export function normalizeStoryMemory(memory) {
   };
 }
 
-
-
-export const DEFAULT_CURRENT_CONTEXT = {
+export const DEFAULT_CURRENT_CONTEXT: CurrentContext = {
   scene: {
     timeOfDay: "",
     atmosphere: "",
@@ -90,15 +109,15 @@ export const DEFAULT_CURRENT_CONTEXT = {
   }
 };
 
-export const DEFAULT_CAST_STATE = {
+export const DEFAULT_CAST_STATE: CastState = {
   activeCharacters: [],
   relationships: []
 };
 
-export function normalizeCurrentContext(context = {}) {
+export function normalizeCurrentContext(context: any = {}): CurrentContext {
   const source = context && typeof context === "object" ? context : {};
 
-  const objects = Array.isArray(source.objects) ? source.objects.map((item) => {
+  const objects: ObjectContext[] = Array.isArray(source.objects) ? source.objects.map((item: any) => {
     const row = item && typeof item === "object" ? item : {};
     return {
       id: String(row.id || createId("object")),
@@ -106,9 +125,9 @@ export function normalizeCurrentContext(context = {}) {
       locationOrHolder: String(row.locationOrHolder || row.location || row.holder || ""),
       visibleState: String(row.visibleState || row.state || ""),
       hiddenDetail: String(row.hiddenDetail || ""),
-      status: String(row.status || "")
+      status: (row.status || "active") as any
     };
-  }).filter((item) => item.name.trim() || item.visibleState.trim() || item.status.trim()) : [];
+  }).filter((item: any) => item.name.trim() || item.visibleState.trim() || item.status.trim()) : [];
 
   return {
     scene: {
@@ -133,15 +152,15 @@ export function normalizeCurrentContext(context = {}) {
   };
 }
 
-export function normalizeCastState(castState = {}, characters = [], legacyContext = {}) {
+export function normalizeCastState(castState: any = {}, characters: Character[] = [], legacyContext: any = {}): CastState {
   const source = castState && typeof castState === "object" ? castState : {};
   const legacy = legacyContext && typeof legacyContext === "object" ? legacyContext : {};
   const rawCharacterStates = Array.isArray(source.activeCharacters)
     ? source.activeCharacters
     : (Array.isArray(legacy.activeCharacters) ? legacy.activeCharacters : []);
-  const existingStateById = new Map(rawCharacterStates
-    .map((item) => item && typeof item === "object" ? item : {})
-    .map((row) => [String(row.characterId || row.id || ""), row])
+  const existingStateById = new Map<string, any>(rawCharacterStates
+    .map((item: any) => item && typeof item === "object" ? item : {})
+    .map((row: any) => [String(row.characterId || row.id || ""), row])
     .filter(([id]) => id));
 
   const orderedCharacterIds = uniqueCompact([
@@ -149,7 +168,7 @@ export function normalizeCastState(castState = {}, characters = [], legacyContex
     ...existingStateById.keys()
   ]);
 
-  const activeCharacters = orderedCharacterIds.map((characterId) => {
+  const activeCharacters: CastMemberState[] = orderedCharacterIds.map((characterId) => {
     const row = existingStateById.get(characterId) || {};
     const character = (characters || []).find((item) => item?.id === characterId) || {};
     const presence = normalizePresence(row.presence, row.present);
@@ -170,12 +189,12 @@ export function normalizeCastState(castState = {}, characters = [], legacyContex
   const rawRelationships = Array.isArray(source.relationships)
     ? source.relationships
     : (Array.isArray(legacy.relationships) ? legacy.relationships : []);
-  const existingRelationshipById = new Map(rawRelationships
-    .map((item) => item && typeof item === "object" ? item : {})
-    .map((row) => [String(row.characterId || row.id || ""), row])
+  const existingRelationshipById = new Map<string, any>(rawRelationships
+    .map((item: any) => item && typeof item === "object" ? item : {})
+    .map((row: any) => [String(row.characterId || row.id || ""), row])
     .filter(([id]) => id));
 
-  const relationships = orderedCharacterIds.map((characterId) => {
+  const relationships: RelationshipState[] = orderedCharacterIds.map((characterId) => {
     const row = existingRelationshipById.get(characterId) || {};
     const character = (characters || []).find((item) => item?.id === characterId) || {};
     return {
@@ -192,10 +211,10 @@ export function normalizeCastState(castState = {}, characters = [], legacyContex
   };
 }
 
-export function normalizeStoredLorebook(lorebook) {
+export function normalizeStoredLorebook(lorebook: any): LoreEntry[] {
   if (!Array.isArray(lorebook)) return [];
   return lorebook
-    .map((entry, index) => {
+    .map((entry: any, index: number) => {
       const source = entry && typeof entry === "object" ? entry : {};
       const enabled = source.enabled !== false;
       return {
@@ -211,26 +230,23 @@ export function normalizeStoredLorebook(lorebook) {
     .filter((entry) => entry.name.trim() || entry.keywords.length > 0 || entry.content.trim());
 }
 
-export function normalizeWorld(world = {}) {
+export function normalizeWorld(world: any = {}): World {
   return {
-    id: world.id || createId("world"),
-    name: world.name || "Unnamed World",
-    shortDescription: world.shortDescription || "Roleplay world",
+    id: String(world.id || createId("world")),
+    name: String(world.name || "Unnamed World"),
+    shortDescription: String(world.shortDescription || "Roleplay world"),
     overview: String(world.overview || world.shortDescription || ""),
-    description: world.description || "",
-    rules: world.rules || "",
-    promptKeywords: parseKeywords(world.promptKeywords || world.keywords),
-    startingScenario: world.startingScenario || "",
-    greeting: world.greeting || "The scene begins.",
+    description: String(world.description || ""),
+    rules: String(world.rules || ""),
     locations: normalizeWorldLocations(world.locations || world.worldLocations || []),
     worldLorebook: normalizeStoredLorebook(world.worldLorebook || world.lorebook)
   };
 }
 
-export function normalizeWorldLocations(locations) {
+export function normalizeWorldLocations(locations: any): WorldLocation[] {
   if (!Array.isArray(locations)) return [];
   return locations
-    .map((location, index) => {
+    .map((location: any, index: number) => {
       const source = location && typeof location === "object" ? location : {};
       return {
         id: String(source.id || `location_${index}_${createId("loc").slice(-6)}`),
@@ -247,12 +263,11 @@ export function normalizeWorldLocations(locations) {
     .filter((location) => location.name.trim() || location.description.trim());
 }
 
-export function normalizeCharacter(character = {}, worlds = []) {
+export function normalizeCharacter(character: any = {}, worlds: World[] = []): Character {
   return {
-    id: character.id || createId("character"),
-    worldId: character.worldId || worlds[0]?.id || defaultWorlds[0]?.id || "",
-    name: character.name || "Unnamed Character",
-    shortDescription: character.shortDescription || "Roleplay character",
+    id: String(character.id || createId("character")),
+    name: String(character.name || "Unnamed Character"),
+    shortDescription: String(character.shortDescription || "Roleplay character"),
     race: String(character.race || character.species || character.type || ""),
     role: String(character.role || character.storyRole || ""),
     aliases: parseKeywords(character.aliases),
@@ -260,37 +275,37 @@ export function normalizeCharacter(character = {}, worlds = []) {
     profileSummary: String(character.profileSummary || character.promptSummary || character.shortDescription || ""),
     defaultOutfit: String(character.defaultOutfit || character.outfit || ""),
     promptPinned: character.promptPinned === true,
-    description: character.description || "",
-    personality: character.personality || "",
-    appearance: character.appearance || "",
-    backstory: character.backstory || "",
-    speakingStyle: character.speakingStyle || "",
-    relationshipToUser: character.relationshipToUser || "",
-    goals: character.goals || "",
-    characterRules: character.characterRules || "",
+    description: String(character.description || ""),
+    personality: String(character.personality || ""),
+    appearance: String(character.appearance || ""),
+    backstory: String(character.backstory || ""),
+    speakingStyle: String(character.speakingStyle || ""),
+    relationshipToUser: String(character.relationshipToUser || ""),
+    goals: String(character.goals || ""),
+    characterRules: String(character.characterRules || ""),
     lorebook: normalizeStoredLorebook(character.lorebook || character.characterLorebook)
   };
 }
 
-export function normalizeStory(story = {}, worlds = [], characters = []) {
+export function normalizeStory(story: any = {}, worlds: World[] = [], characters: Character[] = []): Story {
   const fallbackWorld = worlds?.[0] || defaultWorlds[0];
-  const fallbackCharacter = characters?.[0] || defaultCharacters[0];
+  const fallbackCharacter = characters?.[0];
   const rawCharacterIds = Array.isArray(story.characterIds)
     ? story.characterIds.map(String).filter(Boolean)
     : [];
   const characterIds = uniqueCompact(rawCharacterIds.length ? rawCharacterIds : [story.mainCharacterId || fallbackCharacter?.id || ""]);
-  const mainCharacterId = story.mainCharacterId || characterIds[0] || fallbackCharacter?.id || "";
+  const mainCharacterId = String(story.mainCharacterId || characterIds[0] || fallbackCharacter?.id || "");
   const storyCharacters = (characters || []).filter((character) => characterIds.includes(character.id));
 
   return {
-    id: story.id || createId("story"),
-    title: story.title || "Untitled Story",
-    worldId: story.worldId || fallbackWorld?.id || "liminal-station",
+    id: String(story.id || createId("story")),
+    title: String(story.title || "Untitled Story"),
+    worldId: String(story.worldId || fallbackWorld?.id || "liminal-station"),
     characterIds,
     mainCharacterId,
-    scenario: story.scenario || "",
-    greeting: story.greeting || "The scene begins.",
-    createdAt: story.createdAt || Date.now(),
+    scenario: String(story.scenario || ""),
+    greeting: String(story.greeting || "The scene begins."),
+    createdAt: Number(story.createdAt || Date.now()),
     storyLorebook: normalizeStoredLorebook(story.storyLorebook || story.lorebook),
     temporaryLorebook: normalizeStoredLorebook(story.temporaryLorebook || story.tempLorebook || []),
     storyMemory: normalizeStoryMemory(story.storyMemory || story.memory || {}),
@@ -300,20 +315,20 @@ export function normalizeStory(story = {}, worlds = [], characters = []) {
   };
 }
 
-function normalizePresence(value, legacyPresent = true) {
+function normalizePresence(value: any, legacyPresent: boolean = true): "active" | "nearby" | "inactive" {
   const raw = String(value || "").trim().toLowerCase();
-  if (["active", "nearby", "inactive"].includes(raw)) return raw;
+  if (["active", "nearby", "inactive"].includes(raw)) return raw as any;
   if (raw === "background" || raw === "present") return "nearby";
   if (raw === "off-scene" || raw === "offscene" || raw === "not present") return "inactive";
   return legacyPresent === false ? "inactive" : "active";
 }
 
-function uniqueCompact(values) {
+function uniqueCompact(values: any[]): string[] {
   return [...new Set(values.map(String).filter(Boolean))];
 }
 
-export function normalizeChatMessage(message) {
-  const normalized = {
+export function normalizeChatMessage(message: any): ChatMessage {
+  const normalized: ChatMessage = {
     role: message?.role === "user" ? "user" : "assistant",
     content: String(message?.content || "")
   };
@@ -328,7 +343,7 @@ export function normalizeChatMessage(message) {
   return normalized;
 }
 
-export function createBlankLoreEntry() {
+export function createBlankLoreEntry(): LoreEntry {
   return {
     id: "",
     name: "New Lore Entry",

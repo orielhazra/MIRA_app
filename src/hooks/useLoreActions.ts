@@ -1,8 +1,8 @@
 // Lore operations hook — lorebook updates, temporary lore, refresh, prune.
 
-import { normalizeStoredLorebook } from "../services/normalizers.js";
-import { getCombinedRuntimeLorebook, inspectLoreInjection, pruneActiveLoreMemory } from "../services/lore.js";
-import { getStoryCharactersFromLists } from "../utils/appHelpers.js";
+import { normalizeStoredLorebook } from "../services/normalizers";
+import { getCombinedRuntimeLorebook, inspectLoreInjection, pruneActiveLoreMemory } from "../services/lore";
+import { getStoryCharactersFromLists } from "../utils/appHelpers";
 
 export default function useLoreActions() {
 

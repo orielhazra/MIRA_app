@@ -1,7 +1,7 @@
 // World CRUD hook — creation, editing, deletion.
 
-import { normalizeWorld } from "../services/normalizers.js";
-import { createId } from "../utils/helpers.js";
+import { normalizeWorld } from "../services/normalizers";
+import { createId } from "../utils/helpers";
 
 export default function useWorldActions() {
 

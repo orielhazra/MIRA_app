@@ -1,8 +1,14 @@
 // Generation state reducer.
-// Replaces 5 useState blocks: isGenerating, promptTokens,
-// generationStatus, progressPercent, isExtractingUpdates.
 
-export const generationInitialState = {
+export interface GenerationState {
+  isGenerating: boolean;
+  promptTokens: string | number;
+  generationStatus: string;
+  progressPercent: number;
+  isExtractingUpdates: boolean;
+}
+
+export const generationInitialState: GenerationState = {
   isGenerating: false,
   promptTokens: 0,
   generationStatus: "idle",
@@ -10,7 +16,7 @@ export const generationInitialState = {
   isExtractingUpdates: false,
 };
 
-export function generationReducer(state, action) {
+export function generationReducer(state: GenerationState, action: { type: string; payload?: any }): GenerationState {
   switch (action.type) {
     case "START_GENERATION":
       return {

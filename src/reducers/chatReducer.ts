@@ -1,12 +1,17 @@
 // Chat history and message editing state reducer.
-// Replaces 2 useState blocks: chatHistory, editingMessageIndex.
+import { ChatMessage } from "../types/index.js";
 
-export const chatInitialState = {
+export interface ChatState {
+  chatHistory: ChatMessage[];
+  editingMessageIndex: number | null;
+}
+
+export const chatInitialState: ChatState = {
   chatHistory: [],
   editingMessageIndex: null,
 };
 
-export function chatReducer(state, action) {
+export function chatReducer(state: ChatState, action: { type: string; payload?: any }): ChatState {
   switch (action.type) {
     case "SET_HISTORY":
       return { ...state, chatHistory: action.payload };

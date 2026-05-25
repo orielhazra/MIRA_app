@@ -1,27 +1,33 @@
-// Pure helper functions extracted from App.jsx.
+// Pure helper functions extracted from App.tsx.
 // None of these reference React state directly.
 
-import { defaultWorlds, defaultCharacters } from "../constants/defaultData.js";
-import { normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld, normalizeDirectorNotes, normalizeCurrentContext, normalizeStoryMemory, normalizeChatMessage, normalizeStoredLorebook } from "../services/normalizers.js";
-import { buildOpeningMessage } from "../services/prompt.js";
-import { repository } from "../services/repository.js";
-import { cloneJson, createId } from "./helpers.js";
-import { defaultStories } from "../constants/defaultData.js";
+import { 
+  Story, World, Character, ChatMessage, CurrentContext, CastState, 
+  DirectorNotes, StoryJournal, CastMemberState, RelationshipState, ObjectContext
+} from "../types/index.js";
+import { defaultWorlds, defaultCharacters, defaultStories, DEFAULT_DIRECTOR_NOTES, DEFAULT_STORY_MEMORY } from "../constants/defaultData.js";
+import { 
+  normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld, 
+  normalizeDirectorNotes, normalizeCurrentContext, normalizeStoryMemory, normalizeChatMessage 
+} from "../services/normalizers";
+import { buildOpeningMessage } from "../services/prompt";
+import { repository } from "../services/repository";
+import { cloneJson, createId } from "./helpers";
 import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
 
-export function normalizeCastPresence(value) {
+export function normalizeCastPresence(value: any): "active" | "nearby" | "inactive" {
   const raw = String(value || "").trim().toLowerCase();
-  if (["active", "nearby", "inactive"].includes(raw)) return raw;
+  if (["active", "nearby", "inactive"].includes(raw)) return raw as any;
   if (raw === "true") return "active";
   if (raw === "false") return "inactive";
   return value === false ? "inactive" : "active";
 }
 
-export function syncDirectorNotesFromContext(notes, _context) {
+export function syncDirectorNotesFromContext(notes: DirectorNotes | undefined, _context: CurrentContext): DirectorNotes {
   return normalizeDirectorNotes(notes);
 }
 
-export function syncCurrentContextFromDirectorNotes(context, notes) {
+export function syncCurrentContextFromDirectorNotes(context: CurrentContext, notes: DirectorNotes): CurrentContext {
   const normalizedContext = normalizeCurrentContext(context);
   const normalizedNotes = normalizeDirectorNotes(notes);
   return normalizeCurrentContext({
@@ -40,7 +46,7 @@ export function syncCurrentContextFromDirectorNotes(context, notes) {
   });
 }
 
-export function createInitialCurrentContext(world, _storyCharacters) {
+export function createInitialCurrentContext(world: World | null, _storyCharacters?: Character[]): CurrentContext {
   return normalizeCurrentContext({
     scene: {
       timeOfDay: "",
@@ -64,7 +70,7 @@ export function createInitialCurrentContext(world, _storyCharacters) {
   });
 }
 
-export function createInitialCastState(characters = []) {
+export function createInitialCastState(characters: Character[] = []): CastState {
   return normalizeCastState({
     activeCharacters: (characters || []).map((character) => ({
       characterId: character.id,
@@ -87,7 +93,7 @@ export function createInitialCastState(characters = []) {
   }, characters);
 }
 
-export function applyUpdatesToCurrentContext(context, updates, world = null) {
+export function applyUpdatesToCurrentContext(context: CurrentContext, updates: any[], world: World | null = null): CurrentContext {
   const next = normalizeCurrentContext(context);
   for (const update of updates || []) {
     const category = String(update.category || "other").toLowerCase();
@@ -97,7 +103,7 @@ export function applyUpdatesToCurrentContext(context, updates, world = null) {
     const details = String(update.details || "").trim();
     const summary = formatUpdateSummary(update);
     if (category === "location") {
-      if (to || target) next.location.name = to || target || next.location.name;
+      if (to || target) next.location.name = to || target || next.location.name || "";
       if (details) next.location.description = appendLine(next.location.description, details);
       appendRecentFact(next, summary);
       continue;
@@ -127,7 +133,7 @@ export function applyUpdatesToCurrentContext(context, updates, world = null) {
   return normalizeCurrentContext(next);
 }
 
-export function applyUpdatesToStoryMemory(storyMemory, updates = []) {
+export function applyUpdatesToStoryMemory(storyMemory: StoryJournal, updates: any[] = []): StoryJournal {
   const next = normalizeStoryMemory(storyMemory);
   for (const update of updates || []) {
     const category = String(update.category || "other").toLowerCase();
@@ -135,7 +141,7 @@ export function applyUpdatesToStoryMemory(storyMemory, updates = []) {
     if (category === "memory") {
       next.generalJournal = [
         ...next.generalJournal,
-        { id: `general-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, content: summary, active: true, createdAt: Date.now() }
+        { id: `general-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`, content: summary, active: true, createdAt: Date.now() }
       ];
     }
     if (category === "relationship" || category === "character") {
@@ -146,7 +152,7 @@ export function applyUpdatesToStoryMemory(storyMemory, updates = []) {
         if (!next.characterJournals[charId]) next.characterJournals[charId] = [];
         if (titleText.includes("learn") || titleText.includes("know") || titleText.includes("remember") || titleText.includes("trust") || titleText.includes("suspect")) {
           next.characterJournals[charId].push({
-            id: `${charId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${charId}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
             content: summary, active: true, createdAt: Date.now()
           });
         }
@@ -156,9 +162,9 @@ export function applyUpdatesToStoryMemory(storyMemory, updates = []) {
   return normalizeStoryMemory(next);
 }
 
-export function applyUpdatesToCastState(castState, updates, characters = []) {
+export function applyUpdatesToCastState(castState: CastState, updates: any[], characters: Character[] = []): CastState {
   const next = normalizeCastState(castState, characters);
-  const characterByName = new Map((characters || []).map((character) => [character.name.toLowerCase(), character]));
+  const characterByName = new Map<string, Character>((characters || []).map((character) => [character.name.toLowerCase(), character]));
   for (const update of updates || []) {
     const category = String(update.category || "other").toLowerCase();
     const target = String(update.target || "").trim();
@@ -190,11 +196,11 @@ export function applyUpdatesToCastState(castState, updates, characters = []) {
   return normalizeCastState(next, characters);
 }
 
-export function appendRecentFact(context, line) {
+export function appendRecentFact(context: CurrentContext, line: string): void {
   context.recentFacts.importantDiscoveries = appendLine(context.recentFacts.importantDiscoveries, line);
 }
 
-export function appendLine(existing, nextLine) {
+export function appendLine(existing: string | undefined, nextLine: string): string {
   const clean = String(nextLine || "").trim();
   if (!clean) return String(existing || "");
   const current = String(existing || "").trim();
@@ -203,7 +209,7 @@ export function appendLine(existing, nextLine) {
   return `${current}\n${clean}`;
 }
 
-export function formatUpdateSummary(update) {
+export function formatUpdateSummary(update: any): string {
   const parts = [
     update.title || "Suggested update",
     update.target ? `Target: ${update.target}` : "",
@@ -213,7 +219,7 @@ export function formatUpdateSummary(update) {
   return parts.join(" — ");
 }
 
-export function findCharacterFromText(text, characterByName, characters = []) {
+export function findCharacterFromText(text: string, characterByName: Map<string, Character>, characters: Character[] = []): Character | null {
   const lower = String(text || "").toLowerCase();
   if (!lower) return null;
   for (const [name, character] of characterByName) {
@@ -222,7 +228,7 @@ export function findCharacterFromText(text, characterByName, characters = []) {
   return characters.find((character) => lower.includes(String(character.id).toLowerCase())) || null;
 }
 
-export function ensureCharacterState(castState, characterId) {
+export function ensureCharacterState(castState: CastState, characterId: string): CastMemberState {
   let row = castState.activeCharacters.find((item) => item.characterId === characterId);
   if (!row) {
     row = { characterId, presence: "active", present: true, outfit: "", mood: "", condition: "", currentGoal: "", knowledge: "", temporarySecret: "", sceneInstruction: "" };
@@ -231,7 +237,7 @@ export function ensureCharacterState(castState, characterId) {
   return row;
 }
 
-export function ensureRelationshipState(castState, characterId) {
+export function ensureRelationshipState(castState: CastState, characterId: string): RelationshipState {
   let row = castState.relationships.find((item) => item.characterId === characterId);
   if (!row) {
     row = { characterId, relationshipToUser: "", trustTensionNotes: "", promisesConflicts: "" };
@@ -240,11 +246,14 @@ export function ensureRelationshipState(castState, characterId) {
   return row;
 }
 
-export function chooseActiveCastLead(story, storyCharacters = []) {
+export function chooseActiveCastLead(story: Story | null, storyCharacters: Character[] = []): Character | null {
   if (!story || !storyCharacters.length) return storyCharacters[0] || null;
   const contextRows = Array.isArray(story.castState?.activeCharacters) ? story.castState.activeCharacters : [];
   const activeIds = contextRows
-    .filter((row) => normalizeCastPresence(row.presence || (row.present === false ? "inactive" : "active")) === "active")
+    .filter((row) => {
+      const presence = normalizeCastPresence(row.presence || (row.present === false ? "inactive" : "active"));
+      return presence === "active";
+    })
     .map((row) => row.characterId)
     .filter(Boolean);
   return activeIds.map((id) => storyCharacters.find((character) => character.id === id)).find(Boolean)
@@ -271,7 +280,7 @@ export function loadInitialState() {
   };
 }
 
-export function loadChatForStory(story, worlds, characters) {
+export function loadChatForStory(story: Story, worlds: World[], characters: Character[]): ChatMessage[] {
   const saved = repository.chats.load(story?.id, null);
   if (Array.isArray(saved)) return saved.map(normalizeChatMessage);
   const world = worlds.find((item) => item.id === story.worldId) || worlds[0];
@@ -281,40 +290,41 @@ export function loadChatForStory(story, worlds, characters) {
   return [{ role: "assistant", content: buildOpeningMessage(story, lead, world, storyCharacters) }];
 }
 
-export function getStoryCharactersFromLists(story, characters) {
+export function getStoryCharactersFromLists(story: Story | null, characters: Character[]): Character[] {
+  if (!story) return [];
   const ids = Array.isArray(story?.characterIds) ? [...story.characterIds] : [];
   return uniqueCompact(ids.length ? ids : [story?.mainCharacterId])
     .map((id) => characters.find((character) => character.id === id))
-    .filter(Boolean);
+    .filter((c): c is Character => !!c);
 }
 
-export function uniqueCompact(values) {
+export function uniqueCompact(values: any[]): string[] {
   return [...new Set((values || []).map(String).filter(Boolean))];
 }
 
-export function createAssistantReply(content) {
+export function createAssistantReply(content: string): ChatMessage {
   return { role: "assistant", content, alternatives: [content], selectedIndex: 0 };
 }
 
-export function commitLastAssistantChoice(history) {
+export function commitLastAssistantChoice(history: ChatMessage[]): ChatMessage[] {
   const nextHistory = history.map((message) => ({ ...message }));
   const lastMessage = nextHistory[nextHistory.length - 1];
   if (!isAssistantMessageWithOptions(lastMessage)) return nextHistory;
-  const selectedText = lastMessage.alternatives[lastMessage.selectedIndex] || lastMessage.content;
+  const selectedText = lastMessage.alternatives?.[lastMessage.selectedIndex ?? 0] || lastMessage.content;
   lastMessage.content = selectedText;
   delete lastMessage.alternatives;
   delete lastMessage.selectedIndex;
   return nextHistory;
 }
 
-export function findLastAssistantIndex(history) {
+export function findLastAssistantIndex(history: ChatMessage[]): number {
   for (let index = history.length - 1; index >= 0; index -= 1) {
     if (history[index]?.role === "assistant") return index;
   }
   return -1;
 }
 
-export function appendGeneratedReplyToLastAssistant(history, continuation) {
+export function appendGeneratedReplyToLastAssistant(history: ChatMessage[], continuation: string): ChatMessage[] {
   const nextHistory = history.map((message) => ({ ...message }));
   const lastAssistantIndex = findLastAssistantIndex(nextHistory);
   if (lastAssistantIndex === -1) return [...nextHistory, createAssistantReply(continuation)];
@@ -327,7 +337,7 @@ export function appendGeneratedReplyToLastAssistant(history, continuation) {
   return nextHistory;
 }
 
-export function addAlternativeToLastAssistant(history, reply) {
+export function addAlternativeToLastAssistant(history: ChatMessage[], reply: string): ChatMessage[] {
   const nextHistory = history.map((message) => ({
     ...message,
     alternatives: Array.isArray(message.alternatives) ? [...message.alternatives] : message.alternatives
@@ -346,7 +356,7 @@ export function addAlternativeToLastAssistant(history, reply) {
   return nextHistory;
 }
 
-export function parseSuggestedUpdates(rawText) {
+export function parseSuggestedUpdates(rawText: string): any[] {
   const text = String(rawText || "").replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
   const jsonStart = text.indexOf("{");
   const jsonEnd = text.lastIndexOf("}");
@@ -361,7 +371,7 @@ export function parseSuggestedUpdates(rawText) {
   }
 }
 
-export function normalizeSuggestedUpdate(update, index) {
+export function normalizeSuggestedUpdate(update: any, index: number) {
   const source = update && typeof update === "object" ? update : {};
   const category = String(source.category || "other").trim().toLowerCase();
   const confidence = Number(source.confidence);
@@ -377,7 +387,7 @@ export function normalizeSuggestedUpdate(update, index) {
   };
 }
 
-export function validateIncomingCharacterBundle(character) {
+export function validateIncomingCharacterBundle(character: any) {
   const issues = [];
   if (!character || typeof character !== "object") issues.push("Missing character object.");
   if (character && !String(character.name || "").trim()) issues.push("Character name is required.");
@@ -386,7 +396,7 @@ export function validateIncomingCharacterBundle(character) {
   return { ok: issues.length === 0, issues };
 }
 
-export function validateIncomingWorldBundle(world) {
+export function validateIncomingWorldBundle(world: any) {
   const issues = [];
   if (!world || typeof world !== "object") issues.push("Missing world object.");
   if (world && !String(world.name || "").trim()) issues.push("World name is required.");
@@ -396,7 +406,7 @@ export function validateIncomingWorldBundle(world) {
   return { ok: issues.length === 0, issues };
 }
 
-export function validateStoryExportBundle(bundle) {
+export function validateStoryExportBundle(bundle: any) {
   const issues = [];
   if (!bundle.story) issues.push("Missing story data.");
   if (!bundle.world) issues.push("Missing world data.");
@@ -411,16 +421,16 @@ export function validateStoryExportBundle(bundle) {
   return { ok: issues.length === 0, issues };
 }
 
-export function validateIncomingStoryBundle(bundle) {
+export function validateIncomingStoryBundle(bundle: any) {
   if (!bundle || typeof bundle !== "object") return "Invalid story file. Could not find story bundle data.";
   if (!bundle.story || !bundle.world || !Array.isArray(bundle.characters)) return "Invalid story file. It must include story, world, and characters.";
   if (bundle.characters.length === 0) return "Invalid story file. It must include at least one character.";
   if (!bundle.world.name) return "Invalid story file. The world needs a name.";
-  if (!bundle.characters.some((character) => character && character.name)) return "Invalid story file. At least one character needs a name.";
+  if (!bundle.characters.some((character: any) => character && character.name)) return "Invalid story file. At least one character needs a name.";
   return "";
 }
 
-export function hydrateBundleLore(bundle, storySource, worldSource, characterSources) {
+export function hydrateBundleLore(bundle: any, storySource: any, worldSource: any, characterSources: any[]) {
   if (!bundle.completeLore) return;
   if (!Array.isArray(storySource.storyLorebook) && Array.isArray(bundle.completeLore.storyLorebook)) {
     storySource.storyLorebook = bundle.completeLore.storyLorebook;
@@ -430,24 +440,24 @@ export function hydrateBundleLore(bundle, storySource, worldSource, characterSou
   }
   if (!Array.isArray(bundle.completeLore.characterLorebooks)) return;
   for (const character of characterSources) {
-    const loreMatch = bundle.completeLore.characterLorebooks.find((entry) => entry.characterId === character.id);
+    const loreMatch = bundle.completeLore.characterLorebooks.find((entry: any) => entry.characterId === character.id);
     if (!Array.isArray(character.lorebook) && loreMatch) {
       character.lorebook = loreMatch.lorebook || [];
     }
   }
 }
 
-export function remapImportedContextCastIds(context, idMap) {
+export function remapImportedContextCastIds(context: any, idMap: Record<string, string>) {
   if (!context || typeof context !== "object") return context;
   return { ...context, activeCharacters: remapCastRows(context.activeCharacters, idMap), relationships: remapCastRows(context.relationships, idMap) };
 }
 
-export function remapImportedCastStateIds(castState, idMap) {
+export function remapImportedCastStateIds(castState: any, idMap: Record<string, string>) {
   if (!castState || typeof castState !== "object") return castState;
   return { ...castState, activeCharacters: remapCastRows(castState.activeCharacters, idMap), relationships: remapCastRows(castState.relationships, idMap) };
 }
 
-export function remapCastRows(rows, idMap) {
+export function remapCastRows(rows: any[], idMap: Record<string, string>) {
   if (!Array.isArray(rows)) return rows;
   return rows.map((row) => {
     if (!row || typeof row !== "object") return row;
@@ -456,7 +466,7 @@ export function remapCastRows(rows, idMap) {
   });
 }
 
-export function buildStoryExportBundle(story, getWorld, getStoryCharacters, chatHistory, activeStoryId) {
+export function buildStoryExportBundle(story: Story, getWorld: (id: string) => World | null, getStoryCharacters: (story: Story) => Character[], chatHistory: ChatMessage[], activeStoryId: string | null) {
   const world = getWorld(story.worldId);
   const storyCharacters = getStoryCharacters(story);
   return {
@@ -471,7 +481,6 @@ export function buildStoryExportBundle(story, getWorld, getStoryCharacters, chat
       worldLorebook: cloneJson(world?.worldLorebook || []),
       characterLorebooks: storyCharacters.map((character) => ({ characterId: character.id, characterName: character.name, lorebook: cloneJson(character.lorebook || []) }))
     },
-    chatHistory: story.id === activeStoryId ? cloneJson(chatHistory) : cloneJson(loadChatForStory(story, [world].filter(Boolean), storyCharacters))
+    chatHistory: story.id === activeStoryId ? cloneJson(chatHistory) : cloneJson(loadChatForStory(story, [world].filter((w): w is World => !!w), storyCharacters))
   };
 }
-

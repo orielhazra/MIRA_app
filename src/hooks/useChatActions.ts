@@ -6,7 +6,7 @@ import { getMessageDisplayText, isAssistantMessageWithOptions } from "../feature
 import {
   commitLastAssistantChoice, createAssistantReply, findLastAssistantIndex,
   appendGeneratedReplyToLastAssistant, addAlternativeToLastAssistant
-} from "../utils/appHelpers.js";
+} from "../utils/appHelpers";
 
 export default function useChatActions({ generateAssistantReply }) {
 
