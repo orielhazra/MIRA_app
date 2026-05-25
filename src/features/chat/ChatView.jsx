@@ -23,7 +23,7 @@ export default function ChatView({
     <section id="messages" className="messages" ref={scrollRef}>
       {messages.map((message, index) => (
         <ChatMessage
-          key={`${index}-${message.role}-${message.content?.slice(0, 20)}`}
+          key={message.id || `msg-${index}`}
           message={message}
           index={index}
           isEditing={editingMessageIndex === index}

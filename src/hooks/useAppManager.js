@@ -4,7 +4,7 @@ import { normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld 
 import { buildOpeningMessage } from "../services/prompt.js";
 import { repository } from "../services/repository.js";
 import { cloneJson } from "../utils/helpers.js";
-import { isAssistantMessageWithOptions } from "../components/ChatView.jsx";
+import { isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
 import { chooseActiveCastLead, loadInitialState, getStoryCharactersFromLists, uniqueCompact, loadChatForStory } from "../utils/appHelpers.js";
 
 import { storyReducer, storyInitialState } from "../reducers/storyReducer.js";
@@ -227,7 +227,7 @@ export default function useAppManager() {
 
   async function elaborateLastReply() {
     const { addAlternativeToLastAssistant } = await import("../utils/appHelpers.js");
-    const { getMessageDisplayText } = await import("../components/ChatView.jsx");
+    const { getMessageDisplayText } = await import("../features/chat/ChatView.jsx");
     if (isGenerating) return;
     const lastMessage = chatHistory[chatHistory.length - 1];
     if (!lastMessage || lastMessage.role !== "assistant") return alert("The last message is not an assistant reply.");
@@ -392,7 +392,7 @@ export default function useAppManager() {
 
   // ─── State update wrappers ───
   function extractStateUpdates() {
-    stateUpdates.extractStateUpdates({ activeStory, activeWorld, activeStoryCharacters, isGenerating, isExtractingUpdates, chatHistory, setIsExtractingUpdates: () => dispatchGeneration({ type: "START_EXTRACTING_UPDATES" }), setPendingUpdateStatus: (status) => dispatchLore({ type: "SET_PENDING_UPDATE_STATUS", payload: status }), setPendingUpdates: (updates) => dispatchLore({ type: "SET_PENDING_UPDATES", payload: updates }), setSelectedPendingUpdateIds: (ids) => dispatchLore({ type: "SELECT_ALL_PENDING_UPDATES", payload: ids }) });
+    stateUpdates.extractStateUpdates({ activeStory, activeWorld, activeStoryCharacters, isGenerating, isExtractingUpdates, chatHistory, setIsExtractingUpdates: (val) => dispatchGeneration({ type: val ? "START_EXTRACTING_UPDATES" : "COMPLETE_EXTRACTING_UPDATES" }), setPendingUpdateStatus: (status) => dispatchLore({ type: "SET_PENDING_UPDATE_STATUS", payload: status }), setPendingUpdates: (updates) => dispatchLore({ type: "SET_PENDING_UPDATES", payload: updates }), setSelectedPendingUpdateIds: (ids) => dispatchLore({ type: "SELECT_ALL_PENDING_UPDATES", payload: ids }) });
   }
   function togglePendingUpdate(updateId) { stateUpdates.togglePendingUpdate({ updateId, selectedPendingUpdateIds, setSelectedPendingUpdateIds: (ids) => dispatchLore({ type: "SELECT_ALL_PENDING_UPDATES", payload: ids }) }); }
   function rejectPendingUpdates() { stateUpdates.rejectPendingUpdates({ setPendingUpdates: (updates) => dispatchLore({ type: "SET_PENDING_UPDATES", payload: updates }), setSelectedPendingUpdateIds: (ids) => dispatchLore({ type: "SELECT_ALL_PENDING_UPDATES", payload: ids }), setPendingUpdateStatus: (status) => dispatchLore({ type: "SET_PENDING_UPDATE_STATUS", payload: status }) }); }
@@ -419,7 +419,18 @@ export default function useAppManager() {
     getWorld, getCharacter,
     openStoryCreationSheet: (deps) => storyActions.openStoryCreationSheet({ isGenerating, worlds, characters, activeWorld, activeCharacter, setActiveView: (view) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view }), setStoryDraft: (draft) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft }), ...deps }),
     switchStory: (storyId) => storyActions.switchStory({ storyId, isGenerating, stories, worlds, characters, repository, getStoryCharacters, setActiveStoryId: (id) => dispatchStory({ type: "SWITCH_STORY", payload: { storyId: id } }), setChatHistory: (next) => dispatchChat({ type: "SET_HISTORY", payload: next }), setActiveLoreMemory: (next) => dispatchLore({ type: "SET_ACTIVE_LORE", payload: next }), setSelectedCharacterSheetId: (id) => dispatchStory({ type: "SELECT_CHARACTER_SHEET", payload: id }), setSelectedWorldSheetId: (id) => dispatchStory({ type: "SELECT_WORLD_SHEET", payload: id }), setStoryDraft: (draft) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft }), setActiveView: (view) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view }) }),
-    startStoryFromCreationSheet: storyActions.startStoryFromCreationSheet,
+    startStoryFromCreationSheet: (draft) => storyActions.startStoryFromCreationSheet({
+      worlds, characters, stories, draft,
+      saveWorldList, saveCharacterList, saveStoryList,
+      repository, getStoryCharacters,
+      setActiveStoryId: (id) => dispatchStory({ type: "SWITCH_STORY", payload: { storyId: id } }),
+      setChatHistory: (next) => dispatchChat({ type: "SET_HISTORY", payload: next }),
+      setActiveLoreMemory: (next) => dispatchLore({ type: "SET_ACTIVE_LORE", payload: next }),
+      setSelectedCharacterSheetId: (id) => dispatchStory({ type: "SELECT_CHARACTER_SHEET", payload: id }),
+      setSelectedWorldSheetId: (id) => dispatchStory({ type: "SELECT_WORLD_SHEET", payload: id }),
+      setStoryDraft: (draft) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft }),
+      setActiveView: (view) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view })
+    }),
     cancelStoryCreation: () => storyActions.cancelStoryCreation({ activeStory, setActiveView: (view) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view }), setStoryDraft: (draft) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft }) }),
     deleteActiveStory: () => storyActions.deleteActiveStory({ activeStory, stories, repository, saveStoryList, clearActiveStorySelection }),
     createBlankCharacter: () => characterActions.createBlankCharacter({ isGenerating, worlds, characters, selectedWorldSheetId, activeWorld, saveCharacterList, setSelectedCharacterSheetId: (id) => dispatchStory({ type: "SELECT_CHARACTER_SHEET", payload: id }), setActiveView: (view) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view }), setStoryDraft: (draft) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft }) }),

@@ -8,7 +8,7 @@ import { buildMessagesForRequest } from "../services/prompt.js";
 import { cleanGeneratedReply, countPromptTokens, estimateGeneratedTokens, streamChatCompletion } from "../services/koboldApi.js";
 import { inspectLoreInjection } from "../services/lore.js";
 import { playCompletionSound } from "../utils/helpers.js";
-import { isAssistantMessageWithOptions } from "../components/ChatView.jsx";
+import { isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
 
 export default function useGeneration() {
   const abortControllerRef = useRef(null);

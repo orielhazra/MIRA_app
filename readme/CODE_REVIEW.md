@@ -128,6 +128,70 @@ This ensures journal content is included in the lore trigger text scan, so lore 
 
 ---
 
+---
+
+## ✅ FIXED — Critical Bug 3: Unbound dependencies crash starting a story from creation sheet
+
+**Status:** ✅ Fixed (Patched in `src/hooks/useAppManager.js`)  
+**File patched:** `src/hooks/useAppManager.js`
+
+### Original problem
+
+In `useAppManager.js`, `startStoryFromCreationSheet` was mapped directly as:
+```javascript
+startStoryFromCreationSheet: storyActions.startStoryFromCreationSheet,
+```
+But in `useStoryActions.js`, this function expects a destructured `deps` object containing core application dependencies (`worlds`, `characters`, `stories`, `saveWorldList`, etc.). When calling it from `StoryCreationSheet.jsx` via `onStart(draft)`, only the `draft` was provided. This caused immediate runtime errors (e.g., trying to read properties on undefined lists like `worlds`), completely bricking the ability to start newly created stories.
+
+### Fix applied
+
+Wrapped `startStoryFromCreationSheet` in a closure to properly inject all dependencies from the hook's state and reducer dispatchers:
+
+```javascript
+startStoryFromCreationSheet: (draft) => storyActions.startStoryFromCreationSheet({
+  worlds, characters, stories, draft,
+  saveWorldList, saveCharacterList, saveStoryList,
+  repository, getStoryCharacters,
+  setActiveStoryId: (id) => dispatchStory({ type: "SWITCH_STORY", payload: { storyId: id } }),
+  setChatHistory: (next) => dispatchChat({ type: "SET_HISTORY", payload: next }),
+  setActiveLoreMemory: (next) => dispatchLore({ type: "SET_ACTIVE_LORE", payload: next }),
+  setSelectedCharacterSheetId: (id) => dispatchStory({ type: "SELECT_CHARACTER_SHEET", payload: id }),
+  setSelectedWorldSheetId: (id) => dispatchStory({ type: "SELECT_WORLD_SHEET", payload: id }),
+  setStoryDraft: (draft) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft }),
+  setActiveView: (view) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view })
+}),
+```
+
+---
+
+## ✅ FIXED — Critical Bug 4: Extract updates permanently locks the Composer (Infinite disabled state)
+
+**Status:** ✅ Fixed (Patched in `src/hooks/useAppManager.js`)  
+**File patched:** `src/hooks/useAppManager.js`
+
+### Original problem
+
+When running state update extraction, the `finally` block in `useStateUpdates.js` calls `setIsExtractingUpdates(false)`. However, in `useAppManager.js`, `setIsExtractingUpdates` was wired up as:
+```javascript
+setIsExtractingUpdates: () => dispatchGeneration({ type: "START_EXTRACTING_UPDATES" })
+```
+This callback completely ignored the boolean argument and always dispatched `START_EXTRACTING_UPDATES` (which sets `isExtractingUpdates` to `true`). This meant `isExtractingUpdates` stayed `true` forever. Since the composer has:
+```jsx
+<Composer disabled={app.isGenerating || app.isExtractingUpdates} ... />
+```
+the user input textbox and send buttons were permanently disabled after the first update extraction.
+
+### Fix applied
+
+Modified the callback to check the passed parameter and dispatch the correct reducer action conditionally:
+
+```javascript
+setIsExtractingUpdates: (value) => dispatchGeneration({
+  type: value ? "START_EXTRACTING_UPDATES" : "COMPLETE_EXTRACTING_UPDATES"
+}),
+```
+
+
 ## 🟠 REMAINING MISMATCHES (Data flow / logic inconsistencies)
 
 ### 3. `createInitialCurrentContext(world, storyCharacters)` — extra arg silently discarded
@@ -218,11 +282,11 @@ But there is **no UI anywhere** to change this setting. Users must manually edit
 |---|------|------|---------|
 | 1 | `App.jsx` | 1319 | `'context' is defined but never used` |
 | 2 | `App.jsx` | 1741 | `'formatAcceptedUpdateAsLore' is defined but never used` |
-| 3 | `EditorPanel.jsx` | 45 | `'directorStatus' is assigned a value but never used` |
-| 4 | `EditorPanel.jsx` | 80 | `'saveDirectorNotes' is defined but never used` |
-| 5 | `EditorPanel.jsx` | 109 | `'saveCurrentContext' is defined but never used` |
-| 6 | `EditorPanel.jsx` | 1076 | `'buildStoryMemoryDraft' is defined but never used` |
-| 7 | `EditorPanel.jsx` | 1210 | `'DirectorNotesPanel' is defined but never used` |
+| 3 | `EditorPanel.jsx` | — | ~~'directorStatus' is assigned a value but never used~~ (RESOLVED) |
+| 4 | `EditorPanel.jsx` | — | ~~'saveDirectorNotes' is defined but never used~~ (RESOLVED) |
+| 5 | `EditorPanel.jsx` | — | ~~'saveCurrentContext' is defined but never used~~ (RESOLVED) |
+| 6 | `EditorPanel.jsx` | — | ~~'buildStoryMemoryDraft' is defined but never used~~ (RESOLVED) |
+| 7 | `EditorPanel.jsx` | — | ~~'DirectorNotesPanel' is defined but never used~~ (RESOLVED) |
 | 8 | `prompt.js` | 269 | `'story' is assigned a value but never used` |
 
 ---
@@ -245,16 +309,10 @@ But there is **no UI anywhere** to change this setting. Users must manually edit
 
 ### 8. `ChatView.jsx` — Unstable `key` prop causes re-mounts during streaming
 
-```jsx
-key={`${index}-${message.role}-${message.content?.slice(0, 20)}`}
-```
+**Status:** ✅ RESOLVED  
+During streaming, the message content changes on every chunk, which previously changed the key and forced React to unmount/remount the message component, causing scroll jumps and flickers.
 
-During streaming, the message content changes on every chunk, which changes the key and forces React to unmount/remount the message component. This causes:
-- Loss of scroll position
-- Flickering
-- Unnecessary DOM thrashing
-
-**Fix:** Use a stable key based on message index only, or assign stable IDs to messages:
+**Fix Applied:** Patched in `src/features/chat/ChatView.jsx` to use stable identifiers:
 ```jsx
 key={message.id || `msg-${index}`}
 ```
@@ -379,17 +437,23 @@ The app stores stories, characters, worlds, chats, lore memory, and settings all
 
 | Category | Before | After |
 |---|---|---|
-| 🔴 Runtime Bugs | 2 | **0** ✅ |
+| 🔴 Runtime Bugs | 4 | **0** ✅ |
 | 🟠 Data Mismatches | 5 | 5 |
-| 🟡 ESLint Warnings | 8 | 8 |
+| 🟡 ESLint Warnings | 8 | **3** ✅ |
 | 🗑️ Dead Code | 6+ | 6+ |
-| ⚠️ Quality Issues | 6 | 6 |
+| ⚠️ Quality Issues | 6 | **5** ✅ |
 | 💡 Suggestions | 20 | 18 (2 resolved) |
 
 ### Files modified by fixes
 
 | File | Changes |
 |---|---|
+| `src/hooks/useAppManager.js` | Bound all dependency fields for `startStoryFromCreationSheet` action closure. Updated `setIsExtractingUpdates` to conditionally dispatch either start or complete actions based on the boolean state parameter. |
+| `src/components/EditorPanel.jsx` | Refactored from 1,266 lines to 202 lines by splitting and extracting sub-panels into modular files in `src/app/layout/panels/`. Cleaned up 5 obsolete ESLint warnings and dead components (`DirectorNotesPanel`, `buildStoryMemoryDraft`, `saveDirectorNotes`, `saveCurrentContext`, and `directorStatus` state). |
+| `src/app/layout/panels/` | Created modular feature panels: `ControlPanelHome.jsx`, `CurrentContextPanel.jsx`, `StoryJournalPanel.jsx`, `StoryWorldPanel.jsx`, `CastStatePanel.jsx`, `LoreRulesPanel.jsx`. |
+| `src/features/chat/` | Relocated `ChatView.jsx` and `Composer.jsx` here. Resolved the unstable React render key bug in `ChatView.jsx` to prevent scroll lag/re-mounts. |
+| `src/features/debugging/` | Relocated `DebugModal.jsx` and corrected services imports. |
+| `src/hooks/` | Cleaned up and deleted 7 deprecated, redundant manager hooks to purge workspace clutter. |
 | `src/components/Sheets.jsx` | Added `parseKeywords` import; wrapped 4 `onChange` handlers for aliases/promptKeywords/keywords fields |
 | `src/components/EditorPanel.jsx` | Added `parseKeywords` import; wrapped 2 `onChange` handlers in `StoryCastIdentityCard` |
 | `src/services/prompt.js` | Rewrote `formatStoryMemory()` to read the journal schema; updated `buildSmartPromptContext()` trigger text references |

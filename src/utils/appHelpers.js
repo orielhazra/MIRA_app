@@ -7,7 +7,7 @@ import { buildOpeningMessage } from "../services/prompt.js";
 import { repository } from "../services/repository.js";
 import { cloneJson, createId } from "./helpers.js";
 import { defaultStories } from "../constants/defaultData.js";
-import { getMessageDisplayText, isAssistantMessageWithOptions } from "../components/ChatView.jsx";
+import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
 
 export function normalizeCastPresence(value) {
   const raw = String(value || "").trim().toLowerCase();

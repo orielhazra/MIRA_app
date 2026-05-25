@@ -1,10 +1,10 @@
 import { useApp } from "../../context/AppContext.jsx";
 import Sidebar from "../../components/Sidebar.jsx";
 import ChatHeader from "../../components/ChatHeader.jsx";
-import ChatView from "../../components/ChatView.jsx";
-import Composer from "../../components/Composer.jsx";
+import ChatView from "../../features/chat/ChatView.jsx";
+import Composer from "../../features/chat/Composer.jsx";
 import EditorPanel from "../../components/EditorPanel.jsx";
-import DebugModal from "../../components/DebugModal.jsx";
+import DebugModal from "../../features/debugging/DebugModal.jsx";
 import PendingUpdatesPanel from "../../components/PendingUpdatesPanel.jsx";
 import Landing from "../../features/stories/Landing.jsx";
 import StoryCreationSheet from "../../features/stories/StoryCreationSheet.jsx";
