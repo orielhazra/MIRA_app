@@ -2,7 +2,7 @@
 // Depends on: chatHistory, activeStory, activeWorld, activeCharacter, activeStoryCharacters.
 // Depends on: generateAssistantReply from useGeneration.
 
-import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
+import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView";
 import {
   commitLastAssistantChoice, createAssistantReply, findLastAssistantIndex,
   appendGeneratedReplyToLastAssistant, addAlternativeToLastAssistant

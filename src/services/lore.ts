@@ -1,7 +1,7 @@
 import { 
   Story, World, Character, LoreEntry, DirectorNotes
-} from "../types/index.js";
-import { LORE_SCAN_MESSAGES, MAX_ACTIVE_LORE, MAX_LORE_PROMPT_CHARS } from "../constants/defaultData.js";
+} from "../types/index";
+import { LORE_SCAN_MESSAGES, MAX_ACTIVE_LORE, MAX_LORE_PROMPT_CHARS } from "../constants/defaultData";
 import { normalizeStoredLorebook } from "./normalizers";
 
 export function normalizeLoreMatchText(text: string | undefined): string {

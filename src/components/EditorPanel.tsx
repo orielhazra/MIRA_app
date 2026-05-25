@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import ControlPanelHome from "../app/layout/panels/ControlPanelHome.jsx";
-import CurrentContextPanel from "../app/layout/panels/CurrentContextPanel.jsx";
-import StoryJournalPanel from "../app/layout/panels/StoryJournalPanel.jsx";
-import StoryWorldPanel from "../app/layout/panels/StoryWorldPanel.jsx";
-import CastStatePanel from "../app/layout/panels/CastStatePanel.jsx";
-import LoreRulesPanel from "../app/layout/panels/LoreRulesPanel.jsx";
+import ControlPanelHome from "../app/layout/panels/ControlPanelHome";
+import CurrentContextPanel from "../app/layout/panels/CurrentContextPanel";
+import StoryJournalPanel from "../app/layout/panels/StoryJournalPanel";
+import StoryWorldPanel from "../app/layout/panels/StoryWorldPanel";
+import CastStatePanel from "../app/layout/panels/CastStatePanel";
+import LoreRulesPanel from "../app/layout/panels/LoreRulesPanel";
 
 const PANEL_LABELS = {
   context: "Scene Control",

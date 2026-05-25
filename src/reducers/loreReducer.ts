@@ -1,5 +1,5 @@
 // Lore state reducer.
-import { LoreEntry } from "../types/index.js";
+import { LoreEntry } from "../types/index";
 
 export interface LoreState {
   activeLoreMemory: LoreEntry[];

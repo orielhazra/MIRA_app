@@ -1,4 +1,4 @@
-import { useApp } from "./AppContext.jsx";
+import { useApp } from "./AppContext";
 
 // StoryContext provides story, world, and character state + CRUD actions.
 // Components can use useStoryContext() to access the story slice directly.

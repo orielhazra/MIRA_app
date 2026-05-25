@@ -1,6 +1,6 @@
-import { STORAGE_KEYS } from "../constants/defaultData.js";
+import { STORAGE_KEYS } from "../constants/defaultData";
 import { cloneJson } from "../utils/helpers";
-import { World, Character, Story, ChatMessage, LoreEntry } from "../types/index.js";
+import { World, Character, Story, ChatMessage, LoreEntry } from "../types/index";
 
 function readJson<T>(key: string, fallback: T): T {
   const saved = localStorage.getItem(key);

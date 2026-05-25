@@ -1,5 +1,5 @@
 // Chat history and message editing state reducer.
-import { ChatMessage } from "../types/index.js";
+import { ChatMessage } from "../types/index";
 
 export interface ChatState {
   chatHistory: ChatMessage[];

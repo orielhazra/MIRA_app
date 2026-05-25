@@ -1,4 +1,4 @@
-import { useApp } from "./AppContext.jsx";
+import { useApp } from "./AppContext";
 
 // ChatContext provides chat history, editing state, and all chat operations.
 

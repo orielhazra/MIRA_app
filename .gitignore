@@ -1,18 +1,50 @@
-# Dependencies
+# Dependencies and Packages
 node_modules/
 /.pnp
 .pnp.js
 
-# Testing
-/coverage
-
-# Production
+# Production Builds
 /dist
 /build
 
-# Misc
+# Testing & Coverage
+/coverage
+
+# Rust & Tauri Desktop (Part 2 Native Compilation)
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/
+
+# Local SQLite Databases (Local Persistence)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# Environment and Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Operating System Files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDEs & Editor Configurations
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs and Debug files
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -20,29 +52,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Cache
-.cache
-.parcel-cache
+# Caches and Temp folders
+.cache/
+.parcel-cache/
 .eslintcache
 .stylelintcache
-
-# Temporary files
 *.tmp
 *.temp

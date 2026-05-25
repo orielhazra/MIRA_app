@@ -4,8 +4,8 @@
 import { 
   Story, World, Character, ChatMessage, CurrentContext, CastState, 
   DirectorNotes, StoryJournal, CastMemberState, RelationshipState, ObjectContext
-} from "../types/index.js";
-import { defaultWorlds, defaultCharacters, defaultStories, DEFAULT_DIRECTOR_NOTES, DEFAULT_STORY_MEMORY } from "../constants/defaultData.js";
+} from "../types/index";
+import { defaultWorlds, defaultCharacters, defaultStories, DEFAULT_DIRECTOR_NOTES, DEFAULT_STORY_MEMORY } from "../constants/defaultData";
 import { 
   normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld, 
   normalizeDirectorNotes, normalizeCurrentContext, normalizeStoryMemory, normalizeChatMessage 
@@ -13,7 +13,7 @@ import {
 import { buildOpeningMessage } from "../services/prompt";
 import { repository } from "../services/repository";
 import { cloneJson, createId } from "./helpers";
-import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
+import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView";
 
 export function normalizeCastPresence(value: any): "active" | "nearby" | "inactive" {
   const raw = String(value || "").trim().toLowerCase();

@@ -1,4 +1,4 @@
-import { useApp } from "./AppContext.jsx";
+import { useApp } from "./AppContext";
 
 // GenerationContext provides generation state and controls.
 

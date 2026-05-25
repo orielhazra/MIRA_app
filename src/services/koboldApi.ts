@@ -1,6 +1,6 @@
-import { DEFAULT_KOBOLD_BASE_URL, GENERATION_SETTINGS } from "../constants/defaultData.js";
+import { DEFAULT_KOBOLD_BASE_URL, GENERATION_SETTINGS } from "../constants/defaultData";
 import { repository } from "./repository";
-import { ChatMessage } from "../types/index.js";
+import { ChatMessage } from "../types/index";
 
 export function getKoboldBaseUrl(): string {
   return repository.settings.getKoboldBaseUrl(DEFAULT_KOBOLD_BASE_URL);

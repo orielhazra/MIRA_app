@@ -1,5 +1,5 @@
 import React from "react";
-import LoreEditor, { LoreInfoList } from "../../../components/LoreEditor.jsx";
+import LoreEditor, { LoreInfoList } from "../../../components/LoreEditor";
 
 export default function LoreRulesPanel({
   activeStory,

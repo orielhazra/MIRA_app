@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { messagesToPromptText } from "../../services/koboldApi.js";
-import { buildSystemPrompt } from "../services/prompt";
-import { inspectLoreInjection, formatLoreForPrompt } from "../services/lore";
+import { messagesToPromptText } from "../../services/koboldApi";
+import { buildSystemPrompt } from "../../services/prompt";
+import { inspectLoreInjection, formatLoreForPrompt } from "../../services/lore";
 
 export default function DebugModal({ open, onClose, story, world, character, characters = [], history, activeLoreMemory }) {
   const [tab, setTab] = useState("lore");

@@ -1,7 +1,7 @@
 import { 
   Story, World, Character, CurrentContext, ChatMessage, LoreEntry
-} from "../types/index.js";
-import { CHAT_CONTEXT_MESSAGES } from "../constants/defaultData.js";
+} from "../types/index";
+import { CHAT_CONTEXT_MESSAGES } from "../constants/defaultData";
 import { buildDirectorNotesPrompt, formatLoreForPrompt } from "./lore";
 
 const MAX_AVAILABLE_LOCATIONS = 6;

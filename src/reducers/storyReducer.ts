@@ -1,5 +1,5 @@
 // Story, world, character, and UI navigation state reducer.
-import { World, Character, Story } from "../types/index.js";
+import { World, Character, Story } from "../types/index";
 
 export interface StoryState {
   worlds: World[];

@@ -1,10 +1,10 @@
 // World sheet — world editor with locations and lorebook.
 
 import { useEffect, useState } from "react";
-import LoreEditor from "../../components/LoreEditor.jsx";
-import TextInput from "../../components/ui/TextInput.jsx";
-import TextArea from "../../components/ui/TextArea.jsx";
-import { parseKeywords } from "../utils/helpers";
+import LoreEditor from "../../components/LoreEditor";
+import TextInput from "../../components/ui/TextInput";
+import TextArea from "../../components/ui/TextArea";
+import { parseKeywords } from "../../utils/helpers";
 
 export default function WorldSheet({ world, activeStory, onSave, onUse, onDelete, onExport, onImport }) {
   const [draft, setDraft] = useState(world);

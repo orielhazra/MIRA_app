@@ -2,8 +2,8 @@ import {
   DirectorNotes, StoryJournal, CurrentContext, CastState, 
   LoreEntry, World, WorldLocation, Character, Story, ChatMessage,
   CastMemberState, RelationshipState, ObjectContext
-} from "../types/index.js";
-import { defaultWorlds } from "../constants/defaultData.js";
+} from "../types/index";
+import { defaultWorlds } from "../constants/defaultData";
 import { clampNumber, createId, parseKeywords } from "../utils/helpers";
 
 // Safe fallback defaults for normalization

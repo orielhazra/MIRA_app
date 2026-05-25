@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import LoreEditor from "../../../components/LoreEditor.jsx";
-import { parseKeywords } from "../utils/helpers";
+import LoreEditor from "../../../components/LoreEditor";
+import { parseKeywords } from "../../../utils/helpers";
 
 export default function StoryWorldPanel({
   activeStory,
@@ -11,7 +11,7 @@ export default function StoryWorldPanel({
   onSaveCharacterIdentity,
   onExportCharacterTemplate,
   onImportCharacterTemplate
-}) {
+}: any) {
   return (
     <div className="info-panel active">
       <h3>Story</h3>
@@ -22,7 +22,7 @@ export default function StoryWorldPanel({
       <h3>Story Cast Identity</h3>
       <p className="muted">Permanent identity for this story lives here. Cast State controls how each person is doing right now.</p>
       <div className="cast-summary-list">
-        {storyCharacters.map((character) => (
+        {storyCharacters.map((character: any) => (
           <StoryCastIdentityCard
             key={character.id}
             character={character}
@@ -45,7 +45,7 @@ export default function StoryWorldPanel({
       <h3>Available Locations</h3>
       {(activeWorld.locations || []).length ? (
         <div className="context-card-list">
-          {(activeWorld.locations || []).map((location) => (
+          {(activeWorld.locations || []).map((location: any) => (
             <details key={location.id || location.name} className="context-card">
               <summary>
                 <strong>{location.name}</strong>
@@ -69,7 +69,7 @@ export default function StoryWorldPanel({
   );
 }
 
-function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTemplate }) {
+function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTemplate }: any) {
   const [draft, setDraft] = useState(character);
   const [status, setStatus] = useState("");
 
@@ -78,8 +78,8 @@ function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTempl
     setStatus("");
   }, [character]);
 
-  function update(field, value) {
-    setDraft((current) => ({ ...current, [field]: value }));
+  function update(field: string, value: any) {
+    setDraft((current: any) => ({ ...current, [field]: value }));
   }
 
   function save() {
@@ -130,24 +130,24 @@ function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTempl
   );
 }
 
-function getPresenceLabel(story, characterId) {
-  const row = (story?.castState?.activeCharacters || story?.currentContext?.activeCharacters || []).find((item) => item.characterId === characterId);
+function getPresenceLabel(story: any, characterId: string) {
+  const row = (story?.castState?.activeCharacters || story?.currentContext?.activeCharacters || []).find((item: any) => item.characterId === characterId);
   return formatPresenceLabel(getRowPresence(row));
 }
 
-function getRowPresence(row) {
+function getRowPresence(row: any) {
   const raw = String(row?.presence || "").trim().toLowerCase();
   if (["active", "nearby", "inactive"].includes(raw)) return raw;
   return row?.present === false ? "inactive" : "active";
 }
 
-function formatPresenceLabel(presence) {
+function formatPresenceLabel(presence: string) {
   if (presence === "nearby") return "Nearby / background";
   if (presence === "inactive") return "Inactive / off-scene";
   return "Active";
 }
 
-function ContextInput({ label, value = "", onChange }) {
+function ContextInput({ label, value = "", onChange }: any) {
   return (
     <label>
       {label}
@@ -156,7 +156,7 @@ function ContextInput({ label, value = "", onChange }) {
   );
 }
 
-function ContextTextarea({ label, value = "", onChange }) {
+function ContextTextarea({ label, value = "", onChange }: any) {
   return (
     <label>
       {label}
@@ -165,7 +165,7 @@ function ContextTextarea({ label, value = "", onChange }) {
   );
 }
 
-function InfoField({ label, value }) {
+function InfoField({ label, value }: any) {
   return (
     <div className="info-field">
       <span className="info-label">{label}</span>

@@ -1,10 +1,10 @@
 // Character sheet — reusable character template editor.
 
 import { useEffect, useState } from "react";
-import LoreEditor from "../../components/LoreEditor.jsx";
-import TextInput from "../../components/ui/TextInput.jsx";
-import TextArea from "../../components/ui/TextArea.jsx";
-import { parseKeywords } from "../utils/helpers";
+import LoreEditor from "../../components/LoreEditor";
+import TextInput from "../../components/ui/TextInput";
+import TextArea from "../../components/ui/TextArea";
+import { parseKeywords } from "../../utils/helpers";
 
 export default function CharacterSheet({ character, activeStory, onSave, onAddToStory, onRemoveFromStory, onSetActive, onSetInactive, onDelete, onExport, onImport }) {
   const [draft, setDraft] = useState(character);

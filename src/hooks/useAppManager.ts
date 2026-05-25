@@ -4,7 +4,7 @@ import { normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld 
 import { buildOpeningMessage } from "../services/prompt";
 import { repository } from "../services/repository";
 import { cloneJson } from "../utils/helpers";
-import { isAssistantMessageWithOptions } from "../features/chat/ChatView.jsx";
+import { isAssistantMessageWithOptions } from "../features/chat/ChatView";
 import { chooseActiveCastLead, loadInitialState, getStoryCharactersFromLists, uniqueCompact, loadChatForStory } from "../utils/appHelpers";
 
 import { storyReducer, storyInitialState } from "../reducers/storyReducer";
@@ -227,7 +227,7 @@ export default function useAppManager() {
 
   async function elaborateLastReply() {
     const { addAlternativeToLastAssistant } = await import("../utils/appHelpers");
-    const { getMessageDisplayText } = await import("../features/chat/ChatView.jsx");
+    const { getMessageDisplayText } = await import("../features/chat/ChatView");
     if (isGenerating) return;
     const lastMessage = chatHistory[chatHistory.length - 1];
     if (!lastMessage || lastMessage.role !== "assistant") return alert("The last message is not an assistant reply.");

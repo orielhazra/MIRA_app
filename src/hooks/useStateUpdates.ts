@@ -2,7 +2,7 @@
 
 import { normalizeCurrentContext, normalizeCastState, normalizeStoryMemory } from "../services/normalizers";
 import { streamChatCompletion } from "../services/koboldApi";
-import { getMessageDisplayText } from "../features/chat/ChatView.jsx";
+import { getMessageDisplayText } from "../features/chat/ChatView";
 import {
   parseSuggestedUpdates, applyUpdatesToCurrentContext,
   applyUpdatesToCastState, applyUpdatesToStoryMemory,

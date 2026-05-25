@@ -1,4 +1,4 @@
-import { useApp } from "./AppContext.jsx";
+import { useApp } from "./AppContext";
 
 // LoreContext provides lore state, active lorebook, pending updates, and lore actions.
 
