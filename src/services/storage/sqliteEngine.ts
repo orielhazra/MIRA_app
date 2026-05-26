@@ -1,18 +1,8 @@
 import { cloneJson } from "../../utils/helpers";
+import { CUSTOM_DB_PATH } from "../../constants/defaultData";
 import { World, Character, Story, ChatMessage, LoreEntry } from "../../types";
 
-// =========================================================================
-// ⚙️ CUSTOM DATABASE LOCATION CONFIGURATION
-// =========================================================================
-// To use a custom location, enter the absolute path to your desired SQLite database file here:
-// Examples:
-// - Windows: "D:\\MyCustomFolder\\mira.db" (use double backslashes in Windows paths!)
-// - macOS: "/Users/shared/mira_db/mira.db"
-// - Linux: "/home/username/custom_mira/mira.db"
-//
-// ⚠️ If left empty (""), M.I.R.A. will fallback to the standard Documents folder: .../Documents/MIRA_Data/mira.db
-const CUSTOM_DB_PATH = "G:\\Chatbot Assets\\Memory\\mira.db"; 
-// =========================================================================
+
 
 interface SqliteCache {
   worlds: World[];
@@ -33,7 +23,7 @@ const cache: SqliteCache = {
 };
 
 let dbPromise: Promise<any> | null = null;
-const isTauri = typeof window !== "undefined" && (window as any).__TAURI_IPC__ !== undefined;
+const isTauri = typeof window !== "undefined" && ((window as any).__TAURI_INTERNALS__ !== undefined || (window as any).__TAURI_IPC__ !== undefined);
 
 if (isTauri) {
   // Dynamically load Tauri Path & SQL APIs only inside desktop wrapper
@@ -43,8 +33,19 @@ if (isTauri) {
       
       // 1. Check if a custom hardcoded database path is specified
       if (CUSTOM_DB_PATH.trim() !== "") {
-        console.log(`Loading SQLite from custom location: ${CUSTOM_DB_PATH}`);
-        return await SQL.default.load(`sqlite:${CUSTOM_DB_PATH.trim()}`);
+        const fsApi = await import("@tauri-apps/plugin-fs");
+        const pathApi = await import("@tauri-apps/api/path");
+
+        // The exact file might not exist yet, but we want to know if the DIRECTORY exists so we can create it
+        const dbDir = await pathApi.dirname(CUSTOM_DB_PATH.trim());
+        const dirExists = await fsApi.exists(dbDir);
+        
+        if (dirExists) {
+          console.log(`Loading SQLite from custom location: ${CUSTOM_DB_PATH}`);
+          return await SQL.default.load(`sqlite:${CUSTOM_DB_PATH.trim()}`);
+        } else {
+          console.warn(`Directory for custom SQLite path ${dbDir} does not exist. Falling back to default Documents directory.`);
+        }
       }
       
       // 2. Fallback to Dynamic Documents folder: .../Documents/MIRA_Data/mira.db
@@ -66,7 +67,68 @@ export const sqliteEngine = {
     if (!isTauri) return;
     const db = await dbPromise;
 
+
     try {
+      // PHASE 5: LocalStorage Legacy Data Migration
+      const hasLegacyMigration = localStorage.getItem("mira_legacy_migrated");
+      const legacyWorlds = localStorage.getItem("roleplay_worlds");
+      
+      if (!hasLegacyMigration && legacyWorlds) {
+        console.log("Found legacy LocalStorage data. Migrating to SQLite...");
+        
+        try {
+          const lWorlds = JSON.parse(legacyWorlds) || [];
+          const lChars = JSON.parse(localStorage.getItem("roleplay_characters") || "[]");
+          const lStories = JSON.parse(localStorage.getItem("roleplay_stories") || "[]");
+          
+          // Using the sqliteEngine methods handles caching and inserts gracefully
+          if (lWorlds.length > 0) sqliteEngine.worlds.saveAll(lWorlds);
+          if (lChars.length > 0) sqliteEngine.characters.saveAll(lChars);
+          if (lStories.length > 0) sqliteEngine.stories.saveAll(lStories);
+          
+          for (const s of lStories) {
+            const chatStr = localStorage.getItem(`roleplay_story_chat_${s.id}`);
+            if (chatStr) sqliteEngine.chats.save(s.id, JSON.parse(chatStr));
+            
+            const loreStr = localStorage.getItem(`roleplay_story_lore_memory_${s.id}`);
+            if (loreStr) sqliteEngine.loreMemory.save(s.id, JSON.parse(loreStr));
+          }
+          
+          const actStory = localStorage.getItem("active_story_id");
+          if (actStory) sqliteEngine.activeStory.set(actStory);
+          
+          const kbUrl = localStorage.getItem("kobold_base_url");
+          if (kbUrl) sqliteEngine.settings.setKoboldBaseUrl(kbUrl);
+
+          localStorage.setItem("mira_legacy_migrated", "true");
+          // Phase 5.3 Deprecate LocalStorage keys
+          localStorage.clear();
+          console.log("Legacy data successfully migrated. LocalStorage cleared.");
+        } catch (err) {
+          console.error("Local Storage Migration failed:", err);
+        }
+      }
+
+      // AWAIT TABLE CREATION (Edge case if frontend boots faster than backend migration on custom path)
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, name TEXT NOT NULL, overview TEXT, description TEXT, rules TEXT, locations TEXT, createdAt INTEGER);
+      `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, name TEXT NOT NULL, shortDescription TEXT, race TEXT, role TEXT, aliases TEXT, promptKeywords TEXT, profileSummary TEXT, defaultOutfit TEXT, description TEXT, personality TEXT, appearance TEXT, backstory TEXT, speakingStyle TEXT, relationshipToUser TEXT, goals TEXT, characterRules TEXT, promptPinned INTEGER DEFAULT 0, lorebook TEXT, createdAt INTEGER);
+      `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS stories (id TEXT PRIMARY KEY, title TEXT NOT NULL, worldId TEXT, characterIds TEXT, mainCharacterId TEXT, scenario TEXT, greeting TEXT, storyLorebook TEXT, temporaryLorebook TEXT, storyMemory TEXT, currentContext TEXT, castState TEXT, directorNotes TEXT, createdAt INTEGER, FOREIGN KEY(worldId) REFERENCES worlds(id));
+      `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS chats (storyId TEXT PRIMARY KEY, messages TEXT NOT NULL, FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE);
+      `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS lore_memory (storyId TEXT PRIMARY KEY, activeLore TEXT NOT NULL, FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE);
+      `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      `);
+
       // 1. Load Worlds
       const rawWorlds = await db.select<any[]>("SELECT * FROM worlds");
       cache.worlds = rawWorlds.map((row: any) => ({
