@@ -9,7 +9,7 @@ export interface StoryState {
   activeView: string;
   selectedCharacterSheetId: string;
   selectedWorldSheetId: string;
-  storyDraft: any;
+  storyDraft: Story | null;
   debugOpen: boolean;
 }
 
@@ -25,7 +25,23 @@ export const storyInitialState: StoryState = {
   debugOpen: false,
 };
 
-export function storyReducer(state: StoryState, action: { type: string; payload?: any }): StoryState {
+export type StoryAction =
+  | { type: "SAVE_WORLDS"; payload: World[] }
+  | { type: "SAVE_CHARACTERS"; payload: Character[] }
+  | { type: "SAVE_STORIES"; payload: Story[] }
+  | { type: "SWITCH_STORY"; payload: { storyId: string } }
+  | { type: "CLEAR_ACTIVE_STORY" }
+  | { type: "SET_ACTIVE_VIEW"; payload: string }
+  | { type: "SELECT_CHARACTER_SHEET"; payload: string }
+  | { type: "SELECT_WORLD_SHEET"; payload: string }
+  | { type: "SET_STORY_DRAFT"; payload: Story | null }
+  | { type: "SET_DEBUG_OPEN"; payload: boolean }
+  | {
+      type: "FACTORY_RESET";
+      payload: { worlds: World[]; characters: Character[]; stories: Story[] };
+    };
+
+export function storyReducer(state: StoryState, action: StoryAction): StoryState {
   switch (action.type) {
     case "SAVE_WORLDS":
       return { ...state, worlds: action.payload };

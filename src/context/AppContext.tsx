@@ -1,6 +1,11 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, ReactNode } from "react";
 
-const AppContext = createContext(null);
+interface AppContextValue {
+  // This will be populated by useAppManager return value
+  [key: string]: any;
+}
+
+const AppContext = createContext<AppContextValue | null>(null);
 
 export function useApp() {
   const context = useContext(AppContext);

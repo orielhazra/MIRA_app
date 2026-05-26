@@ -16,7 +16,22 @@ export const generationInitialState: GenerationState = {
   isExtractingUpdates: false,
 };
 
-export function generationReducer(state: GenerationState, action: { type: string; payload?: any }): GenerationState {
+export type GenerationAction =
+  | { type: "START_GENERATION" }
+  | { type: "UPDATE_PROGRESS"; payload: number }
+  | { type: "COMPLETE_GENERATION" }
+  | { type: "CANCEL_GENERATION" }
+  | { type: "ERROR_GENERATION" }
+  | { type: "SET_PROMPT_TOKENS"; payload: string | number }
+  | { type: "SET_STATUS"; payload: string }
+  | { type: "START_EXTRACTING_UPDATES" }
+  | { type: "COMPLETE_EXTRACTING_UPDATES" }
+  | { type: "RESET_GENERATION" };
+
+export function generationReducer(
+  state: GenerationState,
+  action: GenerationAction
+): GenerationState {
   switch (action.type) {
     case "START_GENERATION":
       return {

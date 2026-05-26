@@ -11,7 +11,13 @@ export const chatInitialState: ChatState = {
   editingMessageIndex: null,
 };
 
-export function chatReducer(state: ChatState, action: { type: string; payload?: any }): ChatState {
+export type ChatAction =
+  | { type: "SET_HISTORY"; payload: ChatMessage[] }
+  | { type: "START_EDITING"; payload: number }
+  | { type: "CANCEL_EDITING" }
+  | { type: "FINISH_EDITING"; payload: ChatMessage[] };
+
+export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "SET_HISTORY":
       return { ...state, chatHistory: action.payload };

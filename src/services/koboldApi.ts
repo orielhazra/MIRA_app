@@ -16,7 +16,7 @@ export function getKoboldTokenCountUrl(): string {
 
 interface GenerationBody {
   model: string;
-  messages: any[];
+  messages: ChatMessage[];
   temperature: number;
   top_p: number;
   min_p: number;
@@ -26,7 +26,7 @@ interface GenerationBody {
   stop: string[];
 }
 
-export function buildGenerationBody(messages: any[]): GenerationBody {
+export function buildGenerationBody(messages: ChatMessage[]): GenerationBody {
   return {
     model: GENERATION_SETTINGS.model,
     messages,
@@ -36,7 +36,7 @@ export function buildGenerationBody(messages: any[]): GenerationBody {
     repetition_penalty: GENERATION_SETTINGS.repetitionPenalty,
     max_tokens: GENERATION_SETTINGS.maxTokens,
     stream: GENERATION_SETTINGS.stream,
-    stop: GENERATION_SETTINGS.stop
+    stop: GENERATION_SETTINGS.stop,
   };
 }
 
@@ -44,13 +44,16 @@ interface ApiOptions {
   signal?: AbortSignal;
 }
 
-export async function countPromptTokens(messages: any[], options: ApiOptions = {}): Promise<number> {
+export async function countPromptTokens(
+  messages: ChatMessage[],
+  options: ApiOptions = {}
+): Promise<number> {
   const promptText = messagesToPromptText(messages);
   const response = await fetch(getKoboldTokenCountUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt: promptText }),
-    signal: options.signal
+    signal: options.signal,
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = await response.json();
@@ -58,7 +61,7 @@ export async function countPromptTokens(messages: any[], options: ApiOptions = {
 }
 
 export async function streamChatCompletion(
-  messages: any[],
+  messages: ChatMessage[],
   onChunk?: (fullReply: string, chunk: string) => void,
   options: ApiOptions = {}
 ): Promise<string> {
@@ -66,7 +69,7 @@ export async function streamChatCompletion(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(buildGenerationBody(messages)),
-    signal: options.signal
+    signal: options.signal,
   });
 
   if (!response.ok) {
@@ -161,7 +164,7 @@ export function cleanGeneratedReply(text: string): string {
   return cleaned;
 }
 
-export function messagesToPromptText(messages: any[]): string {
+export function messagesToPromptText(messages: ChatMessage[]): string {
   return messages
     .map((message) => `<|im_start|>${message.role}\n${message.content}\n<|im_end|>`)
     .join("\n");
