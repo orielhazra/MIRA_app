@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   chooseActiveCastLead,
+  createInitialCurrentContext,
   getStoryCharactersFromLists,
   parseSuggestedUpdates,
+  syncDirectorNotesFromContext,
 } from "../src/utils/appHelpers";
 import { createAppFixtures } from "./testFixtures";
 
@@ -46,5 +48,54 @@ describe("appHelpers", () => {
       details: "The cast moved.",
       confidence: 0.9,
     });
+  });
+
+  it("syncs director notes from current context fields", () => {
+    const notes = syncDirectorNotesFromContext(
+      {
+        avoid: "Do not reveal the twist",
+        customNotes: "Keep it subtle",
+      } as any,
+      {
+        scene: {
+          timeOfDay: "Night",
+          atmosphere: "Tense",
+          currentConflict: "The signal is fading",
+          currentObjective: "Reach the archive",
+        },
+        location: {
+          name: "Platform 9",
+          description: "A cold platform",
+          visibleExits: "North",
+          hazards: "None",
+          availableLocations: "Station Hall",
+        },
+        objects: [],
+        recentFacts: {
+          importantDiscoveries: "",
+          secretsRevealed: "",
+          openQuestions: "",
+        },
+      } as any
+    );
+
+    expect(notes).toMatchObject({
+      timeOfDay: "Night",
+      currentLocation: "Platform 9",
+      sceneMood: "Tense",
+      currentConflict: "The signal is fading",
+      nextStoryBeat: "Reach the archive",
+      avoid: "Do not reveal the twist",
+      customNotes: "Keep it subtle",
+    });
+  });
+
+  it("uses story characters to seed the initial current objective", () => {
+    const { worlds, characters } = createAppFixtures();
+
+    const context = createInitialCurrentContext(worlds[0] as any, [characters[1]] as any);
+
+    expect(context.location.name).toBe(worlds[0].name);
+    expect(context.scene.currentObjective).toBe(characters[1].goals);
   });
 });

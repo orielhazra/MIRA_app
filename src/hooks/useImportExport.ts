@@ -19,10 +19,45 @@ interface ExportDeps {
   character?: Character;
   world?: World;
   activeStory?: Story;
-  getWorld?: (id: string) => World | undefined;
+  getWorld?: (id: string) => World | undefined | null;
   getStoryCharacters?: (story: Story) => Character[];
   chatHistory?: ChatMessage[];
-  activeStoryId?: string;
+  activeStoryId?: string | null;
+}
+
+interface CharacterImportDeps {
+  parsed: any;
+  worlds: World[];
+  characters: Character[];
+  saveCharacterList: (characters: Character[], sourceWorlds?: World[]) => void;
+  setSelectedCharacterSheetId: (id: string) => void;
+  setActiveView: (view: string) => void;
+}
+
+interface WorldImportDeps {
+  parsed: any;
+  worlds: World[];
+  saveWorldList: (worlds: World[]) => void;
+  setSelectedWorldSheetId: (id: string) => void;
+  setActiveView: (view: string) => void;
+}
+
+interface StoryImportDeps {
+  parsed: any;
+  worlds: World[];
+  characters: Character[];
+  stories: Story[];
+  saveWorldList: (worlds: World[]) => void;
+  saveCharacterList: (characters: Character[], sourceWorlds?: World[]) => void;
+  saveStoryList: (stories: Story[], sourceWorlds?: World[], sourceCharacters?: Character[]) => void;
+  setActiveStoryId: (id: string) => void;
+  repository: any;
+  setChatHistory: (history: ChatMessage[]) => void;
+  setActiveLoreMemory: (memory: any[]) => void;
+  setSelectedCharacterSheetId: (id: string) => void;
+  setSelectedWorldSheetId: (id: string) => void;
+  setStoryDraft: (draft: any) => void;
+  setActiveView: (view: string) => void;
 }
 
 export default function useImportExport() {
@@ -71,15 +106,195 @@ export default function useImportExport() {
     }
   }
 
-  // Import functions kept with lighter typing for now due to complexity
+  function importCharacterBundle({
+    parsed,
+    worlds,
+    characters,
+    saveCharacterList,
+    setSelectedCharacterSheetId,
+    setActiveView,
+  }: CharacterImportDeps) {
+    const imported = parsed.character || parsed;
+    const validation = validateIncomingCharacterBundle(imported);
+    if (!validation.ok) {
+      alert(`Invalid character file:\n\n${validation.issues.join("\n")}`);
+      return;
+    }
+
+    const newCharacter = normalizeCharacter(
+      {
+        ...imported,
+        id: createId("character"),
+        name: imported.name || "Imported Character",
+        shortDescription: imported.shortDescription || "Imported character",
+        lorebook: Array.isArray(imported.lorebook) ? imported.lorebook : imported.characterLorebook || [],
+      },
+      worlds
+    );
+
+    saveCharacterList([...characters, newCharacter], worlds);
+    setSelectedCharacterSheetId(newCharacter.id);
+    setActiveView("character");
+  }
+
+  function importWorldBundle({
+    parsed,
+    worlds,
+    saveWorldList,
+    setSelectedWorldSheetId,
+    setActiveView,
+  }: WorldImportDeps) {
+    const imported = parsed.world || parsed;
+    const validation = validateIncomingWorldBundle(imported);
+    if (!validation.ok) {
+      alert(`Invalid world file:\n\n${validation.issues.join("\n")}`);
+      return;
+    }
+
+    const newWorld = normalizeWorld({
+      ...imported,
+      id: createId("world"),
+      name: imported.name || "Imported World",
+      shortDescription: imported.shortDescription || "Imported world",
+      worldLorebook: Array.isArray(imported.worldLorebook) ? imported.worldLorebook : imported.lorebook || [],
+    });
+
+    saveWorldList([...worlds, newWorld]);
+    setSelectedWorldSheetId(newWorld.id);
+    setActiveView("world");
+  }
+
+  function importStoryBundle({
+    parsed,
+    worlds,
+    characters,
+    stories,
+    saveWorldList,
+    saveCharacterList,
+    saveStoryList,
+    setActiveStoryId,
+    repository,
+    setChatHistory,
+    setActiveLoreMemory,
+    setSelectedCharacterSheetId,
+    setSelectedWorldSheetId,
+    setStoryDraft,
+    setActiveView,
+  }: StoryImportDeps) {
+    const bundle = parsed.type === "roleplay-story-bundle" ? parsed : parsed.bundle || parsed;
+    const validationMessage = validateIncomingStoryBundle(bundle);
+    if (validationMessage) {
+      alert(validationMessage);
+      return;
+    }
+
+    const importedStorySource = cloneJson(bundle.story);
+    const importedWorldSource = cloneJson(bundle.world);
+    const importedCharacterSources = cloneJson(bundle.characters);
+    hydrateBundleLore(bundle, importedStorySource, importedWorldSource, importedCharacterSources);
+
+    const oldToNewCharacterIds: Record<string, string> = {};
+    const newWorld = normalizeWorld({
+      ...importedWorldSource,
+      id: createId("world"),
+      worldLorebook: Array.isArray(importedWorldSource.worldLorebook)
+        ? importedWorldSource.worldLorebook
+        : importedWorldSource.lorebook || [],
+    });
+
+    const newCharacters = importedCharacterSources.map((characterSource: any) => {
+      const newCharacterId = createId("character");
+      oldToNewCharacterIds[characterSource.id] = newCharacterId;
+      return normalizeCharacter(
+        {
+          ...characterSource,
+          id: newCharacterId,
+          worldId: newWorld.id,
+          lorebook: Array.isArray(characterSource.lorebook)
+            ? characterSource.lorebook
+            : characterSource.characterLorebook || [],
+        },
+        [newWorld]
+      );
+    });
+
+    const mappedCharacterIds = Array.isArray(importedStorySource.characterIds)
+      ? importedStorySource.characterIds.map((oldId: string) => oldToNewCharacterIds[oldId]).filter(Boolean)
+      : [];
+
+    const mappedMainCharacterId =
+      oldToNewCharacterIds[importedStorySource.mainCharacterId] ||
+      mappedCharacterIds[0] ||
+      newCharacters[0]?.id ||
+      "";
+
+    if (!mappedMainCharacterId) {
+      alert("Could not import story because no valid character was found.");
+      return;
+    }
+
+    const remappedCurrentContext = remapImportedContextCastIds(importedStorySource.currentContext, oldToNewCharacterIds);
+    const remappedCastState = remapImportedCastStateIds(importedStorySource.castState, oldToNewCharacterIds);
+
+    const newStory = normalizeStory(
+      {
+        ...importedStorySource,
+        id: createId("story"),
+        title: importedStorySource.title || "Imported Story",
+        worldId: newWorld.id,
+        characterIds: mappedCharacterIds.length ? mappedCharacterIds : [mappedMainCharacterId],
+        mainCharacterId: mappedMainCharacterId,
+        currentContext: remappedCurrentContext,
+        castState: remappedCastState,
+        storyLorebook: Array.isArray(importedStorySource.storyLorebook) ? importedStorySource.storyLorebook : [],
+        createdAt: Date.now(),
+      },
+      [newWorld],
+      newCharacters
+    );
+
+    const nextWorlds = [...worlds, newWorld];
+    const nextCharacters = [...characters, ...newCharacters];
+    const nextStories = [...stories, newStory];
+
+    saveWorldList(nextWorlds);
+    saveCharacterList(nextCharacters, nextWorlds);
+    saveStoryList(nextStories, nextWorlds, nextCharacters);
+
+    setActiveStoryId(newStory.id);
+    repository?.activeStory.set(newStory.id);
+
+    const importedChat = Array.isArray(bundle.chatHistory)
+      ? bundle.chatHistory.map(normalizeChatMessage)
+      : [
+          {
+            role: "assistant",
+            content: buildOpeningMessage(
+              newStory,
+              newCharacters.find((item) => item.id === mappedMainCharacterId) || newCharacters[0],
+              newWorld,
+              newCharacters
+            ),
+          },
+        ];
+
+    setChatHistory(importedChat);
+    repository?.chats.save(newStory.id, importedChat);
+    setActiveLoreMemory([]);
+    repository?.loreMemory.save(newStory.id, []);
+    setSelectedCharacterSheetId(mappedMainCharacterId);
+    setSelectedWorldSheetId(newWorld.id);
+    setStoryDraft(null);
+    setActiveView("story");
+  }
 
   return {
     exportCharacter,
     exportWorld,
     exportActiveStory,
     handleImportFile,
-    importCharacterBundle: (deps: any) => {},
-    importWorldBundle: (deps: any) => {},
-    importStoryBundle: (deps: any) => {},
+    importCharacterBundle,
+    importWorldBundle,
+    importStoryBundle,
   };
 }

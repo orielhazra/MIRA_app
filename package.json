@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "verify": "npm run typecheck && npm run typecheck:test && npm run test && npm run build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
@@ -24,14 +26,14 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.12.4",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "typescript": "^5.0.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^24.0.0",
     "jsdom": "^26.1.0",
+    "typescript": "^5.0.0",
     "vitest": "^3.2.4"
   }
 }

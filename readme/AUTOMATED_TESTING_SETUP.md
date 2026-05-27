@@ -24,12 +24,17 @@
 
 ### Helpers
 - `tests/appHelpers.test.ts`
+- `tests/helpers.test.ts`
 
 ### UI components
 - `tests/Sidebar.test.tsx`
   - sidebar story button regression coverage
 - `tests/PendingUpdatesPanel.test.tsx`
   - pending update rendering and interaction coverage
+- `tests/ChatView.test.tsx`
+  - assistant option selection and edit button interaction coverage
+- `tests/StoryCreationSheet.test.tsx`
+  - story creation draft editing and submit coverage
 
 ### Hooks / manager integration
 - `tests/useAppManager.test.tsx`
@@ -44,7 +49,7 @@
 - `tests/useLoreActions.test.tsx`
   - lore update, temporary lore save, and lore refresh flows
 - `tests/useImportExport.test.tsx`
-  - export bundle generation and import file handling
+  - export bundle generation, import file handling, and bundle-import workflows
 - `tests/useGeneration.test.tsx`
   - successful generation flow
   - retry behavior
@@ -61,6 +66,11 @@
   - opening message placeholder replacement
   - request message assembly
   - system prompt content generation
+- `tests/koboldApi.test.ts`
+  - generation body creation
+  - prompt-text serialization
+  - stop-sequence cleanup
+  - token estimate helper
 
 ## Key config files
 - `vitest.config.mjs`
@@ -73,5 +83,5 @@ At implementation time, the following all passed:
 - `npm run test`
 
 ## Current suite size
-- **14 test files**
-- **39 passing tests**
+- **18 test files**
+- **55 passing tests**

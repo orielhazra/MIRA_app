@@ -159,14 +159,18 @@ export default function useAppManager() {
     repository.worlds.saveAll(normalizedWorlds);
   };
 
-  const saveCharacterList = (nextCharacters: any[]) => {
-    const normalizedCharacters = nextCharacters.map((character) => normalizeCharacter(character, worlds));
+  const saveCharacterList = (nextCharacters: any[], sourceWorlds: any[] = worlds) => {
+    const normalizedCharacters = nextCharacters.map((character) => normalizeCharacter(character, sourceWorlds));
     dispatchStory({ type: "SAVE_CHARACTERS", payload: normalizedCharacters });
     repository.characters.saveAll(normalizedCharacters);
   };
 
-  const saveStoryList = (nextStories: any[]) => {
-    const normalizedStories = nextStories.map((story) => normalizeStory(story, worlds, characters));
+  const saveStoryList = (
+    nextStories: any[],
+    sourceWorlds: any[] = worlds,
+    sourceCharacters: any[] = characters
+  ) => {
+    const normalizedStories = nextStories.map((story) => normalizeStory(story, sourceWorlds, sourceCharacters));
     dispatchStory({ type: "SAVE_STORIES", payload: normalizedStories });
     repository.stories.saveAll(normalizedStories);
   };

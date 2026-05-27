@@ -23,8 +23,18 @@ export function normalizeCastPresence(value: any): "active" | "nearby" | "inacti
   return value === false ? "inactive" : "active";
 }
 
-export function syncDirectorNotesFromContext(notes: DirectorNotes | undefined, _context: CurrentContext): DirectorNotes {
-  return normalizeDirectorNotes(notes);
+export function syncDirectorNotesFromContext(notes: DirectorNotes | undefined, context: CurrentContext): DirectorNotes {
+  const normalizedNotes = normalizeDirectorNotes(notes);
+  const normalizedContext = normalizeCurrentContext(context);
+
+  return normalizeDirectorNotes({
+    ...normalizedNotes,
+    timeOfDay: normalizedContext.scene.timeOfDay || normalizedNotes.timeOfDay,
+    currentLocation: normalizedContext.location.name || normalizedNotes.currentLocation,
+    sceneMood: normalizedContext.scene.atmosphere || normalizedNotes.sceneMood,
+    currentConflict: normalizedContext.scene.currentConflict || normalizedNotes.currentConflict,
+    nextStoryBeat: normalizedContext.scene.currentObjective || normalizedNotes.nextStoryBeat,
+  });
 }
 
 export function syncCurrentContextFromDirectorNotes(context: CurrentContext, notes: DirectorNotes): CurrentContext {
@@ -46,13 +56,15 @@ export function syncCurrentContextFromDirectorNotes(context: CurrentContext, not
   });
 }
 
-export function createInitialCurrentContext(world: World | null, _storyCharacters?: Character[]): CurrentContext {
+export function createInitialCurrentContext(world: World | null, storyCharacters: Character[] = []): CurrentContext {
+  const leadCharacter = storyCharacters[0] || null;
+
   return normalizeCurrentContext({
     scene: {
       timeOfDay: "",
       atmosphere: "",
       currentConflict: "",
-      currentObjective: ""
+      currentObjective: leadCharacter?.goals || ""
     },
     location: {
       name: world?.locations?.[0]?.name || world?.name || "",
