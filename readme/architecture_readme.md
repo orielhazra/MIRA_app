@@ -144,8 +144,8 @@ State management is handled through four pure state reducers (`storyReducer`, `c
 - **`lore.js`**: Analyzes the recent text window and compares it to keywords in character, story, and world lorebooks to select and trigger relevant contextual injection without exceeding token boundaries.
 - **`koboldApi.js`**: Connects to the local KoboldCpp server endpoint via HTTP, performing streaming SSE parsing, prompt token counts, and post-generation reply cleanups.
 
-### 5. The Data Access Layer (`src/services/repository.js`)
-Handles localStorage management for active stories, templates, world maps, chat history strings, and system settings. Keeps standard schemas for easy SQLite migration.
+### 5. The Data Access Layer (`src/services/repository.ts`)
+Acts as a dynamic gateway switching between `localStorageEngine.ts` (for the browser fallback view) and `sqliteEngine.ts` (for native Tauri desktop execution). It manages write-through caching and persistent saves for active stories, templates, worlds, and settings.
 
 ---
 

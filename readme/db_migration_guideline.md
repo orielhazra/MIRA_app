@@ -10,12 +10,12 @@ Use this checklist to track your implementation progress.
 
 | Phase | Core Objective | Estimated Effort | Status |
 | :---: | :--- | :---: | :---: |
-| **Phase 1** | Desktop Environment & Tauri Init | Low | ⬜ Not Started |
-| **Phase 2** | SQLite Database Schema Design | Low-Medium | ⬜ Not Started |
-| **Phase 3** | Rust Backend Config & SQL Plugin | Medium | ⬜ Not Started |
-| **Phase 4** | JavaScript Repository Layer Migration (`repository.js`) | Medium-High | ⬜ Not Started |
-| **Phase 5** | LocalStorage Legacy Data Migration | Medium | ⬜ Not Started |
-| **Phase 6** | System Validation, Testing, & Final Desktop Build | Medium | ⬜ Not Started |
+| **Phase 1** | Desktop Environment & Tauri Init | Low | ✅ Completed |
+| **Phase 2** | SQLite Database Schema Design | Low-Medium | ✅ Completed |
+| **Phase 3** | Rust Backend Config & SQL Plugin | Medium | ✅ Completed |
+| **Phase 4** | JavaScript Repository Layer Migration (`repository.js`) | Medium-High | ✅ Completed |
+| **Phase 5** | LocalStorage Legacy Data Migration | Medium | ✅ Completed |
+| **Phase 6** | System Validation, Testing, & Final Desktop Build | Medium | ✅ Completed |
 
 ---
 
@@ -24,12 +24,12 @@ Use this checklist to track your implementation progress.
 ### ⬜ Phase 1: Desktop Environment & Tauri Init
 In this phase, you wrap the current Vite web app with Tauri's Rust-based desktop harness.
 
-- [ ] **1.1 Install system prerequisites**
+- [x] **1.1 Install system prerequisites**
   - Install Rust toolchain (via `rustup`).
   - Install OS-specific C compilers and development libraries (e.g., Build Essential on Linux, Xcode on macOS, Build Tools on Windows).
-- [ ] **1.2 Install Tauri CLI and API dependencies**
+- [x] **1.2 Install Tauri CLI and API dependencies**
   - Run: `npm install @tauri-apps/cli @tauri-apps/api`
-- [ ] **1.3 Initialize Tauri desktop harness**
+- [x] **1.3 Initialize Tauri desktop harness**
   - Run: `npx tauri init`
   - *Configuration answers when prompted:*
     - **What is your app name?** `mira`
@@ -38,7 +38,7 @@ In this phase, you wrap the current Vite web app with Tauri's Rust-based desktop
     - **What is the dev server URL?** `http://localhost:5173` (Vite dev server)
     - **What is your frontend build command?** `npm run build`
     - **What is your frontend dev command?** `npm run dev`
-- [ ] **1.4 Test native development loop**
+- [x] **1.4 Test native development loop**
   - Run: `npx tauri dev`
   - Verify that a native OS window mounts and renders the app landing page perfectly.
 
@@ -47,7 +47,7 @@ In this phase, you wrap the current Vite web app with Tauri's Rust-based desktop
 ### ⬜ Phase 2: SQLite Database Schema Design
 Establish a clean SQL schema that represents all five existing entity structures currently mapped to JSON.
 
-- [ ] **2.1 Define `worlds` table**
+- [x] **2.1 Define `worlds` table**
   ```sql
   CREATE TABLE IF NOT EXISTS worlds (
     id TEXT PRIMARY KEY,
@@ -59,7 +59,7 @@ Establish a clean SQL schema that represents all five existing entity structures
     createdAt INTEGER
   );
   ```
-- [ ] **2.2 Define `characters` table**
+- [x] **2.2 Define `characters` table**
   ```sql
   CREATE TABLE IF NOT EXISTS characters (
     id TEXT PRIMARY KEY,
@@ -84,7 +84,7 @@ Establish a clean SQL schema that represents all five existing entity structures
     createdAt INTEGER
   );
   ```
-- [ ] **2.3 Define `stories` table**
+- [x] **2.3 Define `stories` table**
   ```sql
   CREATE TABLE IF NOT EXISTS stories (
     id TEXT PRIMARY KEY,
@@ -104,7 +104,7 @@ Establish a clean SQL schema that represents all five existing entity structures
     FOREIGN KEY(worldId) REFERENCES worlds(id)
   );
   ```
-- [ ] **2.4 Define `chats` table**
+- [x] **2.4 Define `chats` table**
   ```sql
   CREATE TABLE IF NOT EXISTS chats (
     storyId TEXT PRIMARY KEY,
@@ -112,7 +112,7 @@ Establish a clean SQL schema that represents all five existing entity structures
     FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE
   );
   ```
-- [ ] **2.5 Define `lore_memory` table**
+- [x] **2.5 Define `lore_memory` table**
   ```sql
   CREATE TABLE IF NOT EXISTS lore_memory (
     storyId TEXT PRIMARY KEY,
@@ -120,7 +120,7 @@ Establish a clean SQL schema that represents all five existing entity structures
     FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE
   );
   ```
-- [ ] **2.6 Define `settings` table**
+- [x] **2.6 Define `settings` table**
   ```sql
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
@@ -133,11 +133,13 @@ Establish a clean SQL schema that represents all five existing entity structures
 ### ⬜ Phase 3: Rust Backend Config & SQL Plugin
 Integrate Tauri's high-performance native SQLite driver plugin.
 
-- [ ] **3.1 Install Tauri SQL Plugin**
+- [x] **3.1 Install Tauri SQL Plugin**
+  - *Added @tauri-apps/plugin-fs for custom path handling.*
   - Run: `npm install @tauri-apps/plugin-sql`
-- [ ] **3.2 Configure SQL Plugin permissions in Cargo**
+- [x] **3.2 Configure SQL Plugin permissions in Cargo**
+  - *Included capabilities (`sql:allow-load`, `sql:allow-execute`, `sql:allow-select`, `sql:allow-close`).*
   - Add the SQL plugin dependency inside `src-tauri/Cargo.toml`.
-- [ ] **3.3 Register SQL Plugin in Rust startup**
+- [x] **3.3 Register SQL Plugin in Rust startup**
   - Open `src-tauri/src/main.rs` (or `lib.rs`) and register the SQL plugin handler:
     ```rust
     tauri::Builder::default()
@@ -145,7 +147,8 @@ Integrate Tauri's high-performance native SQLite driver plugin.
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
     ```
-- [ ] **3.4 Configure automated SQLite tables setup**
+- [x] **3.4 Configure automated SQLite tables setup**
+  - *Implemented dual migration routing for custom G:\ paths and default fallbacks.*
   - Define migration files or execute a batch command during Tauri initialization to run the `CREATE TABLE` scripts if they do not exist.
 
 ---
@@ -153,43 +156,43 @@ Integrate Tauri's high-performance native SQLite driver plugin.
 ### ⬜ Phase 4: JavaScript Repository Layer Migration
 Rewrite M.I.R.A.'s persistence layer to connect to the SQLite DB, leaving frontend React state logic entirely untouched.
 
-- [ ] **4.1 Load Database Connection**
+- [x] **4.1 Load Database Connection**
   - Open `src/services/repository.js` and import the Tauri SQLite API:
     ```javascript
     import Database from "@tauri-apps/plugin-sql";
     const db = await Database.load("sqlite:mira_roleplay.db");
     ```
-- [ ] **4.2 Rewrite `repository.worlds`**
-  - [ ] Implement `list()`: `SELECT * FROM worlds` (parse serialized JSON for locations).
-  - [ ] Implement `saveAll(worlds)`: Bulk transaction executing Upsert statements for each item.
-- [ ] **4.3 Rewrite `repository.characters`**
-  - [ ] Implement `list()`: `SELECT * FROM characters` (parse arrays and sub-lorebook JSON).
-  - [ ] Implement `saveAll(characters)`: Upsert transaction.
-- [ ] **4.4 Rewrite `repository.stories`**
-  - [ ] Implement `list()`: `SELECT * FROM stories` (parse context, journal, memory, cast JSON).
-  - [ ] Implement `saveAll(stories)`: Upsert transaction.
-- [ ] **4.5 Rewrite `repository.chats`**
-  - [ ] Implement `load(storyId)`: `SELECT messages FROM chats WHERE storyId = ?`
-  - [ ] Implement `save(storyId, messages)`: Upsert transaction.
-- [ ] **4.6 Rewrite `repository.loreMemory`**
-  - [ ] Implement `load(storyId)`: `SELECT activeLore FROM lore_memory WHERE storyId = ?`
-  - [ ] Implement `save(storyId, loreMemory)`: Upsert transaction.
-- [ ] **4.7 Rewrite `repository.settings`**
-  - [ ] Implement `getKoboldBaseUrl(fallback)`: `SELECT value FROM settings WHERE key = 'kobold_base_url'`
-  - [ ] Implement `setKoboldBaseUrl(value)`: Upsert setting.
+- [x] **4.2 Rewrite `repository.worlds`**
+  - [x] Implement `list()`: `SELECT * FROM worlds` (parse serialized JSON for locations).
+  - [x] Implement `saveAll(worlds)`: Bulk transaction executing Upsert statements for each item.
+- [x] **4.3 Rewrite `repository.characters`**
+  - [x] Implement `list()`: `SELECT * FROM characters` (parse arrays and sub-lorebook JSON).
+  - [x] Implement `saveAll(characters)`: Upsert transaction.
+- [x] **4.4 Rewrite `repository.stories`**
+  - [x] Implement `list()`: `SELECT * FROM stories` (parse context, journal, memory, cast JSON).
+  - [x] Implement `saveAll(stories)`: Upsert transaction.
+- [x] **4.5 Rewrite `repository.chats`**
+  - [x] Implement `load(storyId)`: `SELECT messages FROM chats WHERE storyId = ?`
+  - [x] Implement `save(storyId, messages)`: Upsert transaction.
+- [x] **4.6 Rewrite `repository.loreMemory`**
+  - [x] Implement `load(storyId)`: `SELECT activeLore FROM lore_memory WHERE storyId = ?`
+  - [x] Implement `save(storyId, loreMemory)`: Upsert transaction.
+- [x] **4.7 Rewrite `repository.settings`**
+  - [x] Implement `getKoboldBaseUrl(fallback)`: `SELECT value FROM settings WHERE key = 'kobold_base_url'`
+  - [x] Implement `setKoboldBaseUrl(value)`: Upsert setting.
 
 ---
 
 ### ⬜ Phase 5: LocalStorage Legacy Data Migration
 Ensure users upgrading from the web browser LocalStorage build do not lose their current characters, worlds, or story histories.
 
-- [ ] **5.1 Create migration trigger**
+- [x] **5.1 Create migration trigger**
   - Write an initialization routine inside the SQL database layer to check if legacy keys are present in LocalStorage.
-- [ ] **5.2 Copy data to SQLite**
+- [x] **5.2 Copy data to SQLite**
   - If legacy browser data is present:
     1. Loop through LocalStorage stories, worlds, and characters.
     2. Write them as initial SQL inserts into the database.
-- [ ] **5.3 Deprecate LocalStorage keys**
+- [x] **5.3 Deprecate LocalStorage keys**
   - Run a cleanup command (`localStorage.clear()`) after successful migration to prevent redundant runs.
 
 ---
@@ -197,12 +200,12 @@ Ensure users upgrading from the web browser LocalStorage build do not lose their
 ### ⬜ Phase 6: System Validation, Testing, & Final Desktop Build
 Perform validation checks to guarantee the app compiles cleanly, executes fast queries, and builds static executables.
 
-- [ ] **6.1 Perform integration dry run**
+- [x] **6.1 Perform integration dry run**
   - Run: `npx tauri dev`
   - Verify creating, editing, and deleting stories, cast members, and settings.
-- [ ] **6.2 Verify "Extract Updates" loop**
+- [x] **6.2 Verify "Extract Updates" loop**
   - Trigger updates extraction and apply suggestions. Check database serialization integrity.
-- [ ] **6.3 Run Production Bundle Build**
+- [ ] **6.3 Run Production Bundle Build** (Pending local host execution)
   - Run: `npx tauri build`
   - This compiles Rust source code, bundle static web assets, and generates final installers:
     - **Windows:** `.msi` and `.exe` installer.

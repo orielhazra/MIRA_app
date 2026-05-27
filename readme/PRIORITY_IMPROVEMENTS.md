@@ -13,7 +13,7 @@
 - **Why:** Already identified as next step in README, LocalStorage has limitations
 - **Impact:** Enables larger datasets, better performance, proper data management
 - **Effort:** High (architectural change)
-- **Status:** Not started
+- **Status:** ✅ **Completed** (Implemented `@tauri-apps/plugin-sql` with robust dynamic fallback paths, auto-migration of legacy LocalStorage data into SQLite cache, and IPC security privileges)
 
 ### 2. Comprehensive Error Handling
 - **Why:** Current error handling is minimal, users see generic failures
@@ -133,7 +133,7 @@
 - **Impact:** Type safety, better IDE support
 - **Effort:** Very High
 - **When:** After other priorities complete
-- **Status:** Not started
+- **Status:** ✅ **Completed** (Fully rewritten into strict TypeScript `.ts` and `.tsx` scopes. Interfaces fully defined under `src/types/index.ts`.)
 
 ### 20. Comprehensive Testing Suite
 - **Why:** No tests currently, but app works

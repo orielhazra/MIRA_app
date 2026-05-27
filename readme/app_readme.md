@@ -53,8 +53,14 @@ http://localhost:5001
 
 ---
 
-## 📈 Next Steps: Tauri & SQLite Desktop Build
-The current application uses browser `localStorage` as its persistence layer. The recommended next step is to wrap the application inside a native Rust **Tauri desktop wrapper** and migrate database storage to **SQLite** (unlimiting size constraints and enabling full-text search capabilities).
+## 📈 Native Desktop & SQLite Database
+The application is wrapped natively inside a **Tauri Desktop application**. By default, running via Tauri leverages a high-performance **SQLite database** layer, escaping browser storage limits.
+
+To build the native desktop application locally:
+```bash
+npm run tauri build
+```
+*(This will output OS-specific installer formats like .exe, .msi, .dmg, or .deb depending on your host OS.)*
 
 Please refer to the comprehensive guidelines located inside the documentation folder:
 * **`readme/architecture_readme.md`**: Deep dive into M.I.R.A.'s data pipelines, architecture model, and layer divisions.
