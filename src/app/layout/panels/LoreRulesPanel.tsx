@@ -88,6 +88,7 @@ export default function LoreRulesPanel({
           lorebook={activeLoreMemory || []}
           emptyText="No active lore has been triggered yet."
           showSource
+          onToggleEntry={() => {}}
         />
       </div>
       <button type="button" onClick={onRefreshActiveLore}>Refresh Active Lore</button>

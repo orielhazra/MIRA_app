@@ -30,6 +30,7 @@ export default function Sidebar({
           const castNames = cast.slice(0, 2).map((character) => character.name).join(", ");
           return (
             <button
+              type="button"
               key={story.id}
               className={`character ${activeView === "story" && story.id === activeStoryId ? "active" : ""}`}
               disabled={isGenerating}
@@ -41,7 +42,7 @@ export default function Sidebar({
           );
         })}
       </div>
-      <button id="newStoryButton" disabled={isGenerating} onClick={onNewStory}>+ New Story</button>
+      <button type="button" id="newStoryButton" disabled={isGenerating} onClick={onNewStory}>+ New Story</button>
 
       <hr />
 
@@ -49,6 +50,7 @@ export default function Sidebar({
       <div id="characterList">
         {characters.map((character) => (
           <button
+            type="button"
             key={character.id}
             className={`character ${activeView === "character" && character.id === selectedCharacterSheetId ? "active" : ""}`}
             disabled={isGenerating}
@@ -59,7 +61,7 @@ export default function Sidebar({
           </button>
         ))}
       </div>
-      <button id="newCharacterButton" disabled={isGenerating} onClick={onNewCharacter}>+ New Template</button>
+      <button type="button" id="newCharacterButton" disabled={isGenerating} onClick={onNewCharacter}>+ New Template</button>
 
       <hr />
 
@@ -67,6 +69,7 @@ export default function Sidebar({
       <div id="worldList">
         {worlds.map((world) => (
           <button
+            type="button"
             key={world.id}
             className={`character ${activeView === "world" && world.id === selectedWorldSheetId ? "active" : ""}`}
             disabled={isGenerating}
@@ -77,11 +80,11 @@ export default function Sidebar({
           </button>
         ))}
       </div>
-      <button id="newWorldButton" disabled={isGenerating} onClick={onNewWorld}>+ New World</button>
+      <button type="button" id="newWorldButton" disabled={isGenerating} onClick={onNewWorld}>+ New World</button>
 
       <hr />
 
-      <button id="factoryResetButton" disabled={isGenerating} onClick={onFactoryReset}>Factory Reset</button>
+      <button type="button" id="factoryResetButton" disabled={isGenerating} onClick={onFactoryReset}>Factory Reset</button>
     </aside>
   );
 }

@@ -9,6 +9,7 @@ interface LoreActionDeps {
   activeStory?: Story;
   stories?: Story[];
   activeWorld?: World;
+  worlds?: World[];
   activeCharacter?: Character | null;
   characters?: Character[];
   saveStoryList?: (stories: Story[]) => void;

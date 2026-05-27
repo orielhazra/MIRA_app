@@ -120,7 +120,7 @@ function LoreDebugPanel({ inspection }) {
             </thead>
             <tbody>
               {entries.length === 0 ? (
-                <tr><td colSpan="5">No lore entries.</td></tr>
+                <tr><td colSpan={5}>No lore entries.</td></tr>
               ) : entries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{entry.source}</td>

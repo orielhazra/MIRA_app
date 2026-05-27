@@ -170,7 +170,7 @@ export function normalizeCastState(castState: any = {}, characters: Character[] 
 
   const activeCharacters: CastMemberState[] = orderedCharacterIds.map((characterId) => {
     const row = existingStateById.get(characterId) || {};
-    const character = (characters || []).find((item) => item?.id === characterId) || {};
+    const character: Partial<Character> = (characters || []).find((item) => item?.id === characterId) || {};
     const presence = normalizePresence(row.presence, row.present);
     return {
       characterId,
@@ -196,7 +196,7 @@ export function normalizeCastState(castState: any = {}, characters: Character[] 
 
   const relationships: RelationshipState[] = orderedCharacterIds.map((characterId) => {
     const row = existingRelationshipById.get(characterId) || {};
-    const character = (characters || []).find((item) => item?.id === characterId) || {};
+    const character: Partial<Character> = (characters || []).find((item) => item?.id === characterId) || {};
     return {
       characterId,
       relationshipToUser: String(row.relationshipToUser || row.relationship || character.relationshipToUser || ""),

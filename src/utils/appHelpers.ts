@@ -13,7 +13,7 @@ import {
 import { buildOpeningMessage } from "../services/prompt";
 import { repository } from "../services/repository";
 import { cloneJson, createId } from "./helpers";
-import { getMessageDisplayText, isAssistantMessageWithOptions } from "../features/chat/ChatView";
+import { getMessageDisplayText, isAssistantMessageWithOptions } from "./chatMessageUtils";
 
 export function normalizeCastPresence(value: any): "active" | "nearby" | "inactive" {
   const raw = String(value || "").trim().toLowerCase();

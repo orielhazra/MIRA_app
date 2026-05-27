@@ -1,5 +1,5 @@
 import { 
-  Story, World, Character, CurrentContext, ChatMessage, LoreEntry
+  Story, World, Character, CurrentContext, ChatMessage, LoreEntry, CastState
 } from "../types/index";
 import { CHAT_CONTEXT_MESSAGES } from "../constants/defaultData";
 import { buildDirectorNotesPrompt, formatLoreForPrompt } from "./lore";
@@ -27,7 +27,7 @@ export function buildMessagesForRequest({
   activeLoreMemory = [],
   privateInstruction = "",
   extraMessages = []
-}: RequestParams) {
+}: RequestParams): ChatMessage[] {
   return [
     {
       role: "system",
@@ -46,7 +46,7 @@ export function buildMessagesForRequest({
   ];
 }
 
-export function toApiMessage(message: ChatMessage) {
+export function toApiMessage(message: ChatMessage): ChatMessage {
   return {
     role: message.role === "user" ? "user" : "assistant",
     content: String(message.content || "")

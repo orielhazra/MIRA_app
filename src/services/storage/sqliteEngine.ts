@@ -24,42 +24,65 @@ const cache: SqliteCache = {
 
 let dbPromise: Promise<any> | null = null;
 const isTauri = typeof window !== "undefined" && ((window as any).__TAURI_INTERNALS__ !== undefined || (window as any).__TAURI_IPC__ !== undefined);
+const DEFAULT_TAURI_DB_URL = "sqlite:mira.db";
 
-if (isTauri) {
-  // Dynamically load Tauri Path & SQL APIs only inside desktop wrapper
-  dbPromise = (async () => {
-    try {
-      const SQL = await import("@tauri-apps/plugin-sql");
-      
-      // 1. Check if a custom hardcoded database path is specified
-      if (CUSTOM_DB_PATH.trim() !== "") {
+function shouldUseCustomDbPath(customDbPath: string): boolean {
+  if (!customDbPath) return false;
+
+  const isWindowsStyleAbsolutePath = /^[A-Za-z]:\\/.test(customDbPath);
+  const isWindowsRuntime = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+
+  if (isWindowsStyleAbsolutePath && !isWindowsRuntime) {
+    console.warn(`Skipping Windows-specific custom SQLite path on non-Windows runtime: ${customDbPath}`);
+    return false;
+  }
+
+  return true;
+}
+
+async function loadTauriDatabase(): Promise<any> {
+  try {
+    const SQL = await import("@tauri-apps/plugin-sql");
+    const customDbPath = CUSTOM_DB_PATH.trim();
+
+    if (shouldUseCustomDbPath(customDbPath)) {
+      try {
         const fsApi = await import("@tauri-apps/plugin-fs");
         const pathApi = await import("@tauri-apps/api/path");
-
-        // The exact file might not exist yet, but we want to know if the DIRECTORY exists so we can create it
-        const dbDir = await pathApi.dirname(CUSTOM_DB_PATH.trim());
+        const dbDir = await pathApi.dirname(customDbPath);
         const dirExists = await fsApi.exists(dbDir);
-        
-        if (dirExists) {
-          console.log(`Loading SQLite from custom location: ${CUSTOM_DB_PATH}`);
-          return await SQL.default.load(`sqlite:${CUSTOM_DB_PATH.trim()}`);
-        } else {
-          console.warn(`Directory for custom SQLite path ${dbDir} does not exist. Falling back to default Documents directory.`);
+
+        if (!dirExists) {
+          console.warn(`Custom SQLite directory ${dbDir} does not exist. Creating it now.`);
+          await fsApi.mkdir(dbDir, { recursive: true });
         }
+
+        console.log(`Loading SQLite from custom location: ${customDbPath}`);
+        return await SQL.default.load(`sqlite:${customDbPath}`);
+      } catch (pathError) {
+        console.warn("Failed to initialize custom SQLite path. Falling back to default app database.", pathError);
       }
-      
-      // 2. Fallback to Dynamic Documents folder: .../Documents/MIRA_Data/mira.db
-      const pathApi = await import("@tauri-apps/api/path");
-      const docsDir = await pathApi.documentDir();
-      const absoluteDbPath = await pathApi.join(docsDir, "MIRA_Data", "mira.db");
-      
-      console.log(`Loading SQLite from default Documents fallback: ${absoluteDbPath}`);
-      return await SQL.default.load(`sqlite:${absoluteDbPath}`);
-    } catch (e) {
-      console.error("Failed to dynamically load SQLite database:", e);
-      throw e;
     }
-  })();
+
+    console.log(`Loading SQLite from default app database: ${DEFAULT_TAURI_DB_URL}`);
+    return await SQL.default.load(DEFAULT_TAURI_DB_URL);
+  } catch (e) {
+    console.error("Failed to dynamically load SQLite database:", e);
+    throw e;
+  }
+}
+
+async function ensureWorldLorebookColumn(db: any): Promise<void> {
+  const worldColumns = (await db.select("PRAGMA table_info(worlds)")) as any[];
+  const hasWorldLorebook = worldColumns.some((column: any) => column.name === "worldLorebook");
+
+  if (!hasWorldLorebook) {
+    await db.execute("ALTER TABLE worlds ADD COLUMN worldLorebook TEXT");
+  }
+}
+
+if (isTauri) {
+  dbPromise = loadTauriDatabase();
 }
 
 export const sqliteEngine = {
@@ -111,8 +134,9 @@ export const sqliteEngine = {
 
       // AWAIT TABLE CREATION (Edge case if frontend boots faster than backend migration on custom path)
       await db.execute(`
-        CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, name TEXT NOT NULL, overview TEXT, description TEXT, rules TEXT, locations TEXT, createdAt INTEGER);
+        CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, name TEXT NOT NULL, overview TEXT, description TEXT, rules TEXT, locations TEXT, worldLorebook TEXT, createdAt INTEGER);
       `);
+      await ensureWorldLorebookColumn(db);
       await db.execute(`
         CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, name TEXT NOT NULL, shortDescription TEXT, race TEXT, role TEXT, aliases TEXT, promptKeywords TEXT, profileSummary TEXT, defaultOutfit TEXT, description TEXT, personality TEXT, appearance TEXT, backstory TEXT, speakingStyle TEXT, relationshipToUser TEXT, goals TEXT, characterRules TEXT, promptPinned INTEGER DEFAULT 0, lorebook TEXT, createdAt INTEGER);
       `);
@@ -130,7 +154,7 @@ export const sqliteEngine = {
       `);
 
       // 1. Load Worlds
-      const rawWorlds = await db.select<any[]>("SELECT * FROM worlds");
+      const rawWorlds = (await db.select("SELECT * FROM worlds")) as any[];
       cache.worlds = rawWorlds.map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -144,7 +168,7 @@ export const sqliteEngine = {
       }));
 
       // 2. Load Characters
-      const rawCharacters = await db.select<any[]>("SELECT * FROM characters");
+      const rawCharacters = (await db.select("SELECT * FROM characters")) as any[];
       cache.characters = rawCharacters.map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -169,7 +193,7 @@ export const sqliteEngine = {
       }));
 
       // 3. Load Stories
-      const rawStories = await db.select<any[]>("SELECT * FROM stories");
+      const rawStories = (await db.select("SELECT * FROM stories")) as any[];
       cache.stories = rawStories.map((row: any) => ({
         id: row.id,
         title: row.title,
@@ -188,7 +212,7 @@ export const sqliteEngine = {
       }));
 
       // 4. Load Chats
-      const rawChats = await db.select<any[]>("SELECT * FROM chats");
+      const rawChats = (await db.select("SELECT * FROM chats")) as any[];
       for (const row of rawChats as any[]) {
         if (row.storyId) {
           cache.chats[row.storyId] = JSON.parse(row.messages);
@@ -196,7 +220,7 @@ export const sqliteEngine = {
       }
 
       // 5. Load Lore Memory
-      const rawLoreMemory = await db.select<any[]>("SELECT * FROM lore_memory");
+      const rawLoreMemory = (await db.select("SELECT * FROM lore_memory")) as any[];
       for (const row of rawLoreMemory as any[]) {
         if (row.storyId) {
           cache.loreMemory[row.storyId] = JSON.parse(row.activeLore);
@@ -204,7 +228,7 @@ export const sqliteEngine = {
       }
 
       // 6. Load Settings
-      const rawSettings = await db.select<any[]>("SELECT * FROM settings");
+      const rawSettings = (await db.select("SELECT * FROM settings")) as any[];
       for (const row of rawSettings as any[]) {
         if (row.key) {
           cache.settings[row.key] = row.value;
@@ -229,15 +253,16 @@ export const sqliteEngine = {
           await db.execute("DELETE FROM worlds"); // Clear old records
           for (const world of worlds) {
             await db.execute(
-              `INSERT INTO worlds (id, name, overview, description, rules, locations, createdAt)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              `INSERT INTO worlds (id, name, overview, description, rules, locations, worldLorebook, createdAt)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
               [
                 world.id,
                 world.name,
-                world.overview || "",
+                world.overview || world.shortDescription || "",
                 world.description || "",
                 world.rules || "",
                 JSON.stringify(world.locations || []),
+                JSON.stringify(world.worldLorebook || []),
                 world.createdAt || Date.now()
               ]
             );

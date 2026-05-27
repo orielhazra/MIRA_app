@@ -2,7 +2,7 @@
 
 import { normalizeCurrentContext, normalizeCastState, normalizeStoryMemory } from "../services/normalizers";
 import { streamChatCompletion } from "../services/koboldApi";
-import { getMessageDisplayText } from "../features/chat/ChatView";
+import { getMessageDisplayText } from "../utils/chatMessageUtils";
 import {
   parseSuggestedUpdates,
   applyUpdatesToCurrentContext,
@@ -10,11 +10,11 @@ import {
   applyUpdatesToStoryMemory,
   syncDirectorNotesFromContext,
 } from "../utils/appHelpers";
-import { Story, World, Character, ChatMessage, LoreUpdate } from "../types";
+import { Story, World, Character, ChatMessage } from "../types";
 
 interface ExtractDeps {
-  activeStory: Story;
-  activeWorld: World;
+  activeStory: Story | null;
+  activeWorld: World | null;
   activeStoryCharacters: Character[];
   isGenerating: boolean;
   isExtractingUpdates: boolean;
@@ -22,19 +22,19 @@ interface ExtractDeps {
   setIsExtractingUpdates: (val: boolean) => void;
   setPendingUpdateStatus: (status: string) => void;
   setPendingUpdates: (updates: any[]) => void;
-  setSelectedPendingUpdateIds: (ids: Set<string>) => void;
+  setSelectedPendingUpdateIds: (ids: string[]) => void;
 }
 
 interface ApplyDeps {
-  activeStory: Story;
+  activeStory: Story | null;
   stories: Story[];
-  activeWorld: World;
+  activeWorld: World | null;
   activeStoryCharacters: Character[];
   pendingUpdates: any[];
-  selectedPendingUpdateIds: Set<string>;
+  selectedPendingUpdateIds: string[];
   saveStoryList: (stories: Story[]) => void;
   setPendingUpdates: (updates: any[]) => void;
-  setSelectedPendingUpdateIds: (ids: Set<string>) => void;
+  setSelectedPendingUpdateIds: (ids: string[]) => void;
   setPendingUpdateStatus: (status: string) => void;
 }
 
@@ -63,7 +63,7 @@ export default function useStateUpdates() {
     setIsExtractingUpdates(true);
     setPendingUpdateStatus("Extracting possible state updates...");
     setPendingUpdates([]);
-    setSelectedPendingUpdateIds(new Set());
+    setSelectedPendingUpdateIds([]);
 
     const recentHistory = chatHistory
       .slice(-12)
@@ -79,7 +79,7 @@ export default function useStateUpdates() {
       ]);
       const updates = parseSuggestedUpdates(reply);
       setPendingUpdates(updates);
-      setSelectedPendingUpdateIds(new Set(updates.map((u: any) => u.id)));
+      setSelectedPendingUpdateIds(updates.map((u: any) => u.id));
       setPendingUpdateStatus(
         updates.length
           ? `${updates.length} suggested update${updates.length === 1 ? "" : "s"} ready for review.`
@@ -100,15 +100,14 @@ export default function useStateUpdates() {
     setSelectedPendingUpdateIds,
   }: {
     updateId: string;
-    selectedPendingUpdateIds: Set<string>;
-    setSelectedPendingUpdateIds: (fn: (current: Set<string>) => Set<string>) => void;
+    selectedPendingUpdateIds: string[];
+    setSelectedPendingUpdateIds: (ids: string[]) => void;
   }) {
-    setSelectedPendingUpdateIds((current) => {
-      const next = new Set(current);
-      if (next.has(updateId)) next.delete(updateId);
-      else next.add(updateId);
-      return next;
-    });
+    const nextIds = selectedPendingUpdateIds.includes(updateId)
+      ? selectedPendingUpdateIds.filter((id) => id !== updateId)
+      : [...selectedPendingUpdateIds, updateId];
+
+    setSelectedPendingUpdateIds(nextIds);
   }
 
   function rejectPendingUpdates({
@@ -117,7 +116,7 @@ export default function useStateUpdates() {
     setPendingUpdateStatus,
   }: any) {
     setPendingUpdates([]);
-    setSelectedPendingUpdateIds(new Set());
+    setSelectedPendingUpdateIds([]);
     setPendingUpdateStatus("");
   }
 
@@ -137,7 +136,8 @@ export default function useStateUpdates() {
 
     if (!activeStory) return;
 
-    const selected = pendingUpdates.filter((u) => selectedPendingUpdateIds.has(u.id));
+    const selectedIdSet = new Set(selectedPendingUpdateIds);
+    const selected = pendingUpdates.filter((u) => selectedIdSet.has(u.id));
     if (selected.length === 0) {
       setPendingUpdateStatus("Select at least one update to apply.");
       return;
@@ -165,8 +165,8 @@ export default function useStateUpdates() {
       )
     );
 
-    setPendingUpdates(pendingUpdates.filter((u) => !selectedPendingUpdateIds.has(u.id)));
-    setSelectedPendingUpdateIds(new Set());
+    setPendingUpdates(pendingUpdates.filter((u) => !selectedIdSet.has(u.id)));
+    setSelectedPendingUpdateIds([]);
     setPendingUpdateStatus(
       `${selected.length} update${selected.length === 1 ? "" : "s"} applied to Scene Control / Cast State / Story Memory.`
     );

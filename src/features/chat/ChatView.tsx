@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { getMessageDisplayText, isAssistantMessageWithOptions } from "../../utils/chatMessageUtils";
 
 export default function ChatView({
   messages,
@@ -162,16 +163,4 @@ function AssistantOptions({ message, index, onSelectAssistantOption }) {
       )}
     </>
   );
-}
-
-export function getMessageDisplayText(message) {
-  if (!message) return "";
-  if (isAssistantMessageWithOptions(message)) {
-    return message.alternatives[message.selectedIndex] || message.content || "";
-  }
-  return message.content || "";
-}
-
-export function isAssistantMessageWithOptions(message) {
-  return message && message.role === "assistant" && Array.isArray(message.alternatives);
 }

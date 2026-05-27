@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
 export default function CastStatePanel({ castState, characters, status, onSave }) {
-  const characterById = new Map((characters || []).map((character) => [character.id, character]));
+  const characterById = new Map<string, any>((characters || []).map((character) => [character.id, character]));
   const [draft, setDraft] = useState(() => buildCastStateDraft(castState, characters));
   const [dirty, setDirty] = useState(false);
   const contextResetKey = `${(characters || []).map((character) => character.id).join("|")}::${JSON.stringify(castState || {})}`;
@@ -50,7 +50,7 @@ export default function CastStatePanel({ castState, characters, status, onSave }
       <div className="context-card-list">
         {draft.activeCharacters.map((row, index) => {
           const character = characterById.get(row.characterId);
-          const relationship = draft.relationships.find((item) => item.characterId === row.characterId) || {};
+          const relationship: any = draft.relationships.find((item) => item.characterId === row.characterId) || {};
           const relationshipIndex = draft.relationships.findIndex((item) => item.characterId === row.characterId);
           const presence = getRowPresence(row);
           return (

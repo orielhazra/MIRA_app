@@ -60,7 +60,7 @@ export default class ErrorBoundary extends React.Component<
         return this.props.fallback;
       }
 
-      const isDev = process.env.NODE_ENV === "development";
+      const isDev = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
       return (
         <div

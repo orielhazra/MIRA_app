@@ -20,7 +20,7 @@ export default function PendingUpdatesPanel({
 
         {updates?.length > 0 && (
           <div className="pending-updates-actions">
-            <button type="button" onClick={onApplySelected} disabled={selectedIds.size === 0}>
+            <button type="button" onClick={onApplySelected} disabled={selectedIds.length === 0}>
               Apply selected
             </button>
             <button type="button" className="danger" onClick={onRejectAll}>
@@ -33,7 +33,7 @@ export default function PendingUpdatesPanel({
       {updates?.length > 0 && (
         <div className="pending-updates-list">
           {updates.map((update) => {
-            const checked = selectedIds.has(update.id);
+            const checked = selectedIds.includes(update.id);
 
             return (
               <label key={update.id} className={`pending-update-card ${checked ? "selected" : ""}`}>

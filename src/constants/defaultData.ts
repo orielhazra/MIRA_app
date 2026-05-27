@@ -7,7 +7,8 @@ export const STORAGE_KEYS = {
   worlds: "roleplay_worlds"
 };
 
-// If left empty (""), M.I.R.A. will fallback to the standard Documents folder: .../Documents/MIRA_Data/mira.db
+// Permanent desktop DB decision for now: use the Windows custom SQLite path when supported.
+// Non-Windows or custom-path initialization failures fall back to the default app database (sqlite:mira.db).
 export const CUSTOM_DB_PATH = "G:\\Chatbot-Assets\\Memory\\mira.db";
 
 export const DEFAULT_KOBOLD_BASE_URL = "http://localhost:5001";

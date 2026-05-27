@@ -13,7 +13,6 @@ import {
 } from "../services/koboldApi";
 import { inspectLoreInjection } from "../services/lore";
 import { playCompletionSound } from "../utils/helpers";
-import { isAssistantMessageWithOptions } from "../features/chat/ChatView";
 import { ChatMessage, LoreEntry, Story, World, Character } from "../types";
 
 interface GenerationDeps {
@@ -124,10 +123,11 @@ export default function useGeneration() {
       const streamedReply = await streamChatCompletion(
         requestMessages,
         (fullReply: string) => {
-          setChatHistory([
+          const streamingHistory: ChatMessage[] = [
             ...visibleHistory.slice(0, -1),
             { role: "assistant", content: fullReply || "Thinking..." },
-          ]);
+          ];
+          setChatHistory(streamingHistory);
           const estimatedTokens = estimateGeneratedTokens(fullReply);
           const percent = Math.min(
             100,
@@ -155,7 +155,7 @@ export default function useGeneration() {
         setGenerationStatus("Canceled");
       } else {
         const message = error instanceof Error ? error.message : String(error);
-        const errorHistory = [
+        const errorHistory: ChatMessage[] = [
           ...visibleHistory.slice(0, -1),
           { role: "assistant", content: `Error: ${message}` },
         ];

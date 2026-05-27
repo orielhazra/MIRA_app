@@ -18,14 +18,11 @@ export const generationInitialState: GenerationState = {
 
 export type GenerationAction =
   | { type: "START_GENERATION" }
+  | { type: "SET_IS_GENERATING"; payload: boolean }
   | { type: "UPDATE_PROGRESS"; payload: number }
-  | { type: "COMPLETE_GENERATION" }
-  | { type: "CANCEL_GENERATION" }
-  | { type: "ERROR_GENERATION" }
   | { type: "SET_PROMPT_TOKENS"; payload: string | number }
   | { type: "SET_STATUS"; payload: string }
-  | { type: "START_EXTRACTING_UPDATES" }
-  | { type: "COMPLETE_EXTRACTING_UPDATES" }
+  | { type: "SET_IS_EXTRACTING_UPDATES"; payload: boolean }
   | { type: "RESET_GENERATION" };
 
 export function generationReducer(
@@ -41,32 +38,16 @@ export function generationReducer(
         progressPercent: 0,
       };
 
+    case "SET_IS_GENERATING":
+      return {
+        ...state,
+        isGenerating: action.payload,
+      };
+
     case "UPDATE_PROGRESS":
       return {
         ...state,
         progressPercent: action.payload,
-      };
-
-    case "COMPLETE_GENERATION":
-      return {
-        ...state,
-        isGenerating: false,
-        generationStatus: "complete",
-        progressPercent: 100,
-      };
-
-    case "CANCEL_GENERATION":
-      return {
-        ...state,
-        isGenerating: false,
-        generationStatus: "cancelled",
-      };
-
-    case "ERROR_GENERATION":
-      return {
-        ...state,
-        isGenerating: false,
-        generationStatus: "error",
       };
 
     case "SET_PROMPT_TOKENS":
@@ -75,11 +56,8 @@ export function generationReducer(
     case "SET_STATUS":
       return { ...state, generationStatus: action.payload };
 
-    case "START_EXTRACTING_UPDATES":
-      return { ...state, isExtractingUpdates: true };
-
-    case "COMPLETE_EXTRACTING_UPDATES":
-      return { ...state, isExtractingUpdates: false };
+    case "SET_IS_EXTRACTING_UPDATES":
+      return { ...state, isExtractingUpdates: action.payload };
 
     case "RESET_GENERATION":
       return {

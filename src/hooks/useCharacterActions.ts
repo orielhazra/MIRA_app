@@ -18,11 +18,10 @@ interface CharacterActionDeps {
   characterDraft?: Character;
   stories?: Story[];
   characterId?: string;
-  getCharacter?: (id: string) => Character | undefined;
+  getCharacter?: (id: string) => Character | null;
   repository?: any;
-  activeStory?: Story;
+  activeStory?: Story | null;
   presence?: string;
-  getStoryCharacters?: (story: Story) => Character[];
   saveStoryList?: (stories: Story[]) => void;
 }
 
@@ -94,15 +93,118 @@ export default function useCharacterActions() {
     setActiveView?.("landing");
   }
 
-  // Other presence and membership functions kept lightly typed
+  function setCharacterPresenceInActiveStory(deps: CharacterActionDeps) {
+    const {
+      activeStory,
+      characters = [],
+      stories = [],
+      characterId,
+      presence,
+      getCharacter,
+      saveStoryList,
+      setSelectedCharacterSheetId,
+      setActiveView,
+    } = deps;
+
+    if (!activeStory || !getCharacter || !saveStoryList || !characterId) return;
+
+    const character = getCharacter(characterId);
+    if (!character) return alert("Character not found.");
+
+    const normalizedPresence = normalizeCastPresence(presence);
+    const storyCharacters = (activeStory.characterIds || []).map((id) => getCharacter(id)).filter(Boolean) as Character[];
+    const nextCastState = normalizeCastState(activeStory.castState, storyCharacters, activeStory.currentContext);
+    const row = nextCastState.activeCharacters.find((item) => item.characterId === character.id);
+
+    if (row) {
+      row.presence = normalizedPresence;
+      row.present = normalizedPresence !== "inactive";
+    }
+
+    const nextStories = stories.map((story) =>
+      story.id === activeStory.id ? { ...story, castState: nextCastState } : story
+    );
+
+    saveStoryList(nextStories);
+    setSelectedCharacterSheetId?.(character.id);
+    setActiveView?.("story");
+  }
+
+  function addCharacterToActiveStory(deps: CharacterActionDeps) {
+    const {
+      activeStory,
+      stories = [],
+      characterId,
+      getCharacter,
+      saveStoryList,
+      setSelectedCharacterSheetId,
+    } = deps;
+
+    if (!activeStory || !getCharacter || !saveStoryList || !characterId) return;
+
+    const character = getCharacter(characterId);
+    if (!character) return alert("Character not found.");
+
+    const nextStories = stories.map((story) => {
+      if (story.id !== activeStory.id) return story;
+      const nextCharacterIds = uniqueCompact([...(story.characterIds || []), character.id]);
+      const storyCharacters = nextCharacterIds.map((id) => getCharacter(id)).filter(Boolean) as Character[];
+      const nextCastState = normalizeCastState(story.castState, storyCharacters, story.currentContext);
+      return {
+        ...story,
+        characterIds: nextCharacterIds,
+        mainCharacterId: story.mainCharacterId || nextCharacterIds[0] || "",
+        currentContext: normalizeCurrentContext(story.currentContext),
+        castState: nextCastState,
+      };
+    });
+
+    saveStoryList(nextStories);
+    setSelectedCharacterSheetId?.(character.id);
+  }
+
+  function removeCharacterFromActiveStory(deps: CharacterActionDeps) {
+    const {
+      activeStory,
+      stories = [],
+      characterId,
+      getCharacter,
+      saveStoryList,
+      setSelectedCharacterSheetId,
+    } = deps;
+
+    if (!activeStory || !getCharacter || !saveStoryList || !characterId) return;
+
+    const remainingIds = (activeStory.characterIds || []).filter((id) => id !== characterId);
+    if (remainingIds.length === 0) {
+      alert("A story needs at least one cast member.");
+      return;
+    }
+
+    const nextStories = stories.map((story) => {
+      if (story.id !== activeStory.id) return story;
+      const storyCharacters = remainingIds.map((id) => getCharacter(id)).filter(Boolean) as Character[];
+      const nextCastState = normalizeCastState(story.castState, storyCharacters, story.currentContext);
+      return {
+        ...story,
+        characterIds: remainingIds,
+        mainCharacterId: remainingIds.includes(story.mainCharacterId) ? story.mainCharacterId : remainingIds[0],
+        currentContext: normalizeCurrentContext(story.currentContext),
+        castState: nextCastState,
+      };
+    });
+
+    saveStoryList(nextStories);
+    setSelectedCharacterSheetId?.(remainingIds[0] || "");
+  }
 
   return {
     createBlankCharacter,
     saveCharacterSheetEdits,
     saveStoryCastIdentity,
     deleteSelectedCharacter,
-    setCharacterPresenceInActiveStory: (deps: any) => {},
-    addCharacterToActiveStory: (deps: any) => {},
-    removeCharacterFromActiveStory: (deps: any) => {},
+    setCharacterPresenceInActiveStory,
+    addCharacterToActiveStory,
+    removeCharacterFromActiveStory,
   };
 }

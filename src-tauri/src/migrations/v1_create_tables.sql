@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS worlds (
   description TEXT,
   rules TEXT,
   locations TEXT,
+  worldLorebook TEXT,
   createdAt INTEGER
 );
 
