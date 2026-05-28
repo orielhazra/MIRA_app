@@ -1,0 +1,21 @@
+import { Story, StoryMeta } from "../types";
+
+export function storyToMeta(story: Story): StoryMeta {
+  const characterIds = Array.isArray(story.characterIds) ? story.characterIds.filter(Boolean) : [];
+
+  return {
+    id: story.id,
+    title: story.title || "Untitled Story",
+    worldId: story.worldId || "",
+    characterIds,
+    characterCount: characterIds.length,
+    createdAt: story.createdAt,
+    lastPlayedAt: story.lastPlayedAt,
+  };
+}
+
+export function upsertStoryMeta(metas: StoryMeta[], meta: StoryMeta): StoryMeta[] {
+  const index = metas.findIndex((item) => item.id === meta.id);
+  if (index === -1) return [...metas, meta];
+  return metas.map((item, itemIndex) => (itemIndex === index ? meta : item));
+}
