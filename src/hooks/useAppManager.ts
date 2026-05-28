@@ -1,8 +1,9 @@
-import { useMemo, useRef, useReducer } from "react";
+import { useEffect, useMemo, useRef, useReducer, useState } from "react";
 import { ChatMessage } from "../types";
+import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
-import { repository } from "../services/repository";
+import { repository, isTauri } from "../services/repository";
 import {
   chooseActiveCastLead,
   loadInitialState,
@@ -89,6 +90,13 @@ export default function useAppManager() {
   const characterImportRef = useRef<HTMLInputElement>(null);
   const worldImportRef = useRef<HTMLInputElement>(null);
 
+  const [persistenceInfo, setPersistenceInfo] = useState(
+    () => repository.persistence?.getStatus?.() || { lastError: null, lastOperation: null, lastSavedAt: null, pendingWrites: 0 }
+  );
+  const [koboldBaseUrl, setKoboldBaseUrlState] = useState(
+    () => repository.settings.getKoboldBaseUrl(DEFAULT_KOBOLD_BASE_URL)
+  );
+
   const activeStory = useMemo(() => stories.find((story) => story.id === activeStoryId) || null, [stories, activeStoryId]);
   const activeWorld = useMemo(
     () => (activeStory ? worlds.find((world) => world.id === activeStory.worldId) || worlds[0] || null : worlds[0] || null),
@@ -110,6 +118,16 @@ export default function useAppManager() {
     () => worlds.find((world) => world.id === selectedWorldSheetId) || worlds[0] || null,
     [worlds, selectedWorldSheetId]
   );
+
+  useEffect(() => {
+    const unsubscribe = repository.persistence?.subscribe?.((status: any) => {
+      setPersistenceInfo(status);
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
 
   const loreStatusText = activeLoreMemory.length
     ? `Lore: ${activeLoreMemory.map((entry) => [entry.source, entry.name].filter(Boolean).join(": ")).join(", ")}`
@@ -185,6 +203,26 @@ export default function useAppManager() {
     repository.loreMemory.save(activeStoryId, nextLoreMemory);
   };
 
+  const saveKoboldBaseUrl = async (value: string) => {
+    const normalized = value.trim() || DEFAULT_KOBOLD_BASE_URL;
+    setKoboldBaseUrlState(normalized);
+    repository.settings.setKoboldBaseUrl(normalized);
+    await repository.persistence?.flush?.();
+  };
+
+  const clearPersistenceError = () => {
+    repository.persistence?.clearError?.();
+  };
+
+  const flushPersistence = async () => {
+    await repository.persistence?.flush?.();
+  };
+
+  const storageModeLabel = isTauri ? "SQLite (Tauri)" : "LocalStorage (Browser fallback)";
+  const storageTargetLabel = isTauri
+    ? (CUSTOM_DB_PATH.trim() || "sqlite:mira.db")
+    : "Browser local storage";
+
   const getWorld = (id: string) => worlds.find((world) => world.id === id) || null;
   const getCharacter = (id: string) => characters.find((character) => character.id === id) || null;
   const getStoryCharacters = (story: any) => getStoryCharactersFromLists(story, characters);
@@ -258,6 +296,10 @@ export default function useAppManager() {
     selectedPendingUpdateIds,
     pendingUpdateStatus,
     isGenerating,
+    persistenceInfo,
+    koboldBaseUrl,
+    storageModeLabel,
+    storageTargetLabel,
     promptTokens,
     generationStatus,
     progressPercent,
@@ -268,6 +310,9 @@ export default function useAppManager() {
     activeCharacter,
     selectedCharacter,
     selectedWorld,
+    saveKoboldBaseUrl,
+    clearPersistenceError,
+    flushPersistence,
     setStoryDraft,
     setActiveView,
     setSelectedCharacterSheetId,
@@ -330,6 +375,10 @@ export default function useAppManager() {
     pendingUpdateStatus,
     pendingUpdates,
     progressPercent,
+    persistenceInfo,
+    koboldBaseUrl,
+    storageModeLabel,
+    storageTargetLabel,
     promptTokens,
     selectedCharacter,
     selectedCharacterSheetId,
@@ -340,6 +389,9 @@ export default function useAppManager() {
     setDebugOpen,
     setSelectedCharacterSheetId,
     setSelectedWorldSheetId,
+    saveKoboldBaseUrl,
+    clearPersistenceError,
+    flushPersistence,
     setStoryDraft,
     stories,
     storyDraft,

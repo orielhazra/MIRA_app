@@ -1,7 +1,7 @@
 # Automated Testing Setup
 
 > Added on 2026-05-27
-> Updated on 2026-05-27
+> Updated on 2026-05-28
 
 ## Tooling
 - **Vitest** for unit and integration tests
@@ -11,10 +11,12 @@
 
 ## Available scripts
 - `npm run typecheck` — TypeScript validation
+- `npm run typecheck:test` — test TypeScript validation
 - `npm run test` — run automated test suite once
 - `npm run test:watch` — run tests in watch mode
 - `npm run test:coverage` — generate coverage report
 - `npm run build` — production build validation
+- `npm run verify` — unified full-project verification
 
 ## Implemented test coverage
 
@@ -35,6 +37,8 @@
   - assistant option selection and edit button interaction coverage
 - `tests/StoryCreationSheet.test.tsx`
   - story creation draft editing and submit coverage
+- `tests/HeaderSettingsMenu.test.tsx`
+  - header settings menu interaction coverage
 
 ### Hooks / manager integration
 - `tests/useAppManager.test.tsx`
@@ -71,17 +75,22 @@
   - prompt-text serialization
   - stop-sequence cleanup
   - token estimate helper
+- `tests/sqliteSchema.test.ts`
+  - schema contract / drift protection coverage
 
 ## Key config files
 - `vitest.config.mjs`
 - `vitest.setup.ts`
+- `tsconfig.test.json`
 
 ## Validation status
 At implementation time, the following all passed:
 - `npm run typecheck`
+- `npm run typecheck:test`
 - `npm run build`
 - `npm run test`
+- `npm run verify`
 
 ## Current suite size
-- **18 test files**
-- **55 passing tests**
+- **20 test files**
+- **60 passing tests**

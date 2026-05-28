@@ -31,8 +31,9 @@ When adding or changing schema, update all of the following in the same change:
 - If the schema change is for already-existing databases, add a compatibility path or forward migration strategy
 
 ### 2. TypeScript bootstrap schema
-- Update inline `CREATE TABLE IF NOT EXISTS` statements in `src/services/storage/sqliteEngine.ts`
-- Add compatibility repair logic for older DBs when needed (example: `PRAGMA table_info(...)` + conditional `ALTER TABLE`)
+- Update the TypeScript schema mirror in `src/services/storage/sqliteSchema.ts`
+- Add compatibility repair logic / patches there when older DBs need repair
+- Keep `src/services/storage/sqliteEngine.ts` aligned with any changed read/write behavior
 
 ### 3. Read path
 - Update every `SELECT` mapping that loads the changed field(s)

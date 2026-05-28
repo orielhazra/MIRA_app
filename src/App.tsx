@@ -16,6 +16,28 @@ export default function App() {
       });
   }, []);
 
+  React.useEffect(() => {
+    const flushPersistence = () => {
+      repository.persistence?.flush?.().catch((error: unknown) => {
+        console.error("Failed to flush pending persistence writes:", error);
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushPersistence();
+      }
+    };
+
+    window.addEventListener("beforeunload", flushPersistence);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", flushPersistence);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div

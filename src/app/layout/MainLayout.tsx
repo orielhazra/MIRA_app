@@ -143,11 +143,18 @@ export default function MainLayout() {
             selectedWorld={app.selectedWorld}
             selectedCharacter={app.selectedCharacter}
             promptTokens={app.promptTokens}
+            persistenceInfo={app.persistenceInfo}
+            koboldBaseUrl={app.koboldBaseUrl}
+            storageModeLabel={app.storageModeLabel}
+            storageTargetLabel={app.storageTargetLabel}
             generationStatus={app.generationStatus}
             loreStatusText={app.loreStatusText}
             progressPercent={app.progressPercent}
             onHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
             onDebug={() => app.setDebugOpen(true)}
+            onSaveKoboldBaseUrl={app.saveKoboldBaseUrl}
+            onClearPersistenceError={app.clearPersistenceError}
+            onFlushPersistence={app.flushPersistence}
           />
           {renderMainContent()}
         </main>

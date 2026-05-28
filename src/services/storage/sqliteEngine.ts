@@ -1,6 +1,7 @@
 import { cloneJson } from "../../utils/helpers";
 import { CUSTOM_DB_PATH } from "../../constants/defaultData";
 import { World, Character, Story, ChatMessage, LoreEntry } from "../../types";
+import { ensureSqliteSchema, SQLITE_WORLD_INSERT_SQL, SQLITE_CHARACTER_INSERT_SQL, SQLITE_STORY_INSERT_SQL } from "./sqliteSchema";
 
 
 
@@ -13,6 +14,13 @@ interface SqliteCache {
   settings: Record<string, string>;
 }
 
+interface PersistenceStatus {
+  lastError: string | null;
+  lastOperation: string | null;
+  lastSavedAt: number | null;
+  pendingWrites: number;
+}
+
 const cache: SqliteCache = {
   worlds: [],
   characters: [],
@@ -21,6 +29,161 @@ const cache: SqliteCache = {
   loreMemory: {},
   settings: {}
 };
+
+const persistenceStatus: PersistenceStatus = {
+  lastError: null,
+  lastOperation: null,
+  lastSavedAt: null,
+  pendingWrites: 0,
+};
+
+const persistenceListeners = new Set<(status: PersistenceStatus) => void>();
+let writeQueue: Promise<void> = Promise.resolve();
+const WRITE_DEBOUNCE_MS = 350;
+const scheduledWriteTasks = new Map<string, { operationLabel: string; writer: (db: any) => Promise<void> }>();
+const scheduledWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function emitPersistenceStatus() {
+  const snapshot = { ...persistenceStatus };
+  for (const listener of persistenceListeners) {
+    listener(snapshot);
+  }
+}
+
+function updatePersistenceStatus(patch: Partial<PersistenceStatus>) {
+  Object.assign(persistenceStatus, patch);
+  emitPersistenceStatus();
+}
+
+function markPersistenceSuccess(operationLabel: string) {
+  updatePersistenceStatus({
+    lastError: null,
+    lastOperation: operationLabel,
+    lastSavedAt: Date.now(),
+  });
+}
+
+function markPersistenceFailure(operationLabel: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`${operationLabel} failed:`, error);
+  updatePersistenceStatus({
+    lastError: `${operationLabel}: ${message}`,
+    lastOperation: operationLabel,
+  });
+}
+
+async function runInTransaction(db: any, operation: () => Promise<void>): Promise<void> {
+  await db.execute("BEGIN TRANSACTION");
+  try {
+    await operation();
+    await db.execute("COMMIT");
+  } catch (error) {
+    try {
+      await db.execute("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("SQLite rollback failed:", rollbackError);
+    }
+    throw error;
+  }
+}
+
+function enqueueDbWrite(
+  operationLabel: string,
+  writer: (db: any) => Promise<void>,
+  options: { alreadyTracked?: boolean } = {}
+): void {
+  if (!dbPromise) return;
+
+  if (!options.alreadyTracked) {
+    updatePersistenceStatus({
+      pendingWrites: persistenceStatus.pendingWrites + 1,
+      lastOperation: operationLabel,
+    });
+  }
+
+  const run = async () => {
+    try {
+      const db = await dbPromise;
+      await writer(db);
+      markPersistenceSuccess(operationLabel);
+    } catch (error) {
+      markPersistenceFailure(operationLabel, error);
+    } finally {
+      updatePersistenceStatus({
+        pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+      });
+    }
+  };
+
+  writeQueue = writeQueue.then(run, run);
+}
+
+function cancelScheduledWrite(writeKey: string): void {
+  const timer = scheduledWriteTimers.get(writeKey);
+  if (timer) {
+    clearTimeout(timer);
+    scheduledWriteTimers.delete(writeKey);
+  }
+
+  if (scheduledWriteTasks.delete(writeKey)) {
+    updatePersistenceStatus({
+      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+    });
+  }
+}
+
+function scheduleDbWrite(
+  writeKey: string,
+  operationLabel: string,
+  writer: (db: any) => Promise<void>,
+  delay = WRITE_DEBOUNCE_MS
+): void {
+  if (!dbPromise) return;
+
+  const hadPendingTask = scheduledWriteTasks.has(writeKey);
+  scheduledWriteTasks.set(writeKey, { operationLabel, writer });
+
+  const existingTimer = scheduledWriteTimers.get(writeKey);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  if (!hadPendingTask) {
+    updatePersistenceStatus({
+      pendingWrites: persistenceStatus.pendingWrites + 1,
+      lastOperation: operationLabel,
+    });
+  } else {
+    updatePersistenceStatus({ lastOperation: operationLabel });
+  }
+
+  const timer = setTimeout(() => {
+    void flushScheduledWrite(writeKey);
+  }, delay);
+  scheduledWriteTimers.set(writeKey, timer);
+}
+
+async function flushScheduledWrite(writeKey: string): Promise<void> {
+  const task = scheduledWriteTasks.get(writeKey);
+  if (!task) return;
+
+  const timer = scheduledWriteTimers.get(writeKey);
+  if (timer) {
+    clearTimeout(timer);
+    scheduledWriteTimers.delete(writeKey);
+  }
+
+  scheduledWriteTasks.delete(writeKey);
+  enqueueDbWrite(task.operationLabel, task.writer, { alreadyTracked: true });
+}
+
+async function flushPendingWrites(): Promise<void> {
+  const keys = Array.from(scheduledWriteTasks.keys());
+  for (const key of keys) {
+    await flushScheduledWrite(key);
+  }
+  await writeQueue;
+}
 
 let dbPromise: Promise<any> | null = null;
 const isTauri = typeof window !== "undefined" && ((window as any).__TAURI_INTERNALS__ !== undefined || (window as any).__TAURI_IPC__ !== undefined);
@@ -72,20 +235,28 @@ async function loadTauriDatabase(): Promise<any> {
   }
 }
 
-async function ensureWorldLorebookColumn(db: any): Promise<void> {
-  const worldColumns = (await db.select("PRAGMA table_info(worlds)")) as any[];
-  const hasWorldLorebook = worldColumns.some((column: any) => column.name === "worldLorebook");
-
-  if (!hasWorldLorebook) {
-    await db.execute("ALTER TABLE worlds ADD COLUMN worldLorebook TEXT");
-  }
-}
-
 if (isTauri) {
   dbPromise = loadTauriDatabase();
 }
 
 export const sqliteEngine = {
+  persistence: {
+    getStatus(): PersistenceStatus {
+      return { ...persistenceStatus };
+    },
+    subscribe(listener: (status: PersistenceStatus) => void): () => void {
+      persistenceListeners.add(listener);
+      listener({ ...persistenceStatus });
+      return () => persistenceListeners.delete(listener);
+    },
+    clearError(): void {
+      updatePersistenceStatus({ lastError: null });
+    },
+    async flush(): Promise<void> {
+      await flushPendingWrites();
+    }
+  },
+
   async initialize(): Promise<void> {
     if (!isTauri) return;
     const db = await dbPromise;
@@ -132,26 +303,10 @@ export const sqliteEngine = {
         }
       }
 
+      await flushPendingWrites();
+
       // AWAIT TABLE CREATION (Edge case if frontend boots faster than backend migration on custom path)
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, name TEXT NOT NULL, overview TEXT, description TEXT, rules TEXT, locations TEXT, worldLorebook TEXT, createdAt INTEGER);
-      `);
-      await ensureWorldLorebookColumn(db);
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, name TEXT NOT NULL, shortDescription TEXT, race TEXT, role TEXT, aliases TEXT, promptKeywords TEXT, profileSummary TEXT, defaultOutfit TEXT, description TEXT, personality TEXT, appearance TEXT, backstory TEXT, speakingStyle TEXT, relationshipToUser TEXT, goals TEXT, characterRules TEXT, promptPinned INTEGER DEFAULT 0, lorebook TEXT, createdAt INTEGER);
-      `);
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS stories (id TEXT PRIMARY KEY, title TEXT NOT NULL, worldId TEXT, characterIds TEXT, mainCharacterId TEXT, scenario TEXT, greeting TEXT, storyLorebook TEXT, temporaryLorebook TEXT, storyMemory TEXT, currentContext TEXT, castState TEXT, directorNotes TEXT, createdAt INTEGER, FOREIGN KEY(worldId) REFERENCES worlds(id));
-      `);
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS chats (storyId TEXT PRIMARY KEY, messages TEXT NOT NULL, FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE);
-      `);
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS lore_memory (storyId TEXT PRIMARY KEY, activeLore TEXT NOT NULL, FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE);
-      `);
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      `);
+      await ensureSqliteSchema(db);
 
       // 1. Load Worlds
       const rawWorlds = (await db.select("SELECT * FROM worlds")) as any[];
@@ -248,13 +403,12 @@ export const sqliteEngine = {
     saveAll(worlds: World[]): boolean {
       cache.worlds = cloneJson(worlds); // Sync cache immediately
       
-      dbPromise?.then(async (db) => {
-        try {
-          await db.execute("DELETE FROM worlds"); // Clear old records
+      scheduleDbWrite("worlds", "Save worlds", async (db) => {
+        await runInTransaction(db, async () => {
+          await db.execute("DELETE FROM worlds");
           for (const world of worlds) {
             await db.execute(
-              `INSERT INTO worlds (id, name, overview, description, rules, locations, worldLorebook, createdAt)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              SQLITE_WORLD_INSERT_SQL,
               [
                 world.id,
                 world.name,
@@ -267,15 +421,16 @@ export const sqliteEngine = {
               ]
             );
           }
-        } catch (e) {
-          console.error("Background SQLite Save Worlds failed:", e);
-        }
+        });
       });
       return true;
     },
     clear(): void {
       cache.worlds = [];
-      dbPromise?.then((db) => db.execute("DELETE FROM worlds"));
+      cancelScheduledWrite("worlds");
+      enqueueDbWrite("Clear worlds", async (db) => {
+        await db.execute("DELETE FROM worlds");
+      });
     }
   },
 
@@ -286,17 +441,12 @@ export const sqliteEngine = {
     saveAll(characters: Character[]): boolean {
       cache.characters = cloneJson(characters); // Sync cache immediately
       
-      dbPromise?.then(async (db) => {
-        try {
+      scheduleDbWrite("characters", "Save characters", async (db) => {
+        await runInTransaction(db, async () => {
           await db.execute("DELETE FROM characters");
           for (const char of characters) {
             await db.execute(
-              `INSERT INTO characters (
-                id, name, shortDescription, race, role, aliases, promptKeywords,
-                profileSummary, defaultOutfit, description, personality, appearance,
-                backstory, speakingStyle, relationshipToUser, goals, characterRules,
-                promptPinned, lorebook, createdAt
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+              SQLITE_CHARACTER_INSERT_SQL,
               [
                 char.id, char.name, char.shortDescription || "", char.race || "", char.role || "",
                 JSON.stringify(char.aliases || []), JSON.stringify(char.promptKeywords || []),
@@ -307,15 +457,16 @@ export const sqliteEngine = {
               ]
             );
           }
-        } catch (e) {
-          console.error("Background SQLite Save Characters failed:", e);
-        }
+        });
       });
       return true;
     },
     clear(): void {
       cache.characters = [];
-      dbPromise?.then((db) => db.execute("DELETE FROM characters"));
+      cancelScheduledWrite("characters");
+      enqueueDbWrite("Clear characters", async (db) => {
+        await db.execute("DELETE FROM characters");
+      });
     },
     removeLegacyChat(_characterId: string): void {
       // Legacy operation, no-op in SQLite
@@ -329,15 +480,12 @@ export const sqliteEngine = {
     saveAll(stories: Story[]): boolean {
       cache.stories = cloneJson(stories); // Sync cache immediately
       
-      dbPromise?.then(async (db) => {
-        try {
+      scheduleDbWrite("stories", "Save stories", async (db) => {
+        await runInTransaction(db, async () => {
           await db.execute("DELETE FROM stories");
           for (const story of stories) {
             await db.execute(
-              `INSERT INTO stories (
-                id, title, worldId, characterIds, mainCharacterId, scenario, greeting,
-                storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+              SQLITE_STORY_INSERT_SQL,
               [
                 story.id, story.title, story.worldId, JSON.stringify(story.characterIds || []),
                 story.mainCharacterId, story.scenario || "", story.greeting || "",
@@ -348,15 +496,16 @@ export const sqliteEngine = {
               ]
             );
           }
-        } catch (e) {
-          console.error("Background SQLite Save Stories failed:", e);
-        }
+        });
       });
       return true;
     },
     clear(): void {
       cache.stories = [];
-      dbPromise?.then((db) => db.execute("DELETE FROM stories"));
+      cancelScheduledWrite("stories");
+      enqueueDbWrite("Clear stories", async (db) => {
+        await db.execute("DELETE FROM stories");
+      });
     }
   },
 
@@ -369,24 +518,23 @@ export const sqliteEngine = {
       if (!storyId) return false;
       cache.chats[storyId] = cloneJson(messages); // Sync cache immediately
       
-      dbPromise?.then(async (db) => {
-        try {
-          await db.execute(
-            `INSERT INTO chats (storyId, messages)
-             VALUES ($1, $2)
-             ON CONFLICT(storyId) DO UPDATE SET messages = EXCLUDED.messages`,
-            [storyId, JSON.stringify(messages)]
-          );
-        } catch (e) {
-          console.error("Background SQLite Save Chat failed:", e);
-        }
+      scheduleDbWrite(`chat:${storyId}`, "Save chat", async (db) => {
+        await db.execute(
+          `INSERT INTO chats (storyId, messages)
+           VALUES ($1, $2)
+           ON CONFLICT(storyId) DO UPDATE SET messages = EXCLUDED.messages`,
+          [storyId, JSON.stringify(messages)]
+        );
       });
       return true;
     },
     remove(storyId: string): void {
       if (!storyId) return;
       delete cache.chats[storyId];
-      dbPromise?.then((db) => db.execute("DELETE FROM chats WHERE storyId = $1", [storyId]));
+      cancelScheduledWrite(`chat:${storyId}`);
+      enqueueDbWrite("Remove chat", async (db) => {
+        await db.execute("DELETE FROM chats WHERE storyId = $1", [storyId]);
+      });
     }
   },
 
@@ -399,24 +547,23 @@ export const sqliteEngine = {
       if (!storyId) return false;
       cache.loreMemory[storyId] = cloneJson(loreMemory); // Sync cache immediately
       
-      dbPromise?.then(async (db) => {
-        try {
-          await db.execute(
-            `INSERT INTO lore_memory (storyId, activeLore)
-             VALUES ($1, $2)
-             ON CONFLICT(storyId) DO UPDATE SET activeLore = EXCLUDED.activeLore`,
-            [storyId, JSON.stringify(loreMemory)]
-          );
-        } catch (e) {
-          console.error("Background SQLite Save Lore Memory failed:", e);
-        }
+      scheduleDbWrite(`lore:${storyId}`, "Save lore memory", async (db) => {
+        await db.execute(
+          `INSERT INTO lore_memory (storyId, activeLore)
+           VALUES ($1, $2)
+           ON CONFLICT(storyId) DO UPDATE SET activeLore = EXCLUDED.activeLore`,
+          [storyId, JSON.stringify(loreMemory)]
+        );
       });
       return true;
     },
     remove(storyId: string): void {
       if (!storyId) return;
       delete cache.loreMemory[storyId];
-      dbPromise?.then((db) => db.execute("DELETE FROM lore_memory WHERE storyId = $1", [storyId]));
+      cancelScheduledWrite(`lore:${storyId}`);
+      enqueueDbWrite("Remove lore memory", async (db) => {
+        await db.execute("DELETE FROM lore_memory WHERE storyId = $1", [storyId]);
+      });
     }
   },
 
@@ -428,22 +575,20 @@ export const sqliteEngine = {
       if (!storyId) return;
       cache.settings["active_story_id"] = storyId;
       
-      dbPromise?.then(async (db) => {
-        try {
-          await db.execute(
-            `INSERT INTO settings (key, value)
-             VALUES ('active_story_id', $1)
-             ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
-            [storyId]
-          );
-        } catch (e) {
-          console.error("Background SQLite Set Active Story failed:", e);
-        }
+      enqueueDbWrite("Set active story", async (db) => {
+        await db.execute(
+          `INSERT INTO settings (key, value)
+           VALUES ('active_story_id', $1)
+           ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
+          [storyId]
+        );
       });
     },
     clear(): void {
       delete cache.settings["active_story_id"];
-      dbPromise?.then((db) => db.execute("DELETE FROM settings WHERE key = 'active_story_id'"));
+      enqueueDbWrite("Clear active story", async (db) => {
+        await db.execute("DELETE FROM settings WHERE key = 'active_story_id'");
+      });
     }
   },
 
@@ -454,17 +599,13 @@ export const sqliteEngine = {
     setKoboldBaseUrl(value: string): void {
       cache.settings["kobold_base_url"] = value;
       
-      dbPromise?.then(async (db) => {
-        try {
-          await db.execute(
-            `INSERT INTO settings (key, value)
-             VALUES ('kobold_base_url', $1)
-             ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
-            [value]
-          );
-        } catch (e) {
-          console.error("Background SQLite Set Kobold URL failed:", e);
-        }
+      enqueueDbWrite("Set Kobold URL", async (db) => {
+        await db.execute(
+          `INSERT INTO settings (key, value)
+           VALUES ('kobold_base_url', $1)
+           ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
+          [value]
+        );
       });
     }
   },
@@ -478,30 +619,30 @@ export const sqliteEngine = {
       cache.loreMemory = {};
       cache.settings = {};
       
-      dbPromise?.then(async (db) => {
-        try {
+      for (const key of Array.from(scheduledWriteTasks.keys())) cancelScheduledWrite(key);
+
+      enqueueDbWrite("Factory reset storage", async (db) => {
+        await runInTransaction(db, async () => {
           await db.execute("DELETE FROM worlds");
           await db.execute("DELETE FROM characters");
           await db.execute("DELETE FROM stories");
           await db.execute("DELETE FROM chats");
           await db.execute("DELETE FROM lore_memory");
           await db.execute("DELETE FROM settings");
-        } catch (e) {
-          console.error("Background SQLite Maintenance clear failed:", e);
-        }
+        });
       });
     },
     removeStoryRuntimeData(storyId: string): void {
       delete cache.chats[storyId];
       delete cache.loreMemory[storyId];
+      cancelScheduledWrite(`chat:${storyId}`);
+      cancelScheduledWrite(`lore:${storyId}`);
       
-      dbPromise?.then(async (db) => {
-        try {
+      enqueueDbWrite("Remove story runtime data", async (db) => {
+        await runInTransaction(db, async () => {
           await db.execute("DELETE FROM chats WHERE storyId = $1", [storyId]);
           await db.execute("DELETE FROM lore_memory WHERE storyId = $1", [storyId]);
-        } catch (e) {
-          console.error("Background SQLite Story Runtime clear failed:", e);
-        }
+        });
       });
     }
   }

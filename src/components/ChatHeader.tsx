@@ -1,3 +1,5 @@
+import HeaderSettingsMenu from "./HeaderSettingsMenu";
+
 export default function ChatHeader({
   activeView,
   activeStory,
@@ -7,11 +9,18 @@ export default function ChatHeader({
   selectedWorld,
   selectedCharacter,
   promptTokens,
+  persistenceInfo,
+  koboldBaseUrl,
+  storageModeLabel,
+  storageTargetLabel,
   generationStatus,
   loreStatusText,
   progressPercent,
   onHome,
-  onDebug
+  onDebug,
+  onSaveKoboldBaseUrl,
+  onClearPersistenceError,
+  onFlushPersistence,
 }) {
   const isLanding = activeView === "landing" || !activeStory?.id;
   let title = "M.I.R.A.";
@@ -50,16 +59,41 @@ export default function ChatHeader({
         <span id="headerLoreStatus">{loreStatusText}</span>
       </div>
 
+      {persistenceInfo?.lastError && (
+        <p
+          id="persistenceStatus"
+          style={{
+            margin: "6px 0 0",
+            color: "#ff9f0a",
+            fontSize: "12px",
+            lineHeight: 1.4,
+          }}
+        >
+          Save warning: {persistenceInfo.lastError}
+        </p>
+      )}
+
       <div className="progress">
         <div id="progressFill" style={{ width: `${progressPercent}%` }} />
       </div>
 
-      {showStats && (
-        <button id="debugButton" type="button" onClick={onDebug}>Debug</button>
-      )}
-      {showHome && (
-        <button id="homeButton" className="home-button" title="Go to Home" onClick={onHome}>Home</button>
-      )}
+      <div className="header-actions">
+        {showStats && (
+          <button id="debugButton" type="button" className="header-action-button" onClick={onDebug}>Debug</button>
+        )}
+        <HeaderSettingsMenu
+          koboldBaseUrl={koboldBaseUrl}
+          persistenceInfo={persistenceInfo}
+          storageModeLabel={storageModeLabel}
+          storageTargetLabel={storageTargetLabel}
+          onSaveKoboldBaseUrl={onSaveKoboldBaseUrl}
+          onClearPersistenceError={onClearPersistenceError}
+          onFlushPersistence={onFlushPersistence}
+        />
+        {showHome && (
+          <button id="homeButton" className="header-action-button home-button" title="Go to Home" onClick={onHome}>Home</button>
+        )}
+      </div>
     </header>
   );
 }

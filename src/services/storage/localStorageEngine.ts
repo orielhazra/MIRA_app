@@ -2,6 +2,57 @@ import { STORAGE_KEYS } from "../../constants/defaultData";
 import { cloneJson } from "../../utils/helpers";
 import { World, Character, Story, ChatMessage, LoreEntry } from "../../types";
 
+interface PersistenceStatus {
+  lastError: string | null;
+  lastOperation: string | null;
+  lastSavedAt: number | null;
+  pendingWrites: number;
+}
+
+const persistenceStatus: PersistenceStatus = {
+  lastError: null,
+  lastOperation: null,
+  lastSavedAt: null,
+  pendingWrites: 0,
+};
+
+const persistenceListeners = new Set<(status: PersistenceStatus) => void>();
+
+function emitPersistenceStatus() {
+  const snapshot = { ...persistenceStatus };
+  for (const listener of persistenceListeners) {
+    listener(snapshot);
+  }
+}
+
+function updatePersistenceStatus(patch: Partial<PersistenceStatus>) {
+  Object.assign(persistenceStatus, patch);
+  emitPersistenceStatus();
+}
+
+function withTrackedWrite<T>(operationLabel: string, writer: () => T): T {
+  updatePersistenceStatus({ pendingWrites: persistenceStatus.pendingWrites + 1, lastOperation: operationLabel });
+
+  try {
+    const result = writer();
+    updatePersistenceStatus({
+      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+      lastError: null,
+      lastOperation: operationLabel,
+      lastSavedAt: Date.now(),
+    });
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    updatePersistenceStatus({
+      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+      lastError: `${operationLabel}: ${message}`,
+      lastOperation: operationLabel,
+    });
+    throw error;
+  }
+}
+
 function readLocalStorageJson<T>(key: string, fallback: T): T {
   const saved = localStorage.getItem(key);
   if (!saved) return cloneJson(fallback);
@@ -29,15 +80,34 @@ export const localStorageEngine = {
     return Promise.resolve(); // No-op for LocalStorage
   },
 
+  persistence: {
+    getStatus(): PersistenceStatus {
+      return { ...persistenceStatus };
+    },
+    subscribe(listener: (status: PersistenceStatus) => void): () => void {
+      persistenceListeners.add(listener);
+      listener({ ...persistenceStatus });
+      return () => persistenceListeners.delete(listener);
+    },
+    clearError(): void {
+      updatePersistenceStatus({ lastError: null });
+    },
+    async flush(): Promise<void> {
+      return Promise.resolve();
+    }
+  },
+
   worlds: {
     list(fallback: World[] = []): World[] {
       return readLocalStorageJson<World[]>(STORAGE_KEYS.worlds, fallback);
     },
     saveAll(worlds: World[]): boolean {
-      return writeLocalStorageJson<World[]>(STORAGE_KEYS.worlds, worlds);
+      return withTrackedWrite("Save worlds", () => writeLocalStorageJson<World[]>(STORAGE_KEYS.worlds, worlds));
     },
     clear(): void {
-      localStorage.removeItem(STORAGE_KEYS.worlds);
+      withTrackedWrite("Clear worlds", () => {
+        localStorage.removeItem(STORAGE_KEYS.worlds);
+      });
     }
   },
 
@@ -46,13 +116,17 @@ export const localStorageEngine = {
       return readLocalStorageJson<Character[]>(STORAGE_KEYS.characters, fallback);
     },
     saveAll(characters: Character[]): boolean {
-      return writeLocalStorageJson<Character[]>(STORAGE_KEYS.characters, characters);
+      return withTrackedWrite("Save characters", () => writeLocalStorageJson<Character[]>(STORAGE_KEYS.characters, characters));
     },
     clear(): void {
-      localStorage.removeItem(STORAGE_KEYS.characters);
+      withTrackedWrite("Clear characters", () => {
+        localStorage.removeItem(STORAGE_KEYS.characters);
+      });
     },
     removeLegacyChat(characterId: string): void {
-      localStorage.removeItem(`roleplay_chat_${characterId}`);
+      withTrackedWrite("Remove legacy character chat", () => {
+        localStorage.removeItem(`roleplay_chat_${characterId}`);
+      });
     }
   },
 
@@ -61,10 +135,12 @@ export const localStorageEngine = {
       return readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, fallback);
     },
     saveAll(stories: Story[]): boolean {
-      return writeLocalStorageJson<Story[]>(STORAGE_KEYS.stories, stories);
+      return withTrackedWrite("Save stories", () => writeLocalStorageJson<Story[]>(STORAGE_KEYS.stories, stories));
     },
     clear(): void {
-      localStorage.removeItem(STORAGE_KEYS.stories);
+      withTrackedWrite("Clear stories", () => {
+        localStorage.removeItem(STORAGE_KEYS.stories);
+      });
     }
   },
 
@@ -75,10 +151,13 @@ export const localStorageEngine = {
     },
     save(storyId: string, messages: ChatMessage[]): boolean {
       if (!storyId) return false;
-      return writeLocalStorageJson<ChatMessage[]>(`roleplay_story_chat_${storyId}`, messages);
+      return withTrackedWrite("Save chat", () => writeLocalStorageJson<ChatMessage[]>(`roleplay_story_chat_${storyId}`, messages));
     },
     remove(storyId: string): void {
-      if (storyId) localStorage.removeItem(`roleplay_story_chat_${storyId}`);
+      if (!storyId) return;
+      withTrackedWrite("Remove chat", () => {
+        localStorage.removeItem(`roleplay_story_chat_${storyId}`);
+      });
     }
   },
 
@@ -89,10 +168,13 @@ export const localStorageEngine = {
     },
     save(storyId: string, loreMemory: LoreEntry[]): boolean {
       if (!storyId) return false;
-      return writeLocalStorageJson<LoreEntry[]>(`roleplay_story_lore_memory_${storyId}`, loreMemory);
+      return withTrackedWrite("Save lore memory", () => writeLocalStorageJson<LoreEntry[]>(`roleplay_story_lore_memory_${storyId}`, loreMemory));
     },
     remove(storyId: string): void {
-      if (storyId) localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
+      if (!storyId) return;
+      withTrackedWrite("Remove lore memory", () => {
+        localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
+      });
     }
   },
 
@@ -101,10 +183,15 @@ export const localStorageEngine = {
       return localStorage.getItem(STORAGE_KEYS.activeStory);
     },
     set(storyId: string): void {
-      if (storyId) localStorage.setItem(STORAGE_KEYS.activeStory, storyId);
+      if (!storyId) return;
+      withTrackedWrite("Set active story", () => {
+        localStorage.setItem(STORAGE_KEYS.activeStory, storyId);
+      });
     },
     clear(): void {
-      localStorage.removeItem(STORAGE_KEYS.activeStory);
+      withTrackedWrite("Clear active story", () => {
+        localStorage.removeItem(STORAGE_KEYS.activeStory);
+      });
     }
   },
 
@@ -113,27 +200,33 @@ export const localStorageEngine = {
       return localStorage.getItem("kobold_base_url") || fallback;
     },
     setKoboldBaseUrl(value: string): void {
-      localStorage.setItem("kobold_base_url", value);
+      withTrackedWrite("Set Kobold URL", () => {
+        localStorage.setItem("kobold_base_url", value);
+      });
     }
   },
 
   maintenance: {
     clearKnownData(existingStories: Story[] = [], existingCharacters: Character[] = []): void {
-      for (const story of existingStories) {
-        localStorage.removeItem(`roleplay_story_chat_${story.id}`);
-        localStorage.removeItem(`roleplay_story_lore_memory_${story.id}`);
-      }
-      for (const character of existingCharacters) {
-        localStorage.removeItem(`roleplay_chat_${character.id}`);
-      }
-      localStorage.removeItem(STORAGE_KEYS.worlds);
-      localStorage.removeItem(STORAGE_KEYS.characters);
-      localStorage.removeItem(STORAGE_KEYS.stories);
-      localStorage.removeItem(STORAGE_KEYS.activeStory);
+      withTrackedWrite("Factory reset storage", () => {
+        for (const story of existingStories) {
+          localStorage.removeItem(`roleplay_story_chat_${story.id}`);
+          localStorage.removeItem(`roleplay_story_lore_memory_${story.id}`);
+        }
+        for (const character of existingCharacters) {
+          localStorage.removeItem(`roleplay_chat_${character.id}`);
+        }
+        localStorage.removeItem(STORAGE_KEYS.worlds);
+        localStorage.removeItem(STORAGE_KEYS.characters);
+        localStorage.removeItem(STORAGE_KEYS.stories);
+        localStorage.removeItem(STORAGE_KEYS.activeStory);
+      });
     },
     removeStoryRuntimeData(storyId: string): void {
-      localStorage.removeItem(`roleplay_story_chat_${storyId}`);
-      localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
+      withTrackedWrite("Remove story runtime data", () => {
+        localStorage.removeItem(`roleplay_story_chat_${storyId}`);
+        localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
+      });
     }
   }
 };
