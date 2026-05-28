@@ -104,6 +104,10 @@ export default function useAppManager() {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("mira_editor_collapsed") === "true";
   });
+  const [topbarCollapsed, setTopbarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("mira_topbar_collapsed") === "true";
+  });
 
   const activeStory = useMemo(() => stories.find((story) => story.id === activeStoryId) || null, [stories, activeStoryId]);
   const activeWorld = useMemo(
@@ -148,6 +152,12 @@ export default function useAppManager() {
       window.localStorage.setItem("mira_editor_collapsed", String(editorCollapsed));
     }
   }, [editorCollapsed]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("mira_topbar_collapsed", String(topbarCollapsed));
+    }
+  }, [topbarCollapsed]);
 
   const loreStatusText = activeLoreMemory.length
     ? `Lore: ${activeLoreMemory.map((entry) => [entry.source, entry.name].filter(Boolean).join(": ")).join(", ")}`
@@ -246,6 +256,8 @@ export default function useAppManager() {
   const toggleSidebarCollapsed = () => setSidebarCollapsed((value) => !value);
   const toggleEditorCollapsed = () => setEditorCollapsed((value) => !value);
 
+  const toggleTopbarCollapsed = () => setTopbarCollapsed((value) => !value);
+
   const getWorld = (id: string) => worlds.find((world) => world.id === id) || null;
   const getCharacter = (id: string) => characters.find((character) => character.id === id) || null;
   const getStoryCharacters = (story: any) => getStoryCharactersFromLists(story, characters);
@@ -325,6 +337,7 @@ export default function useAppManager() {
     storageTargetLabel,
     sidebarCollapsed,
     editorCollapsed,
+    topbarCollapsed,
     promptTokens,
     generationStatus,
     progressPercent,
@@ -340,6 +353,7 @@ export default function useAppManager() {
     flushPersistence,
     toggleSidebarCollapsed,
     toggleEditorCollapsed,
+    toggleTopbarCollapsed,
     setStoryDraft,
     setActiveView,
     setSelectedCharacterSheetId,
@@ -408,6 +422,7 @@ export default function useAppManager() {
     storageTargetLabel,
     sidebarCollapsed,
     editorCollapsed,
+    topbarCollapsed,
     promptTokens,
     selectedCharacter,
     selectedCharacterSheetId,
@@ -423,6 +438,7 @@ export default function useAppManager() {
     flushPersistence,
     toggleSidebarCollapsed,
     toggleEditorCollapsed,
+    toggleTopbarCollapsed,
     setStoryDraft,
     stories,
     storyDraft,

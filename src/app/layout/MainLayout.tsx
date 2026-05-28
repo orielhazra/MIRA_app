@@ -158,6 +158,8 @@ export default function MainLayout() {
             generationStatus={app.generationStatus}
             loreStatusText={app.loreStatusText}
             progressPercent={app.progressPercent}
+            isCollapsed={app.topbarCollapsed}
+            onToggleCollapse={app.toggleTopbarCollapsed}
             onHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
             onDebug={() => app.setDebugOpen(true)}
             onSaveKoboldBaseUrl={app.saveKoboldBaseUrl}

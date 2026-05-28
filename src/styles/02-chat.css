@@ -36,6 +36,30 @@
   font-size: 14px;
 }
 
+.collapsed-chat-header {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+}
+
+.collapsed-chat-header h1 {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collapsed-chat-header p,
+.collapsed-chat-header .stats,
+.collapsed-chat-header #persistenceStatus,
+.collapsed-chat-header .progress {
+  display: none !important;
+}
+
 .stats {
   display: flex;
   flex-wrap: wrap;
@@ -114,4 +138,3 @@
 .reply-option.active {
   background: var(--accent);
 }
-

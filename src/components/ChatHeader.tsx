@@ -16,6 +16,8 @@ export default function ChatHeader({
   generationStatus,
   loreStatusText,
   progressPercent,
+  isCollapsed = false,
+  onToggleCollapse,
   onHome,
   onDebug,
   onSaveKoboldBaseUrl,
@@ -49,17 +51,20 @@ export default function ChatHeader({
   }
 
   return (
-    <header className="chat-header">
+    <header className={`chat-header ${isCollapsed ? "collapsed-chat-header" : "expanded-chat-header"}`}>
       <h1>{title}</h1>
-      <p>{subtitle}</p>
 
-      <div className="stats" style={{ display: showStats ? "flex" : "none" }}>
-        <span id="promptTokens">Prompt: {promptTokens}</span>
-        <span id="generationStatus">{generationStatus}</span>
-        <span id="headerLoreStatus">{loreStatusText}</span>
-      </div>
+      {!isCollapsed && <p>{subtitle}</p>}
 
-      {persistenceInfo?.lastError && (
+      {!isCollapsed && (
+        <div className="stats" style={{ display: showStats ? "flex" : "none" }}>
+          <span id="promptTokens">Prompt: {promptTokens}</span>
+          <span id="generationStatus">{generationStatus}</span>
+          <span id="headerLoreStatus">{loreStatusText}</span>
+        </div>
+      )}
+
+      {!isCollapsed && persistenceInfo?.lastError && (
         <p
           id="persistenceStatus"
           style={{
@@ -73,11 +78,23 @@ export default function ChatHeader({
         </p>
       )}
 
-      <div className="progress">
-        <div id="progressFill" style={{ width: `${progressPercent}%` }} />
-      </div>
+      {!isCollapsed && (
+        <div className="progress">
+          <div id="progressFill" style={{ width: `${progressPercent}%` }} />
+        </div>
+      )}
 
       <div className="header-actions">
+        <button
+          id="topbarCollapseButton"
+          type="button"
+          className="header-action-button"
+          aria-label={isCollapsed ? "Expand top bar" : "Collapse top bar"}
+          title={isCollapsed ? "Expand top bar" : "Collapse top bar"}
+          onClick={onToggleCollapse}
+        >
+          {isCollapsed ? "▾" : "▴"}
+        </button>
         {showStats && (
           <button id="debugButton" type="button" className="header-action-button" onClick={onDebug}>Debug</button>
         )}

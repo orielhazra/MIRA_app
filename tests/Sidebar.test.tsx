@@ -22,6 +22,7 @@ describe("Sidebar", () => {
         getWorld={(id: string) => worlds.find((world) => world.id === id) || null}
         getCharacter={(id: string) => characters.find((character) => character.id === id) || null}
         isGenerating={false}
+        onToggleCollapse={vi.fn()}
         onNewStory={vi.fn()}
         onSelectStory={onSelectStory}
         onNewCharacter={vi.fn()}
@@ -35,5 +36,40 @@ describe("Sidebar", () => {
     await user.click(screen.getByRole("button", { name: /Story Two/i }));
 
     expect(onSelectStory).toHaveBeenCalledWith("story-2");
+  });
+
+  it("renders a collapsed rail and expands when its toggle is clicked", async () => {
+    const user = userEvent.setup();
+    const { worlds, characters, stories } = createAppFixtures();
+    const onToggleCollapse = vi.fn();
+
+    render(
+      <Sidebar
+        stories={stories}
+        worlds={worlds}
+        characters={characters}
+        activeView="landing"
+        activeStoryId={null}
+        selectedWorldSheetId=""
+        selectedCharacterSheetId=""
+        getWorld={(id: string) => worlds.find((world) => world.id === id) || null}
+        getCharacter={(id: string) => characters.find((character) => character.id === id) || null}
+        isGenerating={false}
+        isCollapsed
+        onToggleCollapse={onToggleCollapse}
+        onNewStory={vi.fn()}
+        onSelectStory={vi.fn()}
+        onNewCharacter={vi.fn()}
+        onSelectCharacter={vi.fn()}
+        onNewWorld={vi.fn()}
+        onSelectWorld={vi.fn()}
+        onFactoryReset={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Library/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Expand sidebar/i }));
+
+    expect(onToggleCollapse).toHaveBeenCalled();
   });
 });
