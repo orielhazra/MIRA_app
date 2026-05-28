@@ -1,0 +1,188 @@
+/* STORY JOURNAL PANEL */
+
+.story-journal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journal-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.journal-tabs button {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.journal-tabs button:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.journal-tabs button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.journal-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.journal-section {
+  display: block;
+  margin: 0 0 14px;
+}
+
+.journal-section-header {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.journal-section-header strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.journal-section-header small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.journal-section textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.journal-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.journal-entry {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.journal-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.journal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.journal-toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.task-completed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.task-completed-toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.remove-entry-btn {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-entry-btn:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.journal-entry textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.task-entry textarea {
+  min-height: 50px;
+}
+
+.add-entry-btn {
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.add-entry-btn:hover {
+  background: var(--panel-3);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.character-journal-section {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.character-journal-section h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--accent);
+}

@@ -1,0 +1,171 @@
+/* SMALL SCREENS */
+
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 230px 1fr;
+  }
+
+  .editor {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .composer {
+    grid-template-columns: 1fr;
+  }
+
+  .message {
+    max-width: 92%;
+  }
+}
+
+#storyList,
+#characterList,
+#worldList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sheet-view {
+  display: block;
+}
+
+.sheet {
+  max-width: 860px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.sheet h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.sheet-subtitle {
+  margin: 0 0 22px;
+  color: var(--muted);
+}
+
+.sheet-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.sheet-section h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.sheet-section p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+.lore-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.lore-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.lore-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.lore-card p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.sheet-form {
+  display: grid;
+  gap: 12px;
+}
+
+.sheet-form label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sheet-form input,
+.sheet-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #101014;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+
+.sheet-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.sheet-form textarea.sheet-lore-json {
+  min-height: 220px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.sheet-status {
+  color: var(--muted);
+  font-size: 13px;
+  min-height: 18px;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.editor-lore-json {
+  min-height: 220px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.editor-small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+

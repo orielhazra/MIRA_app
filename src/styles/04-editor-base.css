@@ -1,0 +1,133 @@
+/* RIGHT EDITOR */
+
+.editor {
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.editor-panel-header {
+  margin-bottom: 14px;
+}
+
+.editor h2 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+
+.editor label {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.editor input,
+.editor textarea,
+.editor select,
+.composer textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #101014;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+  outline: none;
+}
+
+.editor textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.editor textarea[id*="Lorebook"] {
+  min-height: 180px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.editor input:focus,
+.editor textarea:focus,
+.editor select:focus,
+.composer textarea:focus {
+  border-color: var(--accent);
+}
+
+/* BUTTONS */
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--panel-3);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #343442;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#sendButton,
+#newStoryButton,
+#newCharacterButton,
+#newWorldButton {
+  background: var(--accent);
+}
+
+#sendButton:hover,
+#newStoryButton:hover,
+#newCharacterButton:hover,
+#newWorldButton:hover {
+  background: var(--accent-hover);
+}
+
+#deleteStoryButton,
+#deleteCharacterButton,
+#deleteWorldButton,
+#factoryResetButton {
+  background: var(--danger);
+}
+
+#deleteStoryButton:hover,
+#deleteCharacterButton:hover,
+#deleteWorldButton:hover,
+#factoryResetButton:hover {
+  background: var(--danger-hover);
+}
+
+/* FILE INPUTS */
+
+input[type="file"] {
+  padding: 9px;
+  background: var(--panel-2);
+}
+
+/* SCROLLBARS */
+
+.sidebar::-webkit-scrollbar,
+.editor::-webkit-scrollbar,
+.messages::-webkit-scrollbar {
+  width: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.editor::-webkit-scrollbar-thumb,
+.messages::-webkit-scrollbar-thumb {
+  background: var(--panel-3);
+  border-radius: 999px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.editor::-webkit-scrollbar-track,
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -75,73 +75,75 @@ export default function Composer({
         onKeyDown={handleKeyDown}
       />
 
-      <button
-        id="sendButton"
-        disabled={actionsDisabled || !text.trim()}
-        onClick={submit}
-      >
-        Send
-      </button>
-
-      {isGenerating ? (
+      <div className="composer-controls">
         <button
-          id="cancelGenerationButton"
-          type="button"
-          disabled={cancelDisabled}
-          onClick={onCancelGeneration}
+          id="sendButton"
+          disabled={actionsDisabled || !text.trim()}
+          onClick={submit}
         >
-          Stop
-        </button>
-      ) : (
-        <button
-          id="retryGenerationButton"
-          type="button"
-          disabled={retryDisabled}
-          onClick={onRetryGeneration}
-        >
-          Retry
-        </button>
-      )}
-
-      <button
-        id="extractUpdatesButton"
-        disabled={actionsDisabled}
-        onClick={onExtractUpdates}
-      >
-        Extract
-      </button>
-
-      <div className="composer-options" ref={optionsRef}>
-        <button
-          id="optionsButton"
-          type="button"
-          disabled={actionsDisabled}
-          aria-haspopup="menu"
-          aria-expanded={isOptionsOpen}
-          onClick={() => setIsOptionsOpen((value) => !value)}
-        >
-          Options
+          Send
         </button>
 
-        {isOptionsOpen && (
-          <div className="composer-options-menu" role="menu">
-            <button type="button" role="menuitem" onClick={() => runOption(onContinue)}>
-              Continue
-            </button>
-            <button type="button" role="menuitem" onClick={() => runOption(onElaborate)}>
-              Elaborate
-            </button>
-            <button type="button" role="menuitem" onClick={() => runOption(onReroll)}>
-              Reroll
-            </button>
-            <button type="button" role="menuitem" onClick={() => runOption(onRollback)}>
-              Rollback
-            </button>
-            <button type="button" role="menuitem" className="danger-menu-item" onClick={() => runOption(onReset)}>
-              Reset Chat
-            </button>
-          </div>
+        {isGenerating ? (
+          <button
+            id="cancelGenerationButton"
+            type="button"
+            disabled={cancelDisabled}
+            onClick={onCancelGeneration}
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            id="retryGenerationButton"
+            type="button"
+            disabled={retryDisabled}
+            onClick={onRetryGeneration}
+          >
+            Retry
+          </button>
         )}
+
+        <button
+          id="extractUpdatesButton"
+          disabled={actionsDisabled}
+          onClick={onExtractUpdates}
+        >
+          Extract
+        </button>
+
+        <div className="composer-options" ref={optionsRef}>
+          <button
+            id="optionsButton"
+            type="button"
+            disabled={actionsDisabled}
+            aria-haspopup="menu"
+            aria-expanded={isOptionsOpen}
+            onClick={() => setIsOptionsOpen((value) => !value)}
+          >
+            Options
+          </button>
+
+          {isOptionsOpen && (
+            <div className="composer-options-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => runOption(onContinue)}>
+                Continue
+              </button>
+              <button type="button" role="menuitem" onClick={() => runOption(onElaborate)}>
+                Elaborate
+              </button>
+              <button type="button" role="menuitem" onClick={() => runOption(onReroll)}>
+                Reroll
+              </button>
+              <button type="button" role="menuitem" onClick={() => runOption(onRollback)}>
+                Rollback
+              </button>
+              <button type="button" role="menuitem" className="danger-menu-item" onClick={() => runOption(onReset)}>
+                Reset Chat
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </footer>
   );

@@ -1,5 +1,7 @@
 # MIRA App — Code Review Report
 
+> **Historical Note:** This document reflects an earlier pre-TypeScript / migration stage of the project and intentionally contains legacy `.js` / `.jsx` filenames. Use the current source tree and newer remediation reports for the up-to-date implementation state.
+
 > **Commit:** `878ff17` (Initial commit)  
 > **Checked:** 2026-05-24  
 > **Updated:** 2026-05-24 (post-fix)  

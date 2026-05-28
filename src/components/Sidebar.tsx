@@ -9,6 +9,8 @@ export default function Sidebar({
   getWorld,
   getCharacter,
   isGenerating,
+  isCollapsed = false,
+  onToggleCollapse,
   onNewStory,
   onSelectStory,
   onNewCharacter,
@@ -17,8 +19,38 @@ export default function Sidebar({
   onSelectWorld,
   onFactoryReset
 }) {
+  if (isCollapsed) {
+    return (
+      <aside className="sidebar collapsed-sidebar" aria-label="Collapsed sidebar">
+        <button
+          type="button"
+          className="panel-collapse-button"
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
+          onClick={onToggleCollapse}
+        >
+          »
+        </button>
+        <span className="collapsed-panel-label">Library</span>
+      </aside>
+    );
+  }
+
   return (
     <aside className="sidebar">
+      <div className="side-panel-header">
+        <strong className="side-panel-title">Library</strong>
+        <button
+          type="button"
+          className="panel-collapse-button"
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
+          onClick={onToggleCollapse}
+        >
+          «
+        </button>
+      </div>
+
       <h2>Stories</h2>
       <div id="storyList">
         {stories.map((story) => {

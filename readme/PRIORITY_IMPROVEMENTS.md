@@ -1,10 +1,10 @@
 # Priority Improvements for M.I.R.A. React App
 
 > **Latest Refactoring Milestone (2026-05-25):**  
-> ✅ **Phase 1 Complete**: Split monolithic 1,266-line `EditorPanel.jsx` into modular, feature-oriented panel components under `src/app/layout/panels/`.  
-> ✅ **Feature Relocations Complete**: Migrated generic views (`ChatView.jsx`, `Composer.jsx`, `DebugModal.jsx`) to isolated, clean feature folders under `src/features/chat/` and `src/features/debugging/`.  
+> ✅ **Phase 1 Complete**: Split monolithic 1,266-line `EditorPanel.tsx` into modular, feature-oriented panel components under `src/app/layout/panels/`.  
+> ✅ **Feature Relocations Complete**: Migrated generic views (`ChatView.tsx`, `Composer.tsx`, `DebugModal.tsx`) to isolated, clean feature folders under `src/features/chat/` and `src/features/debugging/`.  
 > ✅ **Key Performance Patches**: Resolved unstable React render keys in the streaming feed, entirely eliminating flickering, lag, and scroll jumping.  
-> ✅ **Global Error Handler Wrapped**: Mounted native React `ErrorBoundary` wrapping at the root `main.jsx` runtime.  
+> ✅ **Global Error Handler Wrapped**: Mounted native React `ErrorBoundary` wrapping at the root `main.tsx` runtime.  
 > ✅ **Clutter Removed**: Purged all deprecated manager hook files under `src/hooks/` to keep the workspace clean.
 
 ## HIGH PRIORITY (Critical for stability & core functionality)
@@ -20,7 +20,7 @@
 - **Impact:** Prevents data loss, improves troubleshooting
 - **Effort:** Medium
 - **Specifics:** Error boundaries, API error recovery, offline detection
-- **Status:** 🟠 **In Progress** (React Error Boundary implemented and wrapped at root-level in `main.jsx` to prevent white-screens on render crashes)
+- **Status:** 🟠 **In Progress** (React Error Boundary implemented and wrapped at root-level in `main.tsx` to prevent white-screens on render crashes)
 
 ### 3. Data Validation & Integrity
 - **Why:** Import validation exists but runtime validation is limited
@@ -37,11 +37,11 @@
 - **Status:** 🟠 **In Progress** (Stable React render keys implemented in ChatView to prevent DOM unmounts/remounts during generation stream)
 
 ### 5. State Management Refactor
-- **Why:** Heavy prop drilling in App.jsx (1787 lines), difficult to maintain
+- **Why:** Heavy prop drilling in App.tsx (1787 lines), difficult to maintain
 - **Impact:** Easier development, fewer bugs
 - **Effort:** Medium-High
 - **Specifics:** Redux/Zustand for complex state
-- **Status:** ✅ **Completed** (Refactored heavy state drilling in `App.jsx` into 4 dedicated state reducers managed by `useAppManager.js` and global `AppContext.Provider` layers)
+- **Status:** ✅ **Completed** (Refactored heavy state drilling in `App.tsx` into 4 dedicated state reducers managed by `useAppManager.ts` and global `AppContext.Provider` layers)
 
 ## MEDIUM PRIORITY (Significant UX improvements)
 

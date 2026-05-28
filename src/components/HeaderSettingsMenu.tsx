@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CUSTOM_DB_PATH, DEFAULT_KOBOLD_BASE_URL, GENERATION_SETTINGS } from "../constants/defaultData";
 
+type SettingsSectionKey = "connection" | "generation" | "storage";
+
 interface PersistenceInfo {
   lastError?: string | null;
   lastOperation?: string | null;
@@ -28,6 +30,7 @@ export default function HeaderSettingsMenu({
   storageTargetLabel,
 }: HeaderSettingsMenuProps) {
   const [open, setOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<SettingsSectionKey | null>(null);
   const [draftKoboldBaseUrl, setDraftKoboldBaseUrl] = useState(koboldBaseUrl || DEFAULT_KOBOLD_BASE_URL);
   const [status, setStatus] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -36,6 +39,7 @@ export default function HeaderSettingsMenu({
     if (!open) {
       setDraftKoboldBaseUrl(koboldBaseUrl || DEFAULT_KOBOLD_BASE_URL);
       setStatus("");
+      setOpenSection(null);
     }
   }, [koboldBaseUrl, open]);
 
@@ -91,6 +95,10 @@ export default function HeaderSettingsMenu({
     setStatus("Pending saves flushed.");
   }
 
+  function toggleSection(section: SettingsSectionKey) {
+    setOpenSection((current) => (current === section ? null : section));
+  }
+
   return (
     <div className="settings-menu" ref={menuRef}>
       <button
@@ -116,8 +124,8 @@ export default function HeaderSettingsMenu({
             </button>
           </div>
 
-          <details className="settings-section" open>
-            <summary>
+          <details className="settings-section" open={openSection === "connection"}>
+            <summary onClick={(event) => { event.preventDefault(); toggleSection("connection"); }}>
               <span>Connection</span>
               <small>{draftKoboldBaseUrl || DEFAULT_KOBOLD_BASE_URL}</small>
             </summary>
@@ -138,8 +146,8 @@ export default function HeaderSettingsMenu({
             </div>
           </details>
 
-          <details className="settings-section">
-            <summary>
+          <details className="settings-section" open={openSection === "generation"}>
+            <summary onClick={(event) => { event.preventDefault(); toggleSection("generation"); }}>
               <span>Generation Defaults</span>
               <small>{GENERATION_SETTINGS.model} • {GENERATION_SETTINGS.maxTokens} tokens</small>
             </summary>
@@ -156,8 +164,8 @@ export default function HeaderSettingsMenu({
             </div>
           </details>
 
-          <details className="settings-section" open={Boolean(persistenceInfo?.lastError)}>
-            <summary>
+          <details className="settings-section" open={openSection === "storage"}>
+            <summary onClick={(event) => { event.preventDefault(); toggleSection("storage"); }}>
               <span>Storage & Save Status</span>
               <small>{saveSummary}</small>
             </summary>

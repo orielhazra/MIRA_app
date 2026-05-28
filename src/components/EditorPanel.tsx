@@ -21,7 +21,8 @@ export default function EditorPanel({
   activeCharacters = [],
   activeLoreMemory,
   loreStatusText,
-  onSaveDirectorNotes,
+  isCollapsed = false,
+  onToggleCollapse,
   onClearDirectorNotes,
   onSaveSceneControl,
   onExportStory,
@@ -38,7 +39,6 @@ export default function EditorPanel({
   currentContext,
   storyMemory,
   castState,
-  onSaveCurrentContext,
   onSaveStoryMemory,
   onSaveCastState,
   onExtractUpdates,
@@ -58,6 +58,23 @@ export default function EditorPanel({
   }, [activeStory?.id, activeStory?.temporaryLorebook]);
 
   if (!activeStory || !activeWorld || storyCharacters.length === 0) return null;
+
+  if (isCollapsed) {
+    return (
+      <aside className="editor collapsed-editor" aria-label="Collapsed editor panel">
+        <button
+          type="button"
+          className="panel-collapse-button"
+          aria-label="Expand control panel"
+          title="Expand control panel"
+          onClick={onToggleCollapse}
+        >
+          «
+        </button>
+        <span className="collapsed-panel-label">Control Panel</span>
+      </aside>
+    );
+  }
 
   function openPanel(panelName) {
     setActivePanel(panelName);
@@ -87,11 +104,7 @@ export default function EditorPanel({
   }
 
   function saveSceneControl(contextDraft, directorDraft) {
-    if (onSaveSceneControl) onSaveSceneControl(contextDraft, directorDraft);
-    else {
-      onSaveCurrentContext?.(contextDraft);
-      onSaveDirectorNotes?.(directorDraft);
-    }
+    onSaveSceneControl(contextDraft, directorDraft);
     setContextStatus("Scene control saved.");
     setTimeout(() => setContextStatus(""), 1500);
   }
@@ -110,6 +123,19 @@ export default function EditorPanel({
 
   return (
     <aside className="editor">
+      <div className="side-panel-header editor-panel-header">
+        <strong className="side-panel-title">Control Panel</strong>
+        <button
+          type="button"
+          className="panel-collapse-button"
+          aria-label="Collapse control panel"
+          title="Collapse control panel"
+          onClick={onToggleCollapse}
+        >
+          »
+        </button>
+      </div>
+
       <div className="info-viewer control-viewer">
         {!activePanel ? (
           <ControlPanelHome

@@ -1,0 +1,170 @@
+/* INFO VIEWER TABS */
+
+.info-viewer {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 120px);
+  min-height: 0;
+}
+
+.info-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+}
+
+.info-tab {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.info-tab:hover {
+  background: var(--panel-3);
+}
+
+.info-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.info-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.info-panel {
+  display: none;
+}
+
+.info-panel.active {
+  display: block;
+}
+
+.info-panel h3 {
+  margin: 16px 0 10px;
+  font-size: 14px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.info-panel h3:first-child {
+  margin-top: 0;
+}
+
+.info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.info-value {
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.info-text-block {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 14px;
+}
+
+.info-text-block:empty::before {
+  content: "None";
+  color: var(--muted);
+  font-style: italic;
+}
+
+.info-lore-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.info-lore-list:empty::before {
+  content: "No entries";
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.lore-entry {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.lore-entry strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.lore-entry .lore-keywords {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.lore-entry p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.info-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.info-actions button.danger {
+  background: var(--danger);
+}
+
+.info-actions button.danger:hover {
+  background: var(--danger-hover);
+}
+
+.sheet-actions button.danger {
+  background: var(--danger);
+}
+
+.sheet-actions button.danger:hover {
+  background: var(--danger-hover);
+}
+

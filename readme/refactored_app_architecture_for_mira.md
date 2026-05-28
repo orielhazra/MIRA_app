@@ -1,5 +1,7 @@
 # Refactoring Plan for `src/App.jsx`
 
+> **Historical Note:** This document reflects an earlier pre-TypeScript / migration stage of the project and intentionally contains legacy `.js` / `.jsx` filenames. Use the current source tree and newer remediation reports for the up-to-date implementation state.
+
 ## Goal
 
 Reduce the current 1800+ line monolithic `App.jsx` into:

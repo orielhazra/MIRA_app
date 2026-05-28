@@ -1,0 +1,98 @@
+/* Current Context Panel */
+.current-context-panel .muted {
+  margin-top: 0;
+}
+
+.context-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.context-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.context-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  padding: 0.65rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.context-card summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.context-card summary span {
+  font-size: 0.72rem;
+  opacity: 0.65;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+}
+
+.context-card label,
+.context-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.55rem 0;
+}
+
+.context-card input,
+.context-card textarea,
+.context-card select,
+.context-grid input,
+.context-grid textarea,
+.context-grid select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #101014;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+  outline: none;
+}
+
+.context-card textarea,
+.context-grid textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.context-present-toggle {
+  margin-top: 0.75rem !important;
+}
+
+.compact-actions {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+
+.identity-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.55rem 0;
+}
+
+.identity-grid {
+  margin-top: 0.75rem;
+}
+
+.cast-state-panel .context-card select {
+  min-height: 40px;
+}
+

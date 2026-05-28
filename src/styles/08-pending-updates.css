@@ -1,0 +1,108 @@
+/* Pending AI state-update suggestions */
+.pending-updates-panel {
+  border-top: 1px solid var(--border);
+  background: #141418;
+  padding: 12px 16px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.pending-updates-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pending-updates-header h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.pending-updates-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pending-updates-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pending-updates-actions .danger,
+.pending-update-card .danger {
+  background: var(--danger);
+}
+
+.pending-updates-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pending-update-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.pending-update-card.selected {
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.14);
+}
+
+.pending-update-card input {
+  margin-top: 4px;
+}
+
+.pending-update-content strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.pending-update-content p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pending-update-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pending-update-category,
+.pending-update-confidence {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.pending-update-category {
+  color: var(--text);
+  border-color: rgba(124, 92, 255, 0.55);
+}
+
+.pending-update-change {
+  color: var(--text) !important;
+}
+

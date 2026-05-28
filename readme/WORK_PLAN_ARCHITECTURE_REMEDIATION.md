@@ -445,7 +445,7 @@ Each phase should end with a short smoke-test pass before moving on.
 ### Tasks
 
 #### E1. Remove dead files and dead branches
-- delete `src/App.jsx.backup`
+- remove obsolete backup files from the source tree
 - remove dead CSS and unreachable branches
 - clean unused placeholders where appropriate
 

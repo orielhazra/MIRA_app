@@ -1,0 +1,89 @@
+/* MULTI-CHARACTER STORY SUPPORT */
+.cast-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cast-picker-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.cast-picker-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.cast-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--panel-2);
+  cursor: pointer;
+}
+
+.cast-checkbox input {
+  width: auto !important;
+  min-width: 1rem;
+}
+
+.cast-checkbox span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cast-checkbox small,
+.cast-summary-card span,
+.character-profile-card summary span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.cast-summary-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.cast-summary-card,
+.character-profile-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.cast-summary-card strong,
+.cast-summary-card span {
+  display: block;
+}
+
+.cast-summary-card p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.character-profile-card {
+  margin-bottom: 0.75rem;
+}
+
+.character-profile-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.character-profile-card .info-field:first-of-type {
+  margin-top: 0.75rem;
+}
+

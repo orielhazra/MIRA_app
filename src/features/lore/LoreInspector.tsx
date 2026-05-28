@@ -1,3 +1,3 @@
-// LoreInspector.jsx
+// LoreInspector.tsx
 // Debug-oriented view for lore match results, trigger text, and injection details.
-// Extracted from DebugModal.jsx lore tab for reuse.
+// Extracted from DebugModal.tsx lore tab for reuse.

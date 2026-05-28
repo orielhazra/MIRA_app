@@ -96,6 +96,14 @@ export default function useAppManager() {
   const [koboldBaseUrl, setKoboldBaseUrlState] = useState(
     () => repository.settings.getKoboldBaseUrl(DEFAULT_KOBOLD_BASE_URL)
   );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("mira_sidebar_collapsed") === "true";
+  });
+  const [editorCollapsed, setEditorCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("mira_editor_collapsed") === "true";
+  });
 
   const activeStory = useMemo(() => stories.find((story) => story.id === activeStoryId) || null, [stories, activeStoryId]);
   const activeWorld = useMemo(
@@ -128,6 +136,18 @@ export default function useAppManager() {
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("mira_sidebar_collapsed", String(sidebarCollapsed));
+    }
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("mira_editor_collapsed", String(editorCollapsed));
+    }
+  }, [editorCollapsed]);
 
   const loreStatusText = activeLoreMemory.length
     ? `Lore: ${activeLoreMemory.map((entry) => [entry.source, entry.name].filter(Boolean).join(": ")).join(", ")}`
@@ -223,6 +243,9 @@ export default function useAppManager() {
     ? (CUSTOM_DB_PATH.trim() || "sqlite:mira.db")
     : "Browser local storage";
 
+  const toggleSidebarCollapsed = () => setSidebarCollapsed((value) => !value);
+  const toggleEditorCollapsed = () => setEditorCollapsed((value) => !value);
+
   const getWorld = (id: string) => worlds.find((world) => world.id === id) || null;
   const getCharacter = (id: string) => characters.find((character) => character.id === id) || null;
   const getStoryCharacters = (story: any) => getStoryCharactersFromLists(story, characters);
@@ -300,6 +323,8 @@ export default function useAppManager() {
     koboldBaseUrl,
     storageModeLabel,
     storageTargetLabel,
+    sidebarCollapsed,
+    editorCollapsed,
     promptTokens,
     generationStatus,
     progressPercent,
@@ -313,6 +338,8 @@ export default function useAppManager() {
     saveKoboldBaseUrl,
     clearPersistenceError,
     flushPersistence,
+    toggleSidebarCollapsed,
+    toggleEditorCollapsed,
     setStoryDraft,
     setActiveView,
     setSelectedCharacterSheetId,
@@ -379,6 +406,8 @@ export default function useAppManager() {
     koboldBaseUrl,
     storageModeLabel,
     storageTargetLabel,
+    sidebarCollapsed,
+    editorCollapsed,
     promptTokens,
     selectedCharacter,
     selectedCharacterSheetId,
@@ -392,6 +421,8 @@ export default function useAppManager() {
     saveKoboldBaseUrl,
     clearPersistenceError,
     flushPersistence,
+    toggleSidebarCollapsed,
+    toggleEditorCollapsed,
     setStoryDraft,
     stories,
     storyDraft,

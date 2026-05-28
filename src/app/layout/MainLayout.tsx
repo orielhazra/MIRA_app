@@ -15,6 +15,12 @@ export default function MainLayout() {
   const app = useApp();
 
   const shouldShowEditor = app.activeView === "story" && app.activeStory?.id;
+  const appClassName = [
+    "app",
+    shouldShowEditor ? "with-editor" : "without-editor",
+    app.sidebarCollapsed ? "sidebar-collapsed" : "sidebar-expanded",
+    shouldShowEditor ? (app.editorCollapsed ? "editor-collapsed" : "editor-expanded") : "editor-hidden",
+  ].join(" ");
 
   function renderMainContent() {
     if (app.activeView === "story-create") {
@@ -112,7 +118,7 @@ export default function MainLayout() {
 
   return (
     <>
-      <div className={`app ${shouldShowEditor ? "with-editor" : "without-editor"}`}>
+      <div className={appClassName}>
         <Sidebar
           stories={app.stories}
           worlds={app.worlds}
@@ -124,6 +130,8 @@ export default function MainLayout() {
           getWorld={app.getWorld}
           getCharacter={app.getCharacter}
           isGenerating={app.isGenerating}
+          isCollapsed={app.sidebarCollapsed}
+          onToggleCollapse={app.toggleSidebarCollapsed}
           onNewStory={app.openStoryCreationSheet}
           onSelectStory={app.switchStory}
           onNewCharacter={app.createBlankCharacter}
@@ -168,7 +176,8 @@ export default function MainLayout() {
             activeCharacters={app.activeStoryCharacters}
             activeLoreMemory={app.activeLoreMemory}
             loreStatusText={app.loreStatusText}
-            onSaveDirectorNotes={app.saveDirectorNotes}
+            isCollapsed={app.editorCollapsed}
+            onToggleCollapse={app.toggleEditorCollapsed}
             onClearDirectorNotes={app.clearDirectorNotes}
             onSaveSceneControl={app.saveSceneControl}
             onExportStory={app.exportActiveStory}
@@ -185,7 +194,6 @@ export default function MainLayout() {
             currentContext={app.activeStory.currentContext}
             storyMemory={app.activeStory.storyMemory}
             castState={app.activeStory.castState}
-            onSaveCurrentContext={app.saveCurrentContext}
             onSaveStoryMemory={app.saveStoryMemory}
             onSaveCastState={app.saveCastState}
             onExtractUpdates={app.extractStateUpdates}
