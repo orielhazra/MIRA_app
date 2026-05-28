@@ -30,38 +30,41 @@ describe("Sidebar", () => {
       />
     );
 
+    // Clicking the story title card calls onEditStory
     await user.click(screen.getByRole("button", { name: /Story Two/i }));
-    expect(onSelectStory).toHaveBeenCalledWith("story-2");
+    expect(onEditStory).toHaveBeenCalledWith("story-2");
 
+    // Clicking the Edit action button also calls onEditStory
     await user.click(screen.getAllByText("Edit")[1]);
     expect(onEditStory).toHaveBeenCalledWith("story-2");
   });
 
   it("renders a collapsed rail and expands when its toggle is clicked", async () => {
     const user = userEvent.setup();
-    const { worlds, characters, stories } = createAppFixtures();
+    const { worlds, characters } = createAppFixtures();
     const onToggleCollapse = vi.fn();
+    const onSelectCharacter = vi.fn();
+    const onNewCharacter = vi.fn();
+    const onSelectWorld = vi.fn();
+    const getWorld = (id: string) => worlds.find((world) => world.id === id) || null;
+    const getCharacter = (id: string) => characters.find((character) => character.id === id) || null;
 
     render(
       <Sidebar
-        stories={stories}
-        worlds={worlds}
-        characters={characters}
-        activeView="landing"
+        activeStory={null}
+        activeWorld={null}
+        activeStoryCharacters={characters}
         selectedWorldSheetId=""
         selectedCharacterSheetId=""
-        getWorld={(id: string) => worlds.find((world) => world.id === id) || null}
-        getCharacter={(id: string) => characters.find((character) => character.id === id) || null}
+        getWorld={getWorld}
+        getCharacter={getCharacter}
         isGenerating={false}
         isCollapsed
         onToggleCollapse={onToggleCollapse}
-        onNewStory={vi.fn()}
-        onSelectStory={vi.fn()}
-        onNewCharacter={vi.fn()}
-        onSelectCharacter={vi.fn()}
-        onNewWorld={vi.fn()}
-        onSelectWorld={vi.fn()}
-        onFactoryReset={vi.fn()}
+        onNewCharacter={onNewCharacter}
+        onSelectCharacter={onSelectCharacter}
+        onSelectWorld={onSelectWorld}
+        onEditStory={vi.fn()}
       />
     );
 

@@ -12,7 +12,7 @@ export default function Sidebar({
   onSelectCharacter,
   onNewCharacter,
   onSelectWorld,
-  onFactoryReset
+  onEditStory
 }) {
   if (isCollapsed) {
     return (
@@ -57,10 +57,7 @@ export default function Sidebar({
             type="button"
             className="character active"
             disabled={isGenerating}
-            onClick={() => {
-              // Open story editing (could be extended later)
-              alert("Story editing sheet coming soon");
-            }}
+            onClick={() => onEditStory?.(activeStory.id)}
           >
             <strong>{activeStory.title}</strong>
             <span>Edit story details</span>
@@ -128,10 +125,6 @@ export default function Sidebar({
       ) : (
         <div style={{ color: "#888", padding: "8px 0" }}>No world assigned</div>
       )}
-
-      <hr />
-
-      {/* Factory Reset moved to home page */}
     </aside>
   );
 }

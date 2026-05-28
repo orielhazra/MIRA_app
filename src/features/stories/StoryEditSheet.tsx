@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import { uniqueCompact } from "../../utils/appHelpers";
 
+interface StoryEditSheetProps {
+  worlds?: any[];
+  characters?: any[];
+  initialDraft: any;
+  onSave: (draft: any) => { ok?: boolean; error?: string } | void;
+  onCancel: () => void;
+  onOpenStory?: (storyId: string) => void;
+  activeStory?: any | null;
+  onBackToStory?: () => void;
+}
+
 export default function StoryEditSheet({
   worlds = [],
   characters = [],
@@ -11,9 +22,13 @@ export default function StoryEditSheet({
   onSave,
   onCancel,
   onOpenStory,
-}) {
+  activeStory,
+  onBackToStory,
+}: StoryEditSheetProps) {
   const [draft, setDraft] = useState(initialDraft);
   const [status, setStatus] = useState("");
+
+  const isEditingActiveStory = !!(activeStory && draft && activeStory.id === draft.id);
 
   useEffect(() => setDraft(initialDraft), [initialDraft]);
 
@@ -29,15 +44,15 @@ export default function StoryEditSheet({
     );
   }
 
-  function update(field, value) {
+  function update(field: string, value: any) {
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function toggleStoryCharacter(characterId) {
+  function toggleStoryCharacter(characterId: string) {
     setDraft((current) => {
       const currentIds = Array.isArray(current.characterIds) ? current.characterIds : [];
       const nextIds = currentIds.includes(characterId)
-        ? currentIds.filter((id) => id !== characterId)
+        ? currentIds.filter((id: string) => id !== characterId)
         : [...currentIds, characterId];
       return { ...current, characterIds: uniqueCompact(nextIds) };
     });
@@ -45,26 +60,40 @@ export default function StoryEditSheet({
 
   function save() {
     const result = onSave(draft);
-    if (result?.error) {
-      setStatus(result.error);
+    if (result && "error" in result) {
+      setStatus(result.error!);
       return;
     }
     setStatus("Story saved.");
     setTimeout(() => setStatus(""), 1500);
   }
 
+  function handleBack() {
+    if (isEditingActiveStory && onBackToStory) {
+      onBackToStory();
+    } else {
+      onCancel();
+    }
+  }
+
+  const backLabel = isEditingActiveStory ? "Back To Story" : "Back To Library";
+
   return (
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>Edit Story</h2>
         <p className="sheet-subtitle">
-          Edit the full story record loaded from the library. The library keeps only its lightweight metadata until the story is opened or edited.
+          {isEditingActiveStory
+            ? "Editing the active story. Cast is locked — edit character membership from the sidebar instead."
+            : "Edit the full story record loaded from the library. The library keeps only its lightweight metadata until the story is opened or edited."}
         </p>
 
         <div className="sheet-actions">
           <button onClick={save}>Save Story</button>
-          <button onClick={() => onOpenStory?.(draft.id)}>Open Story</button>
-          <button onClick={onCancel}>Back To Library</button>
+          {onOpenStory && !isEditingActiveStory && (
+            <button onClick={() => onOpenStory(draft.id)}>Open Story</button>
+          )}
+          <button onClick={handleBack}>{backLabel}</button>
         </div>
         <p className="sheet-status">{status}</p>
 
@@ -77,33 +106,35 @@ export default function StoryEditSheet({
           <label>
             Story World
             <select value={draft.worldId || ""} onChange={(event) => update("worldId", event.target.value)}>
-              {worlds.map((world) => <option key={world.id} value={world.id}>{world.name}</option>)}
+              {worlds.map((world: any) => <option key={world.id} value={world.id}>{world.name}</option>)}
             </select>
           </label>
 
-          <div className="cast-picker">
-            <span className="cast-picker-label">Story Cast</span>
-            <p className="muted">Characters are reusable templates. Checking a character links that character to this story only.</p>
-            <div className="cast-picker-list">
-              {characters.map((character) => {
-                const selected = (draft.characterIds || []).includes(character.id);
-                return (
-                  <label key={character.id} className="cast-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => toggleStoryCharacter(character.id)}
-                    />
-                    <span>
-                      <strong>{character.name}</strong>
-                      <small>{character.shortDescription || "Reusable cast member"}</small>
-                    </span>
-                  </label>
-                );
-              })}
-              {!characters.length && <p className="muted">No character templates are available yet.</p>}
+          {!isEditingActiveStory && (
+            <div className="cast-picker">
+              <span className="cast-picker-label">Story Cast</span>
+              <p className="muted">Characters are reusable templates. Checking a character links that character to this story only.</p>
+              <div className="cast-picker-list">
+                {characters.map((character: any) => {
+                  const selected = (draft.characterIds || []).includes(character.id);
+                  return (
+                    <label key={character.id} className="cast-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleStoryCharacter(character.id)}
+                      />
+                      <span>
+                        <strong>{character.name}</strong>
+                        <small>{character.shortDescription || "Reusable cast member"}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+                {!characters.length && <p className="muted">No character templates are available yet.</p>}
+              </div>
             </div>
-          </div>
+          )}
 
           <label>
             Scenario
@@ -116,7 +147,7 @@ export default function StoryEditSheet({
           </label>
 
           <label>Story Lorebook</label>
-          <LoreEditor lorebook={draft.storyLorebook || []} onChange={(lore) => update("storyLorebook", lore)} />
+          <LoreEditor lorebook={draft.storyLorebook || []} onChange={(lore: any) => update("storyLorebook", lore)} />
         </div>
       </div>
     </section>

@@ -40,7 +40,6 @@ export default function MainLayout() {
       );
     }
 
-
     if (app.activeView === "story-edit") {
       return (
         <StoryEditSheet
@@ -50,6 +49,11 @@ export default function MainLayout() {
           onSave={app.saveStoryEdits}
           onCancel={app.cancelStoryEdit}
           onOpenStory={app.switchStory}
+          activeStory={app.activeStory}
+          onBackToStory={() => {
+            app.setActiveView("story");
+            app.setStoryDraft(null);
+          }}
         />
       );
     }
@@ -162,7 +166,7 @@ export default function MainLayout() {
             onNewCharacter={app.createBlankCharacter}
             onSelectCharacter={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("character"); app.setStoryDraft(null); }}
             onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
-            onFactoryReset={app.factoryReset}
+            onEditStory={app.openStoryEditSheet}
           />
         )}
 
@@ -231,7 +235,7 @@ export default function MainLayout() {
 
       <input ref={app.storyImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportStoryFile} />
       <input ref={app.characterImportRef} type="file" accept=".json,application.json" hidden onChange={app.handleImportCharacterFile} />
-      <input ref={app.worldImportRef} type="file" accept=".json,application.json" hidden onChange={app.handleImportWorldFile} />
+      <input ref={app.worldImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportWorldFile} />
 
       <DebugModal
         open={app.debugOpen}
