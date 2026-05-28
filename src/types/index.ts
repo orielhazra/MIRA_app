@@ -48,9 +48,9 @@ export interface World {
   rules?: string;
   locations?: WorldLocation[];
   worldLorebook?: LoreEntry[];
-  worldLocations?: any; // Permissive for raw schemas
-  startingScenario?: string; // Permissive for raw schemas
-  lorebook?: any; // Permissive for raw schemas
+  worldLocations?: any;
+  startingScenario?: string;
+  lorebook?: any;
   createdAt?: number;
 }
 
@@ -74,7 +74,7 @@ export interface Character {
   characterRules?: string;
   promptPinned?: boolean;
   lorebook?: LoreEntry[];
-  characterLorebook?: any; // Permissive for raw schemas
+  characterLorebook?: any;
   createdAt?: number;
 }
 
@@ -161,7 +161,7 @@ export interface CurrentContext {
   location: LocationContext;
   objects: ObjectContext[];
   recentFacts: RecentFactContext;
-  activeCharacters?: CastMemberState[]; // Used dynamically in selection
+  activeCharacters?: CastMemberState[];
 }
 
 export interface DirectorNotes {
@@ -176,12 +176,21 @@ export interface DirectorNotes {
   customNotes?: string;
 }
 
+// Lightweight metadata for listing stories without loading full data
+export interface StoryMeta {
+  id: string;
+  title: string;
+  worldId: string;
+  characterIds: string[];
+  createdAt?: number;
+}
+
+// Full story data (loaded only when active)
 export interface Story {
   id: string;
   title: string;
   worldId: string;
   characterIds: string[];
-  mainCharacterId: string;
   scenario?: string;
   greeting?: string;
   storyLorebook?: LoreEntry[];

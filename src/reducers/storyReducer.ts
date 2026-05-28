@@ -1,23 +1,23 @@
 // Story, world, character, and UI navigation state reducer.
-import { World, Character, Story } from "../types/index";
+import { World, Character, Story, StoryMeta } from "../types/index";
 
 export interface StoryState {
   worlds: World[];
   characters: Character[];
-  stories: Story[];
-  activeStoryId: string | null;
+  storyMetas: StoryMeta[];      // Lightweight list (Phase 2)
+  activeStory: Story | null;    // Only one full story loaded at a time
   activeView: string;
   selectedCharacterSheetId: string;
   selectedWorldSheetId: string;
-  storyDraft: Story | null;
+  storyDraft: any | null;
   debugOpen: boolean;
 }
 
 export const storyInitialState: StoryState = {
   worlds: [],
   characters: [],
-  stories: [],
-  activeStoryId: null,
+  storyMetas: [],
+  activeStory: null,
   activeView: "landing",
   selectedCharacterSheetId: "",
   selectedWorldSheetId: "",
@@ -28,17 +28,16 @@ export const storyInitialState: StoryState = {
 export type StoryAction =
   | { type: "SAVE_WORLDS"; payload: World[] }
   | { type: "SAVE_CHARACTERS"; payload: Character[] }
-  | { type: "SAVE_STORIES"; payload: Story[] }
-  | { type: "SWITCH_STORY"; payload: { storyId: string } }
-  | { type: "CLEAR_ACTIVE_STORY" }
+  | { type: "SET_STORY_METAS"; payload: StoryMeta[] }
+  | { type: "SET_ACTIVE_STORY"; payload: Story | null }
   | { type: "SET_ACTIVE_VIEW"; payload: string }
   | { type: "SELECT_CHARACTER_SHEET"; payload: string }
   | { type: "SELECT_WORLD_SHEET"; payload: string }
-  | { type: "SET_STORY_DRAFT"; payload: Story | null }
+  | { type: "SET_STORY_DRAFT"; payload: any | null }
   | { type: "SET_DEBUG_OPEN"; payload: boolean }
   | {
       type: "FACTORY_RESET";
-      payload: { worlds: World[]; characters: Character[]; stories: Story[] };
+      payload: { worlds: World[]; characters: Character[]; storyMetas: StoryMeta[] };
     };
 
 export function storyReducer(state: StoryState, action: StoryAction): StoryState {
@@ -49,24 +48,11 @@ export function storyReducer(state: StoryState, action: StoryAction): StoryState
     case "SAVE_CHARACTERS":
       return { ...state, characters: action.payload };
 
-    case "SAVE_STORIES":
-      return { ...state, stories: action.payload };
+    case "SET_STORY_METAS":
+      return { ...state, storyMetas: action.payload };
 
-    case "SWITCH_STORY":
-      return {
-        ...state,
-        activeStoryId: action.payload.storyId,
-        activeView: "story",
-        storyDraft: null,
-      };
-
-    case "CLEAR_ACTIVE_STORY":
-      return {
-        ...state,
-        activeStoryId: null,
-        activeView: "landing",
-        storyDraft: null,
-      };
+    case "SET_ACTIVE_STORY":
+      return { ...state, activeStory: action.payload };
 
     case "SET_ACTIVE_VIEW":
       return { ...state, activeView: action.payload };
@@ -88,7 +74,7 @@ export function storyReducer(state: StoryState, action: StoryAction): StoryState
         ...storyInitialState,
         worlds: action.payload.worlds,
         characters: action.payload.characters,
-        stories: action.payload.stories,
+        storyMetas: action.payload.storyMetas,
         selectedWorldSheetId: action.payload.worlds[0]?.id || "",
         selectedCharacterSheetId: action.payload.characters[0]?.id || "",
       };

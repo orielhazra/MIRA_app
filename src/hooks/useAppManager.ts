@@ -39,8 +39,8 @@ export default function useAppManager() {
     ...storyInitialState,
     worlds: initial.worlds,
     characters: initial.characters,
-    stories: initial.stories,
-    activeStoryId: initial.activeStoryId,
+    storyMetas: initial.storyMetas || [],
+    activeStory: initial.activeStory || null,
     activeView: initial.activeView,
     selectedCharacterSheetId: initial.selectedCharacterSheetId,
     selectedWorldSheetId: initial.selectedWorldSheetId,
@@ -74,8 +74,8 @@ export default function useAppManager() {
   const {
     worlds,
     characters,
-    stories,
-    activeStoryId,
+    storyMetas,
+    activeStory,
     activeView,
     selectedCharacterSheetId,
     selectedWorldSheetId,
@@ -109,7 +109,6 @@ export default function useAppManager() {
     return window.localStorage.getItem("mira_topbar_collapsed") === "true";
   });
 
-  const activeStory = useMemo(() => stories.find((story) => story.id === activeStoryId) || null, [stories, activeStoryId]);
   const activeWorld = useMemo(
     () => (activeStory ? worlds.find((world) => world.id === activeStory.worldId) || worlds[0] || null : worlds[0] || null),
     [worlds, activeStory]
@@ -176,10 +175,9 @@ export default function useAppManager() {
   const setSelectedCharacterSheetId = (id: string) => dispatchStory({ type: "SELECT_CHARACTER_SHEET", payload: id });
   const setSelectedWorldSheetId = (id: string) => dispatchStory({ type: "SELECT_WORLD_SHEET", payload: id });
   const setDebugOpen = (open: boolean) => dispatchStory({ type: "SET_DEBUG_OPEN", payload: open });
-  const setActiveStoryId = (storyId: string | null) => {
-    if (storyId) dispatchStory({ type: "SWITCH_STORY", payload: { storyId } });
-    else dispatchStory({ type: "CLEAR_ACTIVE_STORY" });
-  };
+
+  // New setter for active story
+  const setActiveStory = (story: any) => dispatchStory({ type: "SET_ACTIVE_STORY", payload: story });
 
   const setChatHistory = (history: any[]) => dispatchChat({ type: "SET_HISTORY", payload: history });
   const setEditingMessageIndex = (index: number | null) => {
@@ -213,24 +211,20 @@ export default function useAppManager() {
     repository.characters.saveAll(normalizedCharacters);
   };
 
-  const saveStoryList = (
-    nextStories: any[],
-    sourceWorlds: any[] = worlds,
-    sourceCharacters: any[] = characters
-  ) => {
-    const normalizedStories = nextStories.map((story) => normalizeStory(story, sourceWorlds, sourceCharacters));
-    dispatchStory({ type: "SAVE_STORIES", payload: normalizedStories });
-    repository.stories.saveAll(normalizedStories);
+  // Updated: Now saves metas only (we'll evolve this further)
+  const saveStoryMetas = (nextMetas: any[]) => {
+    dispatchStory({ type: "SET_STORY_METAS", payload: nextMetas });
+    // repository.stories.saveAll will be replaced later
   };
 
   const saveChatForActiveStory = (nextChatHistory: any[]) => {
-    if (!activeStoryId) return;
-    repository.chats.save(activeStoryId, nextChatHistory);
+    if (!activeStory) return;
+    repository.chats.save(activeStory.id, nextChatHistory);
   };
 
   const saveLoreForActiveStory = (nextLoreMemory: any[]) => {
-    if (!activeStoryId) return;
-    repository.loreMemory.save(activeStoryId, nextLoreMemory);
+    if (!activeStory) return;
+    repository.loreMemory.save(activeStory.id, nextLoreMemory);
   };
 
   const saveKoboldBaseUrl = async (value: string) => {
@@ -263,7 +257,7 @@ export default function useAppManager() {
   const getStoryCharacters = (story: any) => getStoryCharactersFromLists(story, characters);
 
   const clearActiveStorySelection = () => {
-    setActiveStoryId(null);
+    setActiveStory(null);
     setChatHistory([]);
     setActiveLoreMemory([]);
     setStoryDraft(null);
@@ -317,8 +311,8 @@ export default function useAppManager() {
     dispatchLore,
     worlds,
     characters,
-    stories,
-    activeStoryId,
+    storyMetas,
+    activeStory,
     activeView,
     selectedCharacterSheetId,
     selectedWorldSheetId,
@@ -342,7 +336,6 @@ export default function useAppManager() {
     generationStatus,
     progressPercent,
     isExtractingUpdates,
-    activeStory,
     activeWorld,
     activeStoryCharacters,
     activeCharacter,
@@ -359,7 +352,7 @@ export default function useAppManager() {
     setSelectedCharacterSheetId,
     setSelectedWorldSheetId,
     setDebugOpen,
-    setActiveStoryId,
+    setActiveStory,
     setChatHistory,
     setEditingMessageIndex,
     setActiveLoreMemory,
@@ -373,7 +366,7 @@ export default function useAppManager() {
     setIsExtractingUpdates,
     saveWorldList,
     saveCharacterList,
-    saveStoryList,
+    saveStoryMetas,
     saveChatForActiveStory,
     saveLoreForActiveStory,
     getWorld,
@@ -398,7 +391,6 @@ export default function useAppManager() {
     activeLoreMemory,
     activeStory,
     activeStoryCharacters,
-    activeStoryId,
     activeView,
     activeWorld,
     characterImportRef,
@@ -440,7 +432,7 @@ export default function useAppManager() {
     toggleEditorCollapsed,
     toggleTopbarCollapsed,
     setStoryDraft,
-    stories,
+    storyMetas,
     storyDraft,
     storyImportRef,
     worldImportRef,

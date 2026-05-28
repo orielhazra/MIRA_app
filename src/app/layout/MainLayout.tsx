@@ -14,6 +14,7 @@ import WorldSheet from "../../features/worlds/WorldSheet";
 export default function MainLayout() {
   const app = useApp();
 
+  const isLanding = !app.activeStory || app.activeView === "landing";
   const shouldShowEditor = app.activeView === "story" && app.activeStory?.id;
   const appClassName = [
     "app",
@@ -67,11 +68,16 @@ export default function MainLayout() {
       );
     }
 
-    if (!app.activeStory || app.activeView === "landing") {
+    if (isLanding) {
       return (
         <Landing
+          storyMetas={app.storyMetas}
+          worlds={app.worlds}
           onNewStory={app.openStoryCreationSheet}
           onImportStory={() => app.storyImportRef.current?.click()}
+          onSelectStory={app.switchStory}
+          onFactoryReset={app.factoryReset}
+          isGenerating={app.isGenerating}
         />
       );
     }
@@ -119,27 +125,24 @@ export default function MainLayout() {
   return (
     <>
       <div className={appClassName}>
-        <Sidebar
-          stories={app.stories}
-          worlds={app.worlds}
-          characters={app.characters}
-          activeView={app.activeView}
-          activeStoryId={app.activeStoryId}
-          selectedWorldSheetId={app.selectedWorldSheetId}
-          selectedCharacterSheetId={app.selectedCharacterSheetId}
-          getWorld={app.getWorld}
-          getCharacter={app.getCharacter}
-          isGenerating={app.isGenerating}
-          isCollapsed={app.sidebarCollapsed}
-          onToggleCollapse={app.toggleSidebarCollapsed}
-          onNewStory={app.openStoryCreationSheet}
-          onSelectStory={app.switchStory}
-          onNewCharacter={app.createBlankCharacter}
-          onSelectCharacter={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("character"); app.setStoryDraft(null); }}
-          onNewWorld={app.createBlankWorld}
-          onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
-          onFactoryReset={app.factoryReset}
-        />
+        {/* Only show global sidebar when not on landing */}
+        {!isLanding && (
+          <Sidebar
+            activeStory={app.activeStory}
+            activeWorld={app.activeWorld}
+            activeStoryCharacters={app.activeStoryCharacters}
+            selectedWorldSheetId={app.selectedWorldSheetId}
+            selectedCharacterSheetId={app.selectedCharacterSheetId}
+            getWorld={app.getWorld}
+            getCharacter={app.getCharacter}
+            isGenerating={app.isGenerating}
+            isCollapsed={app.sidebarCollapsed}
+            onToggleCollapse={app.toggleSidebarCollapsed}
+            onNewCharacter={app.createBlankCharacter}
+            onSelectCharacter={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("character"); app.setStoryDraft(null); }}
+            onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
+          />
+        )}
 
         <main className="chat">
           <ChatHeader
@@ -205,8 +208,8 @@ export default function MainLayout() {
       </div>
 
       <input ref={app.storyImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportStoryFile} />
-      <input ref={app.characterImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportCharacterFile} />
-      <input ref={app.worldImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportWorldFile} />
+      <input ref={app.characterImportRef} type="file" accept=".json,application.json" hidden onChange={app.handleImportCharacterFile} />
+      <input ref={app.worldImportRef} type="file" accept=".json,application.json" hidden onChange={app.handleImportWorldFile} />
 
       <DebugModal
         open={app.debugOpen}

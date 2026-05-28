@@ -1,6 +1,6 @@
 import { cloneJson } from "../../utils/helpers";
 import { CUSTOM_DB_PATH } from "../../constants/defaultData";
-import { World, Character, Story, ChatMessage, LoreEntry } from "../../types";
+import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry } from "../../types";
 import { ensureSqliteSchema, SQLITE_WORLD_INSERT_SQL, SQLITE_CHARACTER_INSERT_SQL, SQLITE_STORY_INSERT_SQL } from "./sqliteSchema";
 
 
@@ -9,6 +9,7 @@ interface SqliteCache {
   worlds: World[];
   characters: Character[];
   stories: Story[];
+  storyMetas: StoryMeta[];
   chats: Record<string, ChatMessage[]>;
   loreMemory: Record<string, LoreEntry[]>;
   settings: Record<string, string>;
@@ -25,6 +26,7 @@ const cache: SqliteCache = {
   worlds: [],
   characters: [],
   stories: [],
+  storyMetas: [],
   chats: {},
   loreMemory: {},
   settings: {}
@@ -192,7 +194,7 @@ const DEFAULT_TAURI_DB_URL = "sqlite:mira.db";
 function shouldUseCustomDbPath(customDbPath: string): boolean {
   if (!customDbPath) return false;
 
-  const isWindowsStyleAbsolutePath = /^[A-Za-z]:\\/.test(customDbPath);
+  const isWindowsStyleAbsolutePath = /^[A-Za-z]:[\/\\]/.test(customDbPath);
   const isWindowsRuntime = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
 
   if (isWindowsStyleAbsolutePath && !isWindowsRuntime) {
@@ -275,7 +277,6 @@ export const sqliteEngine = {
           const lChars = JSON.parse(localStorage.getItem("roleplay_characters") || "[]");
           const lStories = JSON.parse(localStorage.getItem("roleplay_stories") || "[]");
           
-          // Using the sqliteEngine methods handles caching and inserts gracefully
           if (lWorlds.length > 0) sqliteEngine.worlds.saveAll(lWorlds);
           if (lChars.length > 0) sqliteEngine.characters.saveAll(lChars);
           if (lStories.length > 0) sqliteEngine.stories.saveAll(lStories);
@@ -295,7 +296,6 @@ export const sqliteEngine = {
           if (kbUrl) sqliteEngine.settings.setKoboldBaseUrl(kbUrl);
 
           localStorage.setItem("mira_legacy_migrated", "true");
-          // Phase 5.3 Deprecate LocalStorage keys
           localStorage.clear();
           console.log("Legacy data successfully migrated. LocalStorage cleared.");
         } catch (err) {
@@ -305,7 +305,6 @@ export const sqliteEngine = {
 
       await flushPendingWrites();
 
-      // AWAIT TABLE CREATION (Edge case if frontend boots faster than backend migration on custom path)
       await ensureSqliteSchema(db);
 
       // 1. Load Worlds
@@ -347,24 +346,18 @@ export const sqliteEngine = {
         createdAt: row.createdAt
       }));
 
-      // 3. Load Stories
-      const rawStories = (await db.select("SELECT * FROM stories")) as any[];
-      cache.stories = rawStories.map((row: any) => ({
+      // 3. Load Story Metadata only (Phase 1 optimization) — no mainCharacterId
+      const rawStoryMetas = (await db.select("SELECT id, title, worldId, characterIds, createdAt FROM stories")) as any[];
+      cache.storyMetas = rawStoryMetas.map((row: any) => ({
         id: row.id,
         title: row.title,
         worldId: row.worldId,
         characterIds: row.characterIds ? JSON.parse(row.characterIds) : [],
-        mainCharacterId: row.mainCharacterId || "",
-        scenario: row.scenario || "",
-        greeting: row.greeting || "",
-        storyLorebook: row.storyLorebook ? JSON.parse(row.storyLorebook) : [],
-        temporaryLorebook: row.temporaryLorebook ? JSON.parse(row.temporaryLorebook) : [],
-        storyMemory: row.storyMemory ? JSON.parse(row.storyMemory) : { summary: "", generalJournal: [], characterJournals: {}, tasks: [] },
-        currentContext: row.currentContext ? JSON.parse(row.currentContext) : { scene: {}, location: {}, objects: [], recentFacts: {} },
-        castState: row.castState ? JSON.parse(row.castState) : { activeCharacters: [], relationships: [] },
-        directorNotes: row.directorNotes ? JSON.parse(row.directorNotes) : {},
         createdAt: row.createdAt
       }));
+
+      // Note: Full stories are no longer loaded into cache.stories at startup
+      cache.stories = [];
 
       // 4. Load Chats
       const rawChats = (await db.select("SELECT * FROM chats")) as any[];
@@ -401,7 +394,7 @@ export const sqliteEngine = {
       return cache.worlds.length ? cache.worlds : fallback;
     },
     saveAll(worlds: World[]): boolean {
-      cache.worlds = cloneJson(worlds); // Sync cache immediately
+      cache.worlds = cloneJson(worlds);
       
       scheduleDbWrite("worlds", "Save worlds", async (db) => {
         await runInTransaction(db, async () => {
@@ -439,7 +432,7 @@ export const sqliteEngine = {
       return cache.characters.length ? cache.characters : fallback;
     },
     saveAll(characters: Character[]): boolean {
-      cache.characters = cloneJson(characters); // Sync cache immediately
+      cache.characters = cloneJson(characters);
       
       scheduleDbWrite("characters", "Save characters", async (db) => {
         await runInTransaction(db, async () => {
@@ -474,11 +467,50 @@ export const sqliteEngine = {
   },
 
   stories: {
+    // Returns lightweight metadata only (Phase 1)
+    listMeta(fallback: StoryMeta[] = []): StoryMeta[] {
+      return cache.storyMetas.length ? cache.storyMetas : fallback;
+    },
+
+    // Loads full story data on demand (no mainCharacterId)
+    async loadFull(storyId: string): Promise<Story | null> {
+      if (!storyId || !dbPromise) return null;
+      
+      try {
+        const db = await dbPromise;
+        const rows = await db.select("SELECT * FROM stories WHERE id = $1", [storyId]) as any[];
+        
+        if (rows.length === 0) return null;
+        
+        const row = rows[0];
+        return {
+          id: row.id,
+          title: row.title,
+          worldId: row.worldId,
+          characterIds: row.characterIds ? JSON.parse(row.characterIds) : [],
+          scenario: row.scenario || "",
+          greeting: row.greeting || "",
+          storyLorebook: row.storyLorebook ? JSON.parse(row.storyLorebook) : [],
+          temporaryLorebook: row.temporaryLorebook ? JSON.parse(row.temporaryLorebook) : [],
+          storyMemory: row.storyMemory ? JSON.parse(row.storyMemory) : { summary: "", generalJournal: [], characterJournals: {}, tasks: [] },
+          currentContext: row.currentContext ? JSON.parse(row.currentContext) : { scene: {}, location: {}, objects: [], recentFacts: {} },
+          castState: row.castState ? JSON.parse(row.castState) : { activeCharacters: [], relationships: [] },
+          directorNotes: row.directorNotes ? JSON.parse(row.directorNotes) : {},
+          createdAt: row.createdAt
+        };
+      } catch (error) {
+        console.error("Failed to load full story:", error);
+        return null;
+      }
+    },
+
+    // Legacy method - still supported but will be phased out
     list(fallback: Story[] = []): Story[] {
       return cache.stories.length ? cache.stories : fallback;
     },
+
     saveAll(stories: Story[]): boolean {
-      cache.stories = cloneJson(stories); // Sync cache immediately
+      cache.stories = cloneJson(stories);
       
       scheduleDbWrite("stories", "Save stories", async (db) => {
         await runInTransaction(db, async () => {
@@ -488,7 +520,7 @@ export const sqliteEngine = {
               SQLITE_STORY_INSERT_SQL,
               [
                 story.id, story.title, story.worldId, JSON.stringify(story.characterIds || []),
-                story.mainCharacterId, story.scenario || "", story.greeting || "",
+                story.scenario || "", story.greeting || "",
                 JSON.stringify(story.storyLorebook || []), JSON.stringify(story.temporaryLorebook || []),
                 JSON.stringify(story.storyMemory), JSON.stringify(story.currentContext),
                 JSON.stringify(story.castState), JSON.stringify(story.directorNotes || {}),
@@ -500,8 +532,60 @@ export const sqliteEngine = {
       });
       return true;
     },
+
+    // New method for saving a single story (no mainCharacterId)
+    saveStory(story: Story): boolean {
+      // Update meta cache
+      const metaIndex = cache.storyMetas.findIndex(m => m.id === story.id);
+      const meta: StoryMeta = {
+        id: story.id,
+        title: story.title,
+        worldId: story.worldId,
+        characterIds: story.characterIds,
+        createdAt: story.createdAt
+      };
+      
+      if (metaIndex >= 0) {
+        cache.storyMetas[metaIndex] = meta;
+      } else {
+        cache.storyMetas.push(meta);
+      }
+
+      scheduleDbWrite(`story:${story.id}`, "Save story", async (db) => {
+        await db.execute(
+          `INSERT INTO stories (
+            id, title, worldId, characterIds, scenario, greeting,
+            storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          ON CONFLICT(id) DO UPDATE SET
+            title = EXCLUDED.title,
+            worldId = EXCLUDED.worldId,
+            characterIds = EXCLUDED.characterIds,
+            scenario = EXCLUDED.scenario,
+            greeting = EXCLUDED.greeting,
+            storyLorebook = EXCLUDED.storyLorebook,
+            temporaryLorebook = EXCLUDED.temporaryLorebook,
+            storyMemory = EXCLUDED.storyMemory,
+            currentContext = EXCLUDED.currentContext,
+            castState = EXCLUDED.castState,
+            directorNotes = EXCLUDED.directorNotes,
+            createdAt = EXCLUDED.createdAt`,
+          [
+            story.id, story.title, story.worldId, JSON.stringify(story.characterIds || []),
+            story.scenario || "", story.greeting || "",
+            JSON.stringify(story.storyLorebook || []), JSON.stringify(story.temporaryLorebook || []),
+            JSON.stringify(story.storyMemory), JSON.stringify(story.currentContext),
+            JSON.stringify(story.castState), JSON.stringify(story.directorNotes || {}),
+            story.createdAt || Date.now()
+          ]
+        );
+      });
+      return true;
+    },
+
     clear(): void {
       cache.stories = [];
+      cache.storyMetas = [];
       cancelScheduledWrite("stories");
       enqueueDbWrite("Clear stories", async (db) => {
         await db.execute("DELETE FROM stories");
@@ -516,7 +600,7 @@ export const sqliteEngine = {
     },
     save(storyId: string, messages: ChatMessage[]): boolean {
       if (!storyId) return false;
-      cache.chats[storyId] = cloneJson(messages); // Sync cache immediately
+      cache.chats[storyId] = cloneJson(messages);
       
       scheduleDbWrite(`chat:${storyId}`, "Save chat", async (db) => {
         await db.execute(
@@ -545,7 +629,7 @@ export const sqliteEngine = {
     },
     save(storyId: string, loreMemory: LoreEntry[]): boolean {
       if (!storyId) return false;
-      cache.loreMemory[storyId] = cloneJson(loreMemory); // Sync cache immediately
+      cache.loreMemory[storyId] = cloneJson(loreMemory);
       
       scheduleDbWrite(`lore:${storyId}`, "Save lore memory", async (db) => {
         await db.execute(
@@ -615,6 +699,7 @@ export const sqliteEngine = {
       cache.worlds = [];
       cache.characters = [];
       cache.stories = [];
+      cache.storyMetas = [];
       cache.chats = {};
       cache.loreMemory = {};
       cache.settings = {};

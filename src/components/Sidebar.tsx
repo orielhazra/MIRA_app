@@ -1,21 +1,16 @@
 export default function Sidebar({
-  stories,
-  worlds,
-  characters,
-  activeView,
-  activeStoryId,
+  activeStory,
+  activeWorld,
+  activeStoryCharacters = [],
   selectedWorldSheetId,
   selectedCharacterSheetId,
   getWorld,
   getCharacter,
-  isGenerating,
+  isGenerating = false,
   isCollapsed = false,
   onToggleCollapse,
-  onNewStory,
-  onSelectStory,
-  onNewCharacter,
   onSelectCharacter,
-  onNewWorld,
+  onNewCharacter,
   onSelectWorld,
   onFactoryReset
 }) {
@@ -36,6 +31,9 @@ export default function Sidebar({
     );
   }
 
+  const currentWorld = activeWorld || (activeStory ? getWorld(activeStory.worldId) : null);
+  const locations = currentWorld?.locations || [];
+
   return (
     <aside className="sidebar">
       <div className="side-panel-header">
@@ -51,72 +49,89 @@ export default function Sidebar({
         </button>
       </div>
 
-      <h2>Stories</h2>
-      <div id="storyList">
-        {stories.map((story) => {
-          const world = getWorld(story.worldId);
-          const cast = (Array.isArray(story.characterIds) ? story.characterIds : [])
-            .map(getCharacter)
-            .filter(Boolean);
-          const castCount = cast.length;
-          const castNames = cast.slice(0, 2).map((character) => character.name).join(", ");
-          return (
+      {/* Current Story */}
+      {activeStory && (
+        <>
+          <h2>Current Story</h2>
+          <button
+            type="button"
+            className="character active"
+            disabled={isGenerating}
+            onClick={() => {
+              // Open story editing (could be extended later)
+              alert("Story editing sheet coming soon");
+            }}
+          >
+            <strong>{activeStory.title}</strong>
+            <span>Edit story details</span>
+          </button>
+          <hr />
+        </>
+      )}
+
+      {/* Cast (Story Characters only) */}
+      <h2>Cast</h2>
+      <div id="characterList">
+        {activeStoryCharacters.length > 0 ? (
+          activeStoryCharacters.map((character) => (
             <button
               type="button"
-              key={story.id}
-              className={`character ${activeView === "story" && story.id === activeStoryId ? "active" : ""}`}
+              key={character.id}
+              className={`character ${selectedCharacterSheetId === character.id ? "active" : ""}`}
               disabled={isGenerating}
-              onClick={() => onSelectStory(story.id)}
+              onClick={() => onSelectCharacter(character.id)}
             >
-              <strong>{story.title}</strong>
-              <span>{castNames || "No cast"}{castCount > 2 ? ` +${castCount - 2}` : ""} • {world?.name || "No world"}</span>
+              <strong>{character.name}</strong>
+              <span>{character.shortDescription}</span>
             </button>
-          );
-        })}
+          ))
+        ) : (
+          <div style={{ color: "#888", padding: "8px 0" }}>No characters in this story</div>
+        )}
       </div>
-      <button type="button" id="newStoryButton" disabled={isGenerating} onClick={onNewStory}>+ New Story</button>
+      <button 
+        type="button" 
+        id="newCharacterButton" 
+        disabled={isGenerating} 
+        onClick={onNewCharacter}
+      >
+        + Add Character
+      </button>
 
       <hr />
 
-      <h2>Reusable Templates</h2>
-      <div id="characterList">
-        {characters.map((character) => (
+      {/* Current World + Locations */}
+      <h2>World</h2>
+      {currentWorld ? (
+        <>
           <button
             type="button"
-            key={character.id}
-            className={`character ${activeView === "character" && character.id === selectedCharacterSheetId ? "active" : ""}`}
+            className={`character ${selectedWorldSheetId === currentWorld.id ? "active" : ""}`}
             disabled={isGenerating}
-            onClick={() => onSelectCharacter(character.id)}
+            onClick={() => onSelectWorld(currentWorld.id)}
           >
-            <strong>{character.name}</strong>
-            <span>{character.shortDescription}</span>
+            <strong>{currentWorld.name}</strong>
+            <span>{currentWorld.shortDescription}</span>
           </button>
-        ))}
-      </div>
-      <button type="button" id="newCharacterButton" disabled={isGenerating} onClick={onNewCharacter}>+ New Template</button>
+
+          {locations.length > 0 && (
+            <div style={{ marginLeft: "12px", marginTop: "8px" }}>
+              <div style={{ fontSize: "13px", color: "#888", marginBottom: "4px" }}>Locations</div>
+              {locations.map((loc, index) => (
+                <div key={index} style={{ fontSize: "13px", padding: "2px 0", color: "#ccc" }}>
+                  • {loc.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ color: "#888", padding: "8px 0" }}>No world assigned</div>
+      )}
 
       <hr />
 
-      <h2>Worlds</h2>
-      <div id="worldList">
-        {worlds.map((world) => (
-          <button
-            type="button"
-            key={world.id}
-            className={`character ${activeView === "world" && world.id === selectedWorldSheetId ? "active" : ""}`}
-            disabled={isGenerating}
-            onClick={() => onSelectWorld(world.id)}
-          >
-            <strong>{world.name}</strong>
-            <span>{world.shortDescription}</span>
-          </button>
-        ))}
-      </div>
-      <button type="button" id="newWorldButton" disabled={isGenerating} onClick={onNewWorld}>+ New World</button>
-
-      <hr />
-
-      <button type="button" id="factoryResetButton" disabled={isGenerating} onClick={onFactoryReset}>Factory Reset</button>
+      {/* Factory Reset moved to home page */}
     </aside>
   );
 }

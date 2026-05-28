@@ -1,6 +1,6 @@
 import { STORAGE_KEYS } from "../../constants/defaultData";
 import { cloneJson } from "../../utils/helpers";
-import { World, Character, Story, ChatMessage, LoreEntry } from "../../types";
+import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry } from "../../types";
 
 interface PersistenceStatus {
   lastError: string | null;
@@ -77,7 +77,7 @@ function writeLocalStorageJson<T>(key: string, value: T): boolean {
 
 export const localStorageEngine = {
   async initialize(): Promise<void> {
-    return Promise.resolve(); // No-op for LocalStorage
+    return Promise.resolve();
   },
 
   persistence: {
@@ -131,12 +131,47 @@ export const localStorageEngine = {
   },
 
   stories: {
+    // Returns lightweight metadata only (no mainCharacterId)
+    listMeta(fallback: StoryMeta[] = []): StoryMeta[] {
+      const fullStories = readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, []);
+      return fullStories.map(s => ({
+        id: s.id,
+        title: s.title,
+        worldId: s.worldId,
+        characterIds: s.characterIds,
+        createdAt: s.createdAt
+      }));
+    },
+
+    // Load full story from localStorage (no mainCharacterId)
+    loadFull(storyId: string): Story | null {
+      if (!storyId) return null;
+      const stories = readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, []);
+      return stories.find(s => s.id === storyId) || null;
+    },
+
+    // Legacy
     list(fallback: Story[] = []): Story[] {
       return readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, fallback);
     },
+
     saveAll(stories: Story[]): boolean {
       return withTrackedWrite("Save stories", () => writeLocalStorageJson<Story[]>(STORAGE_KEYS.stories, stories));
     },
+
+    saveStory(story: Story): boolean {
+      const stories = readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, []);
+      const index = stories.findIndex(s => s.id === story.id);
+      
+      if (index >= 0) {
+        stories[index] = story;
+      } else {
+        stories.push(story);
+      }
+      
+      return withTrackedWrite("Save story", () => writeLocalStorageJson<Story[]>(STORAGE_KEYS.stories, stories));
+    },
+
     clear(): void {
       withTrackedWrite("Clear stories", () => {
         localStorage.removeItem(STORAGE_KEYS.stories);
