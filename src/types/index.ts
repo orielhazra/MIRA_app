@@ -182,7 +182,9 @@ export interface StoryMeta {
   title: string;
   worldId: string;
   characterIds: string[];
+  characterCount: number;
   createdAt?: number;
+  lastPlayedAt?: number;
 }
 
 // Full story data (loaded only when active)
@@ -200,4 +202,5 @@ export interface Story {
   castState: CastState;
   directorNotes?: DirectorNotes;
   createdAt?: number;
+  lastPlayedAt?: number;
 }

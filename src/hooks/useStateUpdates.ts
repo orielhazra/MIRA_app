@@ -27,12 +27,11 @@ interface ExtractDeps {
 
 interface ApplyDeps {
   activeStory: Story | null;
-  stories: Story[];
   activeWorld: World | null;
   activeStoryCharacters: Character[];
   pendingUpdates: any[];
   selectedPendingUpdateIds: string[];
-  saveStoryList: (stories: Story[]) => void;
+  saveActiveStory: (story: Story) => void;
   setPendingUpdates: (updates: any[]) => void;
   setSelectedPendingUpdateIds: (ids: string[]) => void;
   setPendingUpdateStatus: (status: string) => void;
@@ -123,12 +122,11 @@ export default function useStateUpdates() {
   function applySelectedPendingUpdates(deps: ApplyDeps) {
     const {
       activeStory,
-      stories,
       activeWorld,
       activeStoryCharacters,
       pendingUpdates,
       selectedPendingUpdateIds,
-      saveStoryList,
+      saveActiveStory,
       setPendingUpdates,
       setSelectedPendingUpdateIds,
       setPendingUpdateStatus,
@@ -151,19 +149,13 @@ export default function useStateUpdates() {
     const normalizedCastState = normalizeCastState(nextCastState, activeStoryCharacters);
     const normalizedStoryMemory = normalizeStoryMemory(nextStoryMemory);
 
-    saveStoryList(
-      stories.map((s) =>
-        s.id === activeStory.id
-          ? {
-              ...s,
-              currentContext: normalizedContext,
-              castState: normalizedCastState,
-              storyMemory: normalizedStoryMemory,
-              directorNotes: syncDirectorNotesFromContext(s.directorNotes, normalizedContext),
-            }
-          : s
-      )
-    );
+    saveActiveStory({
+      ...activeStory,
+      currentContext: normalizedContext,
+      castState: normalizedCastState,
+      storyMemory: normalizedStoryMemory,
+      directorNotes: syncDirectorNotesFromContext(activeStory.directorNotes, normalizedContext),
+    });
 
     setPendingUpdates(pendingUpdates.filter((u) => !selectedIdSet.has(u.id)));
     setSelectedPendingUpdateIds([]);

@@ -7,12 +7,11 @@ import { getStoryCharactersFromLists } from "../utils/appHelpers";
 
 interface LoreActionDeps {
   activeStory?: Story;
-  stories?: Story[];
   activeWorld?: World;
   worlds?: World[];
   activeCharacter?: Character | null;
   characters?: Character[];
-  saveStoryList?: (stories: Story[]) => void;
+  saveActiveStory?: (story: Story) => void;
   saveWorldList?: (worlds: World[]) => void;
   saveCharacterList?: (characters: Character[]) => void;
   activeLoreMemory?: LoreEntry[];
@@ -31,11 +30,10 @@ export default function useLoreActions() {
   function updateStoryLore(deps: LoreActionDeps) {
     const {
       activeStory,
-      stories,
       activeWorld,
       activeCharacter,
       characters,
-      saveStoryList,
+      saveActiveStory,
       activeLoreMemory,
       setActiveLoreMemory,
       saveLoreForActiveStory,
@@ -43,15 +41,16 @@ export default function useLoreActions() {
       patch,
     } = deps;
 
-    if (!activeStory || !saveStoryList) return;
+    if (!activeStory || !saveActiveStory) return;
 
     const nextLore = (activeStory.storyLorebook || []).map((entry, i) =>
       i === index ? { ...entry, ...patch } : entry
     );
 
-    saveStoryList(stories!.map((s) => (s.id === activeStory.id ? { ...s, storyLorebook: nextLore } : s)));
+    const nextStory = { ...activeStory, storyLorebook: nextLore };
+    saveActiveStory(nextStory);
 
-    pruneAndSaveLore({ ...deps, story: stories!.find((s) => s.id === activeStory.id) });
+    pruneAndSaveLore({ ...deps, story: nextStory });
   }
 
   function updateWorldLore(deps: LoreActionDeps) {
@@ -88,16 +87,13 @@ export default function useLoreActions() {
   }
 
   function saveTemporaryLore(deps: LoreActionDeps) {
-    const { activeStory, stories, saveStoryList, lorebook } = deps;
-    if (!activeStory || !saveStoryList || !stories) return;
+    const { activeStory, saveActiveStory, lorebook } = deps;
+    if (!activeStory || !saveActiveStory) return;
 
-    saveStoryList(
-      stories.map((s) =>
-        s.id === activeStory.id ? { ...s, temporaryLorebook: normalizeStoredLorebook(lorebook) } : s
-      )
-    );
+    const nextStory = { ...activeStory, temporaryLorebook: normalizeStoredLorebook(lorebook) };
+    saveActiveStory(nextStory);
 
-    pruneAndSaveLore({ ...deps, story: stories.find((s) => s.id === activeStory.id) });
+    pruneAndSaveLore({ ...deps, story: nextStory });
   }
 
   function clearTemporaryLore(deps: LoreActionDeps) {

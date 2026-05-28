@@ -30,76 +30,59 @@ import {
   syncCurrentContextFromDirectorNotes,
 } from "../utils/appHelpers";
 
-interface SaveContextDeps {
+interface ActiveStorySaveDeps {
   activeStory: Story | null;
-  stories: Story[];
-  saveStoryList: (stories: Story[]) => void;
+  saveActiveStory: (story: Story) => void;
 }
 
-interface SaveSceneDeps extends SaveContextDeps {
+interface SaveSceneDeps extends ActiveStorySaveDeps {
   nextContext: CurrentContext;
   nextDirectorNotes: DirectorNotes;
 }
 
-interface SaveMemoryDeps extends SaveContextDeps {
+interface SaveMemoryDeps extends ActiveStorySaveDeps {
   nextMemory: StoryJournal;
 }
 
-interface SaveCastDeps extends SaveContextDeps {
+interface SaveCastDeps extends ActiveStorySaveDeps {
   activeStoryCharacters: Character[];
   nextCastState: CastState;
 }
 
-interface SaveNotesDeps extends SaveContextDeps {
+interface SaveNotesDeps extends ActiveStorySaveDeps {
   notes: DirectorNotes;
 }
 
 export default function useStoryActions() {
-  function saveCurrentContext({ activeStory, stories, saveStoryList }: SaveContextDeps) {
-    if (!activeStory) return;
+  function saveCurrentContext({ activeStory, saveActiveStory }: ActiveStorySaveDeps) {
+    if (!activeStory || !saveActiveStory) return;
     const normalizedContext = normalizeCurrentContext(activeStory.currentContext);
     const syncedDirectorNotes = syncDirectorNotesFromContext(activeStory.directorNotes, normalizedContext);
-    saveStoryList(
-      stories.map((s) =>
-        s.id === activeStory.id ? { ...s, currentContext: normalizedContext, directorNotes: syncedDirectorNotes } : s
-      )
-    );
+    saveActiveStory({ ...activeStory, currentContext: normalizedContext, directorNotes: syncedDirectorNotes });
   }
 
-  function saveSceneControl({ activeStory, stories, saveStoryList, nextContext, nextDirectorNotes }: SaveSceneDeps) {
-    if (!activeStory) return;
+  function saveSceneControl({ activeStory, saveActiveStory, nextContext, nextDirectorNotes }: SaveSceneDeps) {
+    if (!activeStory || !saveActiveStory) return;
     const normalizedContext = normalizeCurrentContext(nextContext);
     const normalizedDirectorNotes = normalizeDirectorNotes(nextDirectorNotes);
-    saveStoryList(
-      stories.map((s) =>
-        s.id === activeStory.id
-          ? { ...s, currentContext: normalizedContext, directorNotes: normalizedDirectorNotes }
-          : s
-      )
-    );
+    saveActiveStory({ ...activeStory, currentContext: normalizedContext, directorNotes: normalizedDirectorNotes });
   }
 
-  function saveStoryMemory({ activeStory, stories, saveStoryList, nextMemory }: SaveMemoryDeps) {
-    if (!activeStory) return;
-    const normalizedMemory = normalizeStoryMemory(nextMemory);
-    saveStoryList(stories.map((s) => (s.id === activeStory.id ? { ...s, storyMemory: normalizedMemory } : s)));
+  function saveStoryMemory({ activeStory, saveActiveStory, nextMemory }: SaveMemoryDeps) {
+    if (!activeStory || !saveActiveStory) return;
+    saveActiveStory({ ...activeStory, storyMemory: normalizeStoryMemory(nextMemory) });
   }
 
-  function saveCastState({ activeStory, stories, saveStoryList, activeStoryCharacters, nextCastState }: SaveCastDeps) {
-    if (!activeStory) return;
-    const normalizedCastState = normalizeCastState(nextCastState, activeStoryCharacters);
-    saveStoryList(stories.map((s) => (s.id === activeStory.id ? { ...s, castState: normalizedCastState } : s)));
+  function saveCastState({ activeStory, saveActiveStory, activeStoryCharacters, nextCastState }: SaveCastDeps) {
+    if (!activeStory || !saveActiveStory) return;
+    saveActiveStory({ ...activeStory, castState: normalizeCastState(nextCastState, activeStoryCharacters) });
   }
 
-  function saveDirectorNotes({ activeStory, stories, saveStoryList, notes }: SaveNotesDeps) {
-    if (!activeStory) return;
+  function saveDirectorNotes({ activeStory, saveActiveStory, notes }: SaveNotesDeps) {
+    if (!activeStory || !saveActiveStory) return;
     const normalizedNotes = normalizeDirectorNotes(notes);
     const syncedContext = syncCurrentContextFromDirectorNotes(activeStory.currentContext, normalizedNotes);
-    saveStoryList(
-      stories.map((s) =>
-        s.id === activeStory.id ? { ...s, directorNotes: normalizedNotes, currentContext: syncedContext } : s
-      )
-    );
+    saveActiveStory({ ...activeStory, directorNotes: normalizedNotes, currentContext: syncedContext });
   }
 
   function clearDirectorNotes(deps: any) {
@@ -127,17 +110,18 @@ export default function useStoryActions() {
     setActiveView?.("story-create");
   }
 
-  function switchStory(deps: any) {
+  async function switchStory(deps: any) {
     const {
       storyId,
       isGenerating,
-      stories = [],
       worlds = [],
       characters = [],
-      setActiveStoryId,
+      repository,
+      setActiveStory,
+      saveActiveStory,
+      removeStoryMeta,
       setChatHistory,
       setActiveLoreMemory,
-      repository,
       setSelectedCharacterSheetId,
       setSelectedWorldSheetId,
       setStoryDraft,
@@ -149,12 +133,14 @@ export default function useStoryActions() {
       return;
     }
 
-    const story = stories.find((item: Story) => item.id === storyId);
-    if (!story) {
+    const loadedStory = await repository?.stories?.loadFull(storyId);
+    if (!loadedStory) {
       alert("Story not found.");
+      removeStoryMeta?.(storyId);
       return;
     }
 
+    const story = normalizeStory({ ...loadedStory, lastPlayedAt: Date.now() }, worlds, characters);
     const storyCharacters = getStoryCharactersFromLists(story, characters);
     const leadCharacter = chooseActiveCastLead(story, storyCharacters) || characters[0] || null;
     const fallbackWorld = worlds.find((item: World) => item.id === story.worldId) || worlds[0] || null;
@@ -178,7 +164,8 @@ export default function useStoryActions() {
       nextLoreMemory = [];
     }
 
-    setActiveStoryId?.(story.id);
+    setActiveStory?.(story);
+    saveActiveStory?.(story);
     repository?.activeStory.set(story.id);
     setChatHistory?.(nextChatHistory);
     setActiveLoreMemory?.(nextLoreMemory);
@@ -193,9 +180,8 @@ export default function useStoryActions() {
       draft,
       worlds = [],
       characters = [],
-      stories = [],
-      saveStoryList,
-      setActiveStoryId,
+      saveActiveStory,
+      setActiveStory,
       repository,
       setChatHistory,
       setActiveLoreMemory,
@@ -221,7 +207,6 @@ export default function useStoryActions() {
         title: draft.title?.trim() || "Untitled Story",
         worldId: world.id,
         characterIds: selectedCharacters.map((item: Character) => item.id),
-        mainCharacterId: leadCharacter?.id || "",
         scenario: draft.scenario?.trim() || "",
         greeting: draft.greeting?.trim() || "The scene begins.",
         storyLorebook: normalizeStoredLorebook(draft.storyLorebook || []),
@@ -229,14 +214,14 @@ export default function useStoryActions() {
         currentContext: createInitialCurrentContext(world, selectedCharacters),
         castState: createInitialCastState(selectedCharacters),
         createdAt: Date.now(),
+        lastPlayedAt: Date.now(),
       },
       worlds,
       characters
     );
 
-    const nextStories = [...stories, newStory];
-    saveStoryList(nextStories);
-    setActiveStoryId?.(newStory.id);
+    setActiveStory?.(newStory);
+    saveActiveStory?.(newStory);
     repository?.activeStory.set(newStory.id);
 
     const opening = [{ role: "assistant", content: buildOpeningMessage(newStory, leadCharacter, world, selectedCharacters) }];
@@ -256,16 +241,16 @@ export default function useStoryActions() {
     setActiveView?.(activeStory?.id ? "story" : "landing");
   }
 
-  function deleteActiveStory({ activeStory, stories = [], saveStoryList, clearActiveStorySelection, repository }: any) {
+  function deleteActiveStory({ activeStory, clearActiveStorySelection, repository, removeStoryMeta }: any) {
     if (!activeStory) {
       alert("No active story to delete.");
       return;
     }
     if (!confirm(`Delete story "${activeStory.title}"? This will delete its chat and lore memory.`)) return;
 
-    repository?.maintenance.removeStoryRuntimeData(activeStory.id);
-    const nextStories = stories.filter((story: Story) => story.id !== activeStory.id);
-    saveStoryList(nextStories);
+    repository?.stories?.deleteStory?.(activeStory.id);
+    repository?.maintenance?.removeStoryRuntimeData?.(activeStory.id);
+    removeStoryMeta?.(activeStory.id);
     clearActiveStorySelection?.();
   }
 
@@ -273,10 +258,9 @@ export default function useStoryActions() {
     const {
       worldId,
       activeStory,
-      stories = [],
       characters = [],
       getWorld,
-      saveStoryList,
+      saveActiveStory,
       resetCurrentStoryState,
       setSelectedWorldSheetId,
       setActiveView,
@@ -295,9 +279,8 @@ export default function useStoryActions() {
       currentContext: rebuiltContext,
       directorNotes: syncDirectorNotesFromContext(activeStory.directorNotes, rebuiltContext),
     };
-    const nextStories = stories.map((story: Story) => (story.id === activeStory.id ? updatedStory : story));
 
-    saveStoryList(nextStories);
+    saveActiveStory?.(updatedStory);
     resetCurrentStoryState?.(activeStory.id, updatedStory, world, storyCharacters);
     setSelectedWorldSheetId?.(world.id);
     setActiveView?.("story");

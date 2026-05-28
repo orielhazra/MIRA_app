@@ -22,7 +22,6 @@ interface ExportDeps {
   getWorld?: (id: string) => World | undefined | null;
   getStoryCharacters?: (story: Story) => Character[];
   chatHistory?: ChatMessage[];
-  activeStoryId?: string | null;
 }
 
 interface CharacterImportDeps {
@@ -46,11 +45,10 @@ interface StoryImportDeps {
   parsed: any;
   worlds: World[];
   characters: Character[];
-  stories: Story[];
   saveWorldList: (worlds: World[]) => void;
   saveCharacterList: (characters: Character[], sourceWorlds?: World[]) => void;
-  saveStoryList: (stories: Story[], sourceWorlds?: World[], sourceCharacters?: Character[]) => void;
-  setActiveStoryId: (id: string) => void;
+  saveActiveStory: (story: Story) => void;
+  setActiveStory: (story: Story) => void;
   repository: any;
   setChatHistory: (history: ChatMessage[]) => void;
   setActiveLoreMemory: (memory: any[]) => void;
@@ -82,10 +80,10 @@ export default function useImportExport() {
   }
 
   function exportActiveStory(deps: ExportDeps) {
-    const { activeStory, getWorld, getStoryCharacters, chatHistory, activeStoryId } = deps;
+    const { activeStory, getWorld, getStoryCharacters, chatHistory } = deps;
     if (!activeStory) return alert("No active story to export.");
 
-    const bundle = buildStoryExportBundle(activeStory, getWorld!, getStoryCharacters!, chatHistory!, activeStoryId!);
+    const bundle = buildStoryExportBundle(activeStory, getWorld!, getStoryCharacters!, chatHistory!);
     const validation = validateStoryExportBundle(bundle);
     if (!validation.ok) {
       alert("Story export is incomplete:\n\n" + validation.issues.join("\n"));
@@ -168,11 +166,10 @@ export default function useImportExport() {
     parsed,
     worlds,
     characters,
-    stories,
     saveWorldList,
     saveCharacterList,
-    saveStoryList,
-    setActiveStoryId,
+    saveActiveStory,
+    setActiveStory,
     repository,
     setChatHistory,
     setActiveLoreMemory,
@@ -209,7 +206,6 @@ export default function useImportExport() {
         {
           ...characterSource,
           id: newCharacterId,
-          worldId: newWorld.id,
           lorebook: Array.isArray(characterSource.lorebook)
             ? characterSource.lorebook
             : characterSource.characterLorebook || [],
@@ -222,16 +218,17 @@ export default function useImportExport() {
       ? importedStorySource.characterIds.map((oldId: string) => oldToNewCharacterIds[oldId]).filter(Boolean)
       : [];
 
-    const mappedMainCharacterId =
-      oldToNewCharacterIds[importedStorySource.mainCharacterId] ||
+    const fallbackCharacterId =
       mappedCharacterIds[0] ||
       newCharacters[0]?.id ||
       "";
 
-    if (!mappedMainCharacterId) {
+    if (!fallbackCharacterId) {
       alert("Could not import story because no valid character was found.");
       return;
     }
+
+    const remappedCharacterIds = mappedCharacterIds.length ? mappedCharacterIds : [fallbackCharacterId];
 
     const remappedCurrentContext = remapImportedContextCastIds(importedStorySource.currentContext, oldToNewCharacterIds);
     const remappedCastState = remapImportedCastStateIds(importedStorySource.castState, oldToNewCharacterIds);
@@ -242,8 +239,7 @@ export default function useImportExport() {
         id: createId("story"),
         title: importedStorySource.title || "Imported Story",
         worldId: newWorld.id,
-        characterIds: mappedCharacterIds.length ? mappedCharacterIds : [mappedMainCharacterId],
-        mainCharacterId: mappedMainCharacterId,
+        characterIds: remappedCharacterIds,
         currentContext: remappedCurrentContext,
         castState: remappedCastState,
         storyLorebook: Array.isArray(importedStorySource.storyLorebook) ? importedStorySource.storyLorebook : [],
@@ -255,13 +251,12 @@ export default function useImportExport() {
 
     const nextWorlds = [...worlds, newWorld];
     const nextCharacters = [...characters, ...newCharacters];
-    const nextStories = [...stories, newStory];
 
     saveWorldList(nextWorlds);
     saveCharacterList(nextCharacters, nextWorlds);
-    saveStoryList(nextStories, nextWorlds, nextCharacters);
+    setActiveStory(newStory);
+    saveActiveStory(newStory);
 
-    setActiveStoryId(newStory.id);
     repository?.activeStory.set(newStory.id);
 
     const importedChat = Array.isArray(bundle.chatHistory)
@@ -271,7 +266,7 @@ export default function useImportExport() {
             role: "assistant",
             content: buildOpeningMessage(
               newStory,
-              newCharacters.find((item) => item.id === mappedMainCharacterId) || newCharacters[0],
+              newCharacters.find((item) => item.id === fallbackCharacterId) || newCharacters[0],
               newWorld,
               newCharacters
             ),
@@ -282,7 +277,7 @@ export default function useImportExport() {
     repository?.chats.save(newStory.id, importedChat);
     setActiveLoreMemory([]);
     repository?.loreMemory.save(newStory.id, []);
-    setSelectedCharacterSheetId(mappedMainCharacterId);
+    setSelectedCharacterSheetId(fallbackCharacterId);
     setSelectedWorldSheetId(newWorld.id);
     setStoryDraft(null);
     setActiveView("story");

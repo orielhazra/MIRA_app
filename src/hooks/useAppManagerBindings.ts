@@ -1,5 +1,6 @@
 import { defaultCharacters, defaultStories, defaultWorlds } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
+import { storyToMeta } from "../services/storyMeta";
 
 export function createStoryBindings(ctx: any, storyActions: any) {
   return {
@@ -16,13 +17,14 @@ export function createStoryBindings(ctx: any, storyActions: any) {
     switchStory: (storyId: string) => storyActions.switchStory({
       storyId,
       isGenerating: ctx.isGenerating,
-      stories: ctx.stories,
       worlds: ctx.worlds,
       characters: ctx.characters,
-      setActiveStoryId: ctx.setActiveStoryId,
+      repository: ctx.repository,
+      setActiveStory: ctx.setActiveStory,
+      saveActiveStory: ctx.saveActiveStory,
+      removeStoryMeta: ctx.removeStoryMeta,
       setChatHistory: ctx.setChatHistory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
-      repository: ctx.repository,
       setSelectedCharacterSheetId: ctx.setSelectedCharacterSheetId,
       setSelectedWorldSheetId: ctx.setSelectedWorldSheetId,
       setStoryDraft: ctx.setStoryDraft,
@@ -33,9 +35,8 @@ export function createStoryBindings(ctx: any, storyActions: any) {
       draft,
       worlds: ctx.worlds,
       characters: ctx.characters,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
-      setActiveStoryId: ctx.setActiveStoryId,
+      saveActiveStory: ctx.saveActiveStory,
+      setActiveStory: ctx.setActiveStory,
       repository: ctx.repository,
       setChatHistory: ctx.setChatHistory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
@@ -53,20 +54,17 @@ export function createStoryBindings(ctx: any, storyActions: any) {
 
     deleteActiveStory: () => storyActions.deleteActiveStory({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
       clearActiveStorySelection: ctx.clearActiveStorySelection,
       repository: ctx.repository,
+      removeStoryMeta: ctx.removeStoryMeta,
     }),
 
     assignWorldToStory: (worldId: string) => storyActions.assignWorldToStory({
       worldId,
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      worlds: ctx.worlds,
       characters: ctx.characters,
       getWorld: ctx.getWorld,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       resetCurrentStoryState: ctx.resetCurrentStoryState,
       setSelectedWorldSheetId: ctx.setSelectedWorldSheetId,
       setActiveView: ctx.setActiveView,
@@ -74,44 +72,38 @@ export function createStoryBindings(ctx: any, storyActions: any) {
 
     saveCurrentContext: (nextContext?: any) => storyActions.saveCurrentContext({
       activeStory: nextContext && ctx.activeStory ? { ...ctx.activeStory, currentContext: nextContext } : ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
     }),
 
     saveSceneControl: (nextContext: any, nextDirectorNotes: any) => storyActions.saveSceneControl({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       nextContext,
       nextDirectorNotes,
     }),
 
     saveStoryMemory: (nextMemory: any) => storyActions.saveStoryMemory({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       nextMemory,
     }),
 
     saveCastState: (nextCastState: any) => storyActions.saveCastState({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       activeStoryCharacters: ctx.activeStoryCharacters,
       nextCastState,
     }),
 
     saveDirectorNotes: (notes: any) => storyActions.saveDirectorNotes({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       notes,
     }),
 
     clearDirectorNotes: () => storyActions.clearDirectorNotes({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
     }),
   };
 }
@@ -303,12 +295,11 @@ export function createStateUpdateBindings(ctx: any, stateUpdates: any) {
 
     applySelectedPendingUpdates: () => stateUpdates.applySelectedPendingUpdates({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
       activeWorld: ctx.activeWorld,
       activeStoryCharacters: ctx.activeStoryCharacters,
       pendingUpdates: ctx.pendingUpdates,
       selectedPendingUpdateIds: ctx.selectedPendingUpdateIds,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       setPendingUpdates: ctx.setPendingUpdates,
       setSelectedPendingUpdateIds: ctx.setSelectedPendingUpdateIds,
       setPendingUpdateStatus: ctx.setPendingUpdateStatus,
@@ -347,7 +338,7 @@ export function createCharacterBindings(ctx: any, characterActions: any) {
 
     deleteSelectedCharacter: (characterId: string) => characterActions.deleteSelectedCharacter({
       characters: ctx.characters,
-      stories: ctx.stories,
+      storyMetas: ctx.storyMetas,
       characterId,
       getCharacter: ctx.getCharacter,
       saveCharacterList: ctx.saveCharacterList,
@@ -359,30 +350,27 @@ export function createCharacterBindings(ctx: any, characterActions: any) {
     setCharacterPresenceInActiveStory: (characterId: string, presence: string) => characterActions.setCharacterPresenceInActiveStory({
       activeStory: ctx.activeStory,
       characters: ctx.characters,
-      stories: ctx.stories,
       characterId,
       presence,
       getCharacter: ctx.getCharacter,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       setSelectedCharacterSheetId: ctx.setSelectedCharacterSheetId,
       setActiveView: ctx.setActiveView,
     }),
 
     addCharacterToActiveStory: (characterId: string) => characterActions.addCharacterToActiveStory({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
       characterId,
       getCharacter: ctx.getCharacter,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       setSelectedCharacterSheetId: ctx.setSelectedCharacterSheetId,
     }),
 
     removeCharacterFromActiveStory: (characterId: string) => characterActions.removeCharacterFromActiveStory({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
       characterId,
       getCharacter: ctx.getCharacter,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       setSelectedCharacterSheetId: ctx.setSelectedCharacterSheetId,
     }),
   };
@@ -407,7 +395,7 @@ export function createWorldBindings(ctx: any, worldActions: any) {
 
     deleteSelectedWorld: (worldId: string) => worldActions.deleteSelectedWorld({
       worlds: ctx.worlds,
-      stories: ctx.stories,
+      storyMetas: ctx.storyMetas,
       worldId,
       getWorld: ctx.getWorld,
       saveWorldList: ctx.saveWorldList,
@@ -421,11 +409,10 @@ export function createLoreBindings(ctx: any, loreActions: any) {
   return {
     updateStoryLore: (index: number, patch: any) => loreActions.updateStoryLore({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
       activeWorld: ctx.activeWorld,
       activeCharacter: ctx.activeCharacter,
       characters: ctx.characters,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       activeLoreMemory: ctx.activeLoreMemory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
       saveLoreForActiveStory: ctx.saveLoreForActiveStory,
@@ -464,8 +451,7 @@ export function createLoreBindings(ctx: any, loreActions: any) {
 
     saveTemporaryLore: (lorebook: any[]) => loreActions.saveTemporaryLore({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       lorebook,
       story: ctx.activeStory,
       activeWorld: ctx.activeWorld,
@@ -478,8 +464,7 @@ export function createLoreBindings(ctx: any, loreActions: any) {
 
     clearTemporaryLore: () => loreActions.clearTemporaryLore({
       activeStory: ctx.activeStory,
-      stories: ctx.stories,
-      saveStoryList: ctx.saveStoryList,
+      saveActiveStory: ctx.saveActiveStory,
       story: ctx.activeStory,
       activeWorld: ctx.activeWorld,
       activeCharacter: ctx.activeCharacter,
@@ -517,7 +502,6 @@ export function createImportExportBindings(ctx: any, importExport: any) {
       getWorld: ctx.getWorld,
       getStoryCharacters: ctx.getStoryCharacters,
       chatHistory: ctx.chatHistory,
-      activeStoryId: ctx.activeStoryId,
     }),
 
     handleImportStoryFile: (event: any) => importExport.handleImportFile(event, (parsed: any) => {
@@ -525,11 +509,10 @@ export function createImportExportBindings(ctx: any, importExport: any) {
         parsed,
         worlds: ctx.worlds,
         characters: ctx.characters,
-        stories: ctx.stories,
         saveWorldList: ctx.saveWorldList,
         saveCharacterList: ctx.saveCharacterList,
-        saveStoryList: ctx.saveStoryList,
-        setActiveStoryId: ctx.setActiveStoryId,
+        saveActiveStory: ctx.saveActiveStory,
+        setActiveStory: ctx.setActiveStory,
         repository: ctx.repository,
         setChatHistory: ctx.setChatHistory,
         setActiveLoreMemory: ctx.setActiveLoreMemory,
@@ -569,16 +552,18 @@ export function createMaintenanceBindings(ctx: any) {
       if (ctx.isGenerating) return;
       if (!confirm("This will delete saved stories, characters, worlds, chats, and lore memory. Continue?")) return;
 
-      ctx.repository.maintenance.clearKnownData(ctx.stories, ctx.characters);
+      ctx.repository.maintenance.clearKnownData([], ctx.characters);
 
       const nextWorlds = defaultWorlds.map(normalizeWorld);
       const nextCharacters = defaultCharacters.map((character) => normalizeCharacter(character, nextWorlds));
       const nextStories = defaultStories.map((story) => normalizeStory(story, nextWorlds, nextCharacters));
+      const nextStoryMetas = nextStories.map(storyToMeta);
 
-      ctx.dispatchStory({ type: "FACTORY_RESET", payload: { worlds: nextWorlds, characters: nextCharacters, stories: nextStories } });
+      ctx.dispatchStory({ type: "FACTORY_RESET", payload: { worlds: nextWorlds, characters: nextCharacters, storyMetas: nextStoryMetas } });
       ctx.repository.worlds.saveAll(nextWorlds);
       ctx.repository.characters.saveAll(nextCharacters);
-      ctx.repository.stories.saveAll(nextStories);
+      ctx.repository.stories.clear();
+      for (const story of nextStories) ctx.repository.stories.saveStory(story);
 
       ctx.setChatHistory([]);
       ctx.setActiveLoreMemory([]);

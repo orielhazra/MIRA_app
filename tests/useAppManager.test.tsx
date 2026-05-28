@@ -14,8 +14,8 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       { id: "char-2", name: "Ari", shortDescription: "Lead two", goals: "Protect the station", relationshipToUser: "Wary" },
     ],
     stories: [
-      { id: "story-1", title: "Story One", worldId: "world-1", characterIds: ["char-1"], mainCharacterId: "char-1", greeting: "Opening one" },
-      { id: "story-2", title: "Story Two", worldId: "world-2", characterIds: ["char-2"], mainCharacterId: "char-2", greeting: "Opening two" },
+      { id: "story-1", title: "Story One", worldId: "world-1", characterIds: ["char-1"], greeting: "Opening one" },
+      { id: "story-2", title: "Story Two", worldId: "world-2", characterIds: ["char-2"], greeting: "Opening two" },
     ],
     chats: {
       "story-1": [{ role: "assistant", content: "Saved chat one" }],
@@ -25,7 +25,7 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       "story-1": [{ id: "lore-1", name: "Lore One", keywords: [], content: "A", enabled: true, alwaysOn: false }],
       "story-2": [{ id: "lore-2", name: "Lore Two", keywords: [], content: "B", enabled: true, alwaysOn: false }],
     },
-    activeStoryId: null as string | null,
+    storedActiveStory: null as string | null,
     koboldBaseUrl: "http://localhost:5001",
   };
 
@@ -51,9 +51,26 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       removeLegacyChat: vi.fn(),
     },
     stories: {
-      list: vi.fn((fallback = []) => (state.stories.length ? clone(state.stories) : clone(fallback))),
-      saveAll: vi.fn((stories) => {
-        state.stories = clone(stories);
+      listMeta: vi.fn((fallback = []) => state.stories.length
+        ? state.stories.map((story: any) => ({
+            id: story.id,
+            title: story.title,
+            worldId: story.worldId,
+            characterIds: story.characterIds || [],
+            characterCount: (story.characterIds || []).length,
+            createdAt: story.createdAt,
+            lastPlayedAt: story.lastPlayedAt,
+          }))
+        : clone(fallback)),
+      loadFull: vi.fn((storyId: string) => clone(state.stories.find((story: any) => story.id === storyId) || null)),
+      saveStory: vi.fn((story: any) => {
+        const index = state.stories.findIndex((item: any) => item.id === story.id);
+        if (index >= 0) state.stories[index] = clone(story);
+        else state.stories.push(clone(story));
+        return true;
+      }),
+      deleteStory: vi.fn((storyId: string) => {
+        state.stories = state.stories.filter((story: any) => story.id !== storyId);
         return true;
       }),
       clear: vi.fn(),
@@ -75,12 +92,12 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       remove: vi.fn(),
     },
     activeStory: {
-      get: vi.fn(() => state.activeStoryId),
+      get: vi.fn(() => state.storedActiveStory),
       set: vi.fn((storyId: string) => {
-        state.activeStoryId = storyId;
+        state.storedActiveStory = storyId;
       }),
       clear: vi.fn(() => {
-        state.activeStoryId = null;
+        state.storedActiveStory = null;
       }),
     },
     settings: {
@@ -117,14 +134,14 @@ describe("useAppManager", () => {
     vi.clearAllMocks();
   });
 
-  it("switches stories and loads chat + lore state", () => {
+  it("switches stories and loads chat + lore state", async () => {
     const { result } = renderHook(() => useAppManager());
 
-    act(() => {
-      result.current.switchStory("story-2");
+    await act(async () => {
+      await result.current.switchStory("story-2");
     });
 
-    expect(result.current.activeStoryId).toBe("story-2");
+    expect(result.current.activeStory?.id).toBe("story-2");
     expect(result.current.activeView).toBe("story");
     expect(result.current.activeStory?.title).toBe("Story Two");
     expect(result.current.chatHistory[0]?.content).toBe("Saved chat two");

@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useReducer, useState } from "react";
 import { ChatMessage } from "../types";
-import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH } from "../constants/defaultData";
+import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
 import { repository, isTauri } from "../services/repository";
+import { storyToMeta } from "../services/storyMeta";
 import {
   chooseActiveCastLead,
   loadInitialState,
   getStoryCharactersFromLists,
+  createInitialCastState,
+  createInitialCurrentContext,
 } from "../utils/appHelpers";
 import { storyReducer, storyInitialState } from "../reducers/storyReducer";
 import { chatReducer, chatInitialState } from "../reducers/chatReducer";
@@ -211,10 +214,24 @@ export default function useAppManager() {
     repository.characters.saveAll(normalizedCharacters);
   };
 
-  // Updated: Now saves metas only (we'll evolve this further)
   const saveStoryMetas = (nextMetas: any[]) => {
     dispatchStory({ type: "SET_STORY_METAS", payload: nextMetas });
-    // repository.stories.saveAll will be replaced later
+  };
+
+  const upsertStoryMeta = (meta: any) => {
+    dispatchStory({ type: "UPSERT_STORY_META", payload: meta });
+  };
+
+  const removeStoryMeta = (storyId: string) => {
+    dispatchStory({ type: "REMOVE_STORY_META", payload: storyId });
+  };
+
+  const saveActiveStory = (nextStory: any) => {
+    if (!nextStory) return;
+    const normalizedStory = normalizeStory(nextStory, worlds, characters);
+    dispatchStory({ type: "SET_ACTIVE_STORY", payload: normalizedStory });
+    dispatchStory({ type: "UPSERT_STORY_META", payload: storyToMeta(normalizedStory) });
+    repository.stories.saveStory(normalizedStory);
   };
 
   const saveChatForActiveStory = (nextChatHistory: any[]) => {
@@ -257,13 +274,102 @@ export default function useAppManager() {
   const getStoryCharacters = (story: any) => getStoryCharactersFromLists(story, characters);
 
   const clearActiveStorySelection = () => {
-    setActiveStory(null);
+    dispatchStory({ type: "CLEAR_ACTIVE_STORY" });
     setChatHistory([]);
     setActiveLoreMemory([]);
     setStoryDraft(null);
-    setActiveView("landing");
     dispatchLore({ type: "RESET_PENDING_UPDATES" });
     repository.activeStory.clear();
+  };
+
+  const deleteStoryById = (storyId: string) => {
+    if (!storyId) return;
+    const meta = storyMetas.find((item) => item.id === storyId);
+    const label = meta?.title || "this story";
+    if (!confirm(`Delete story "${label}"? This will delete its chat and lore memory.`)) return;
+    repository.stories.deleteStory?.(storyId);
+    repository.maintenance?.removeStoryRuntimeData?.(storyId);
+    removeStoryMeta(storyId);
+    if (activeStory?.id === storyId) clearActiveStorySelection();
+  };
+
+  const openStoryEditSheet = async (storyId: string) => {
+    if (isGenerating) {
+      alert("Please wait for the current reply to finish before editing stories.");
+      return;
+    }
+    let loadedStory = await repository.stories.loadFull(storyId);
+    if (!loadedStory) {
+      const defaultStory = defaultStories.find((story: any) => story.id === storyId);
+      if (defaultStory) {
+        loadedStory = normalizeStory(defaultStory, worlds, characters);
+      }
+    }
+    if (!loadedStory) {
+      const meta = storyMetas.find((storyMeta) => storyMeta.id === storyId);
+      if (meta) {
+        const world = worlds.find((item) => item.id === meta.worldId) || worlds[0] || null;
+        const storyCharacters = (meta.characterIds || [])
+          .map((id) => characters.find((character) => character.id === id))
+          .filter(Boolean);
+        loadedStory = normalizeStory({
+          id: meta.id,
+          title: meta.title,
+          worldId: meta.worldId || world?.id || "",
+          characterIds: storyCharacters.map((character: any) => character.id),
+          greeting: "The scene begins.",
+          currentContext: createInitialCurrentContext(world, storyCharacters as any),
+          castState: createInitialCastState(storyCharacters as any),
+          createdAt: meta.createdAt || Date.now(),
+          lastPlayedAt: meta.lastPlayedAt,
+        }, worlds, characters);
+      }
+    }
+    if (!loadedStory) {
+      alert("Story not found.");
+      removeStoryMeta(storyId);
+      return;
+    }
+    repository.stories.saveStory(loadedStory);
+    upsertStoryMeta(storyToMeta(loadedStory));
+    setStoryDraft(normalizeStory(loadedStory, worlds, characters));
+    setActiveView("story-edit");
+  };
+
+  const saveStoryEdits = (storyDraft: any) => {
+    if (!storyDraft) return { error: "No story draft is loaded." };
+    if (!storyDraft.worldId || !worlds.some((world) => world.id === storyDraft.worldId)) {
+      return { error: "Please choose a valid world." };
+    }
+    const selectedCharacterIds = Array.isArray(storyDraft.characterIds) ? storyDraft.characterIds.filter(Boolean) : [];
+    if (!selectedCharacterIds.length) return { error: "Please choose at least one story character." };
+
+    const selectedCharacters = selectedCharacterIds
+      .map((id) => characters.find((character) => character.id === id))
+      .filter(Boolean);
+    if (!selectedCharacters.length) return { error: "Please choose at least one valid story character." };
+
+    const selectedIdSet = new Set(selectedCharacters.map((character: any) => character.id));
+    const prunedDraft = {
+      ...storyDraft,
+      characterIds: selectedCharacters.map((character: any) => character.id),
+      castState: {
+        activeCharacters: (storyDraft.castState?.activeCharacters || []).filter((row: any) => selectedIdSet.has(row.characterId)),
+        relationships: (storyDraft.castState?.relationships || []).filter((row: any) => selectedIdSet.has(row.characterId)),
+      },
+    };
+    const normalizedStory = normalizeStory(prunedDraft, worlds, characters);
+    repository.stories.saveStory(normalizedStory);
+    upsertStoryMeta(storyToMeta(normalizedStory));
+    if (activeStory?.id === normalizedStory.id) setActiveStory(normalizedStory);
+    setStoryDraft(null);
+    setActiveView("landing");
+    return { ok: true };
+  };
+
+  const cancelStoryEdit = () => {
+    setStoryDraft(null);
+    setActiveView("landing");
   };
 
   const resetCurrentStoryState = (
@@ -367,12 +473,19 @@ export default function useAppManager() {
     saveWorldList,
     saveCharacterList,
     saveStoryMetas,
+    upsertStoryMeta,
+    removeStoryMeta,
+    saveActiveStory,
     saveChatForActiveStory,
     saveLoreForActiveStory,
     getWorld,
     getCharacter,
     getStoryCharacters,
     clearActiveStorySelection,
+    deleteStoryById,
+    openStoryEditSheet,
+    saveStoryEdits,
+    cancelStoryEdit,
     resetCurrentStoryState,
   };
 
@@ -432,6 +545,11 @@ export default function useAppManager() {
     toggleEditorCollapsed,
     toggleTopbarCollapsed,
     setStoryDraft,
+    saveActiveStory,
+    deleteStoryById,
+    openStoryEditSheet,
+    saveStoryEdits,
+    cancelStoryEdit,
     storyMetas,
     storyDraft,
     storyImportRef,

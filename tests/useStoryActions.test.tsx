@@ -13,6 +13,11 @@ const { mockRepository } = vi.hoisted(() => {
     activeStory: {
       set: vi.fn(),
     },
+    stories: {
+      loadFull: vi.fn(),
+      saveStory: vi.fn(),
+      deleteStory: vi.fn(),
+    },
   };
 
   return { mockRepository: repository };
@@ -32,9 +37,10 @@ describe("useStoryActions", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("switchStory falls back to opening message if saved chat load fails", () => {
+  it("switchStory falls back to opening message if saved chat load fails", async () => {
     const { worlds, characters, stories } = createAppFixtures();
-    const setActiveStoryId = vi.fn();
+    const setActiveStory = vi.fn();
+    const saveActiveStory = vi.fn();
     const setChatHistory = vi.fn();
     const setActiveLoreMemory = vi.fn();
     const setSelectedCharacterSheetId = vi.fn();
@@ -42,6 +48,7 @@ describe("useStoryActions", () => {
     const setStoryDraft = vi.fn();
     const setActiveView = vi.fn();
 
+    mockRepository.stories.loadFull.mockReturnValue(stories[1]);
     mockRepository.chats.load.mockImplementation(() => {
       throw new Error("chat load failed");
     });
@@ -49,14 +56,14 @@ describe("useStoryActions", () => {
 
     const { result } = renderHook(() => useStoryActions());
 
-    act(() => {
-      result.current.switchStory({
+    await act(async () => {
+      await result.current.switchStory({
         storyId: "story-2",
         isGenerating: false,
-        stories,
         worlds,
         characters,
-        setActiveStoryId,
+        setActiveStory,
+        saveActiveStory,
         setChatHistory,
         setActiveLoreMemory,
         repository: mockRepository,
@@ -67,7 +74,8 @@ describe("useStoryActions", () => {
       });
     });
 
-    expect(setActiveStoryId).toHaveBeenCalledWith("story-2");
+    expect(setActiveStory).toHaveBeenCalledWith(expect.objectContaining({ id: "story-2" }));
+    expect(saveActiveStory).toHaveBeenCalledWith(expect.objectContaining({ id: "story-2" }));
     expect(mockRepository.activeStory.set).toHaveBeenCalledWith("story-2");
     expect(console.error).toHaveBeenCalled();
     expect(setChatHistory).toHaveBeenCalledWith([{ role: "assistant", content: "Opening two" }]);
@@ -82,24 +90,25 @@ describe("useStoryActions", () => {
 
   it("deleteActiveStory removes runtime data and clears selection", () => {
     const { stories } = createAppFixtures();
-    const saveStoryList = vi.fn();
     const clearActiveStorySelection = vi.fn();
+    const removeStoryMeta = vi.fn();
     const maintenance = { removeStoryRuntimeData: vi.fn() };
+    const storiesRepo = { deleteStory: vi.fn() };
 
     const { result } = renderHook(() => useStoryActions());
 
     act(() => {
       result.current.deleteActiveStory({
         activeStory: stories[0],
-        stories,
-        saveStoryList,
         clearActiveStorySelection,
-        repository: { maintenance },
+        removeStoryMeta,
+        repository: { stories: storiesRepo, maintenance },
       });
     });
 
+    expect(storiesRepo.deleteStory).toHaveBeenCalledWith("story-1");
     expect(maintenance.removeStoryRuntimeData).toHaveBeenCalledWith("story-1");
-    expect(saveStoryList).toHaveBeenCalledWith([stories[1]]);
+    expect(removeStoryMeta).toHaveBeenCalledWith("story-1");
     expect(clearActiveStorySelection).toHaveBeenCalled();
   });
 });

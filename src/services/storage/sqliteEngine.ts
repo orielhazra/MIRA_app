@@ -1,5 +1,6 @@
 import { cloneJson } from "../../utils/helpers";
 import { CUSTOM_DB_PATH } from "../../constants/defaultData";
+import { storyToMeta } from "../storyMeta";
 import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry } from "../../types";
 import { ensureSqliteSchema, SQLITE_WORLD_INSERT_SQL, SQLITE_CHARACTER_INSERT_SQL, SQLITE_STORY_INSERT_SQL } from "./sqliteSchema";
 
@@ -265,44 +266,6 @@ export const sqliteEngine = {
 
 
     try {
-      // PHASE 5: LocalStorage Legacy Data Migration
-      const hasLegacyMigration = localStorage.getItem("mira_legacy_migrated");
-      const legacyWorlds = localStorage.getItem("roleplay_worlds");
-      
-      if (!hasLegacyMigration && legacyWorlds) {
-        console.log("Found legacy LocalStorage data. Migrating to SQLite...");
-        
-        try {
-          const lWorlds = JSON.parse(legacyWorlds) || [];
-          const lChars = JSON.parse(localStorage.getItem("roleplay_characters") || "[]");
-          const lStories = JSON.parse(localStorage.getItem("roleplay_stories") || "[]");
-          
-          if (lWorlds.length > 0) sqliteEngine.worlds.saveAll(lWorlds);
-          if (lChars.length > 0) sqliteEngine.characters.saveAll(lChars);
-          if (lStories.length > 0) sqliteEngine.stories.saveAll(lStories);
-          
-          for (const s of lStories) {
-            const chatStr = localStorage.getItem(`roleplay_story_chat_${s.id}`);
-            if (chatStr) sqliteEngine.chats.save(s.id, JSON.parse(chatStr));
-            
-            const loreStr = localStorage.getItem(`roleplay_story_lore_memory_${s.id}`);
-            if (loreStr) sqliteEngine.loreMemory.save(s.id, JSON.parse(loreStr));
-          }
-          
-          const actStory = localStorage.getItem("active_story_id");
-          if (actStory) sqliteEngine.activeStory.set(actStory);
-          
-          const kbUrl = localStorage.getItem("kobold_base_url");
-          if (kbUrl) sqliteEngine.settings.setKoboldBaseUrl(kbUrl);
-
-          localStorage.setItem("mira_legacy_migrated", "true");
-          localStorage.clear();
-          console.log("Legacy data successfully migrated. LocalStorage cleared.");
-        } catch (err) {
-          console.error("Local Storage Migration failed:", err);
-        }
-      }
-
       await flushPendingWrites();
 
       await ensureSqliteSchema(db);
@@ -346,15 +309,20 @@ export const sqliteEngine = {
         createdAt: row.createdAt
       }));
 
-      // 3. Load Story Metadata only (Phase 1 optimization) — no mainCharacterId
-      const rawStoryMetas = (await db.select("SELECT id, title, worldId, characterIds, createdAt FROM stories")) as any[];
-      cache.storyMetas = rawStoryMetas.map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        worldId: row.worldId,
-        characterIds: row.characterIds ? JSON.parse(row.characterIds) : [],
-        createdAt: row.createdAt
-      }));
+      // 3. Load Story Metadata only.
+      const rawStoryMetas = (await db.select("SELECT id, title, worldId, characterIds, createdAt, lastPlayedAt FROM stories")) as any[];
+      cache.storyMetas = rawStoryMetas.map((row: any) => {
+        const characterIds = row.characterIds ? JSON.parse(row.characterIds) : [];
+        return {
+          id: row.id,
+          title: row.title,
+          worldId: row.worldId,
+          characterIds,
+          characterCount: characterIds.length,
+          createdAt: row.createdAt,
+          lastPlayedAt: row.lastPlayedAt || undefined,
+        };
+      });
 
       // Note: Full stories are no longer loaded into cache.stories at startup
       cache.stories = [];
@@ -472,7 +440,7 @@ export const sqliteEngine = {
       return cache.storyMetas.length ? cache.storyMetas : fallback;
     },
 
-    // Loads full story data on demand (no mainCharacterId)
+    // Loads full story data on demand.
     async loadFull(storyId: string): Promise<Story | null> {
       if (!storyId || !dbPromise) return null;
       
@@ -496,7 +464,8 @@ export const sqliteEngine = {
           currentContext: row.currentContext ? JSON.parse(row.currentContext) : { scene: {}, location: {}, objects: [], recentFacts: {} },
           castState: row.castState ? JSON.parse(row.castState) : { activeCharacters: [], relationships: [] },
           directorNotes: row.directorNotes ? JSON.parse(row.directorNotes) : {},
-          createdAt: row.createdAt
+          createdAt: row.createdAt,
+          lastPlayedAt: row.lastPlayedAt || undefined
         };
       } catch (error) {
         console.error("Failed to load full story:", error);
@@ -524,7 +493,7 @@ export const sqliteEngine = {
                 JSON.stringify(story.storyLorebook || []), JSON.stringify(story.temporaryLorebook || []),
                 JSON.stringify(story.storyMemory), JSON.stringify(story.currentContext),
                 JSON.stringify(story.castState), JSON.stringify(story.directorNotes || {}),
-                story.createdAt || Date.now()
+                story.createdAt || Date.now(), story.lastPlayedAt || null
               ]
             );
           }
@@ -533,17 +502,11 @@ export const sqliteEngine = {
       return true;
     },
 
-    // New method for saving a single story (no mainCharacterId)
+    // New method for saving a single story.
     saveStory(story: Story): boolean {
       // Update meta cache
       const metaIndex = cache.storyMetas.findIndex(m => m.id === story.id);
-      const meta: StoryMeta = {
-        id: story.id,
-        title: story.title,
-        worldId: story.worldId,
-        characterIds: story.characterIds,
-        createdAt: story.createdAt
-      };
+      const meta: StoryMeta = storyToMeta(story);
       
       if (metaIndex >= 0) {
         cache.storyMetas[metaIndex] = meta;
@@ -555,8 +518,8 @@ export const sqliteEngine = {
         await db.execute(
           `INSERT INTO stories (
             id, title, worldId, characterIds, scenario, greeting,
-            storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt, lastPlayedAt
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
           ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             worldId = EXCLUDED.worldId,
@@ -569,16 +532,37 @@ export const sqliteEngine = {
             currentContext = EXCLUDED.currentContext,
             castState = EXCLUDED.castState,
             directorNotes = EXCLUDED.directorNotes,
-            createdAt = EXCLUDED.createdAt`,
+            createdAt = EXCLUDED.createdAt,
+            lastPlayedAt = EXCLUDED.lastPlayedAt`,
           [
             story.id, story.title, story.worldId, JSON.stringify(story.characterIds || []),
             story.scenario || "", story.greeting || "",
             JSON.stringify(story.storyLorebook || []), JSON.stringify(story.temporaryLorebook || []),
             JSON.stringify(story.storyMemory), JSON.stringify(story.currentContext),
             JSON.stringify(story.castState), JSON.stringify(story.directorNotes || {}),
-            story.createdAt || Date.now()
+            story.createdAt || Date.now(), story.lastPlayedAt || null
           ]
         );
+      });
+      return true;
+    },
+
+    deleteStory(storyId: string): boolean {
+      if (!storyId) return false;
+      cache.stories = cache.stories.filter((story) => story.id !== storyId);
+      cache.storyMetas = cache.storyMetas.filter((meta) => meta.id !== storyId);
+      delete cache.chats[storyId];
+      delete cache.loreMemory[storyId];
+      cancelScheduledWrite(`story:${storyId}`);
+      cancelScheduledWrite(`chat:${storyId}`);
+      cancelScheduledWrite(`lore:${storyId}`);
+
+      enqueueDbWrite("Delete story", async (db) => {
+        await runInTransaction(db, async () => {
+          await db.execute("DELETE FROM chats WHERE storyId = $1", [storyId]);
+          await db.execute("DELETE FROM lore_memory WHERE storyId = $1", [storyId]);
+          await db.execute("DELETE FROM stories WHERE id = $1", [storyId]);
+        });
       });
       return true;
     },

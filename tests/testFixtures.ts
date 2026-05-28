@@ -36,7 +36,6 @@ export function createAppFixtures() {
         title: "Story One",
         worldId: "world-1",
         characterIds: ["char-1"],
-        mainCharacterId: "char-1",
         greeting: "Opening one",
       },
       worlds,
@@ -48,7 +47,6 @@ export function createAppFixtures() {
         title: "Story Two",
         worldId: "world-2",
         characterIds: ["char-2"],
-        mainCharacterId: "char-2",
         greeting: "Opening two",
       },
       worlds,
@@ -73,7 +71,7 @@ export function createRepositoryState() {
       "story-1": [{ id: "lore-1", name: "Lore One", keywords: [], content: "A", enabled: true, alwaysOn: false }],
       "story-2": [{ id: "lore-2", name: "Lore Two", keywords: [], content: "B", enabled: true, alwaysOn: false }],
     },
-    activeStoryId: null as string | null,
+    storedActiveStory: null as string | null,
     koboldBaseUrl: "http://localhost:5001",
   };
 }

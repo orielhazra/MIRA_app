@@ -8,6 +8,7 @@ import DebugModal from "../../features/debugging/DebugModal";
 import PendingUpdatesPanel from "../../components/PendingUpdatesPanel";
 import Landing from "../../features/stories/Landing";
 import StoryCreationSheet from "../../features/stories/StoryCreationSheet";
+import StoryEditSheet from "../../features/stories/StoryEditSheet";
 import CharacterSheet from "../../features/characters/CharacterSheet";
 import WorldSheet from "../../features/worlds/WorldSheet";
 
@@ -16,9 +17,11 @@ export default function MainLayout() {
 
   const isLanding = !app.activeStory || app.activeView === "landing";
   const shouldShowEditor = app.activeView === "story" && app.activeStory?.id;
+  const shouldShowGlobalSidebar = !isLanding;
   const appClassName = [
     "app",
     shouldShowEditor ? "with-editor" : "without-editor",
+    shouldShowGlobalSidebar ? "with-sidebar" : "no-sidebar",
     app.sidebarCollapsed ? "sidebar-collapsed" : "sidebar-expanded",
     shouldShowEditor ? (app.editorCollapsed ? "editor-collapsed" : "editor-expanded") : "editor-hidden",
   ].join(" ");
@@ -37,10 +40,25 @@ export default function MainLayout() {
       );
     }
 
+
+    if (app.activeView === "story-edit") {
+      return (
+        <StoryEditSheet
+          worlds={app.worlds}
+          characters={app.characters}
+          initialDraft={app.storyDraft}
+          onSave={app.saveStoryEdits}
+          onCancel={app.cancelStoryEdit}
+          onOpenStory={app.switchStory}
+        />
+      );
+    }
+
     if (app.activeView === "character") {
       return (
         <CharacterSheet
           character={app.selectedCharacter}
+          storyMetas={app.storyMetas}
           activeStory={app.activeStory}
           onSave={app.saveCharacterSheetEdits}
           onAddToStory={app.addCharacterToActiveStory}
@@ -58,6 +76,7 @@ export default function MainLayout() {
       return (
         <WorldSheet
           world={app.selectedWorld}
+          storyMetas={app.storyMetas}
           activeStory={app.activeStory}
           onSave={app.saveWorldSheetEdits}
           onUse={app.assignWorldToStory}
@@ -76,6 +95,8 @@ export default function MainLayout() {
           onNewStory={app.openStoryCreationSheet}
           onImportStory={() => app.storyImportRef.current?.click()}
           onSelectStory={app.switchStory}
+          onEditStory={app.openStoryEditSheet}
+          onDeleteStory={app.deleteStoryById}
           onFactoryReset={app.factoryReset}
           isGenerating={app.isGenerating}
         />
@@ -125,8 +146,8 @@ export default function MainLayout() {
   return (
     <>
       <div className={appClassName}>
-        {/* Only show global sidebar when not on landing */}
-        {!isLanding && (
+        {/* Only show global sidebar when an active story/sheet needs library navigation */}
+        {shouldShowGlobalSidebar && (
           <Sidebar
             activeStory={app.activeStory}
             activeWorld={app.activeWorld}
@@ -141,6 +162,7 @@ export default function MainLayout() {
             onNewCharacter={app.createBlankCharacter}
             onSelectCharacter={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("character"); app.setStoryDraft(null); }}
             onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
+            onFactoryReset={app.factoryReset}
           />
         )}
 

@@ -16,13 +16,13 @@ interface CharacterActionDeps {
   setActiveView?: (view: string) => void;
   setStoryDraft?: (draft: any) => void;
   characterDraft?: Character;
-  stories?: Story[];
+  storyMetas?: { id: string; title: string; characterIds: string[] }[];
   characterId?: string;
   getCharacter?: (id: string) => Character | null;
   repository?: any;
   activeStory?: Story | null;
   presence?: string;
-  saveStoryList?: (stories: Story[]) => void;
+  saveActiveStory?: (story: Story) => void;
 }
 
 export default function useCharacterActions() {
@@ -44,7 +44,6 @@ export default function useCharacterActions() {
     const newCharacter = normalizeCharacter(
       {
         id: createId("character"),
-        worldId: selectedWorldSheetId || activeWorld?.id || worlds[0]?.id || "",
         name: "New Character",
         shortDescription: "Blank character template",
         lorebook: [],
@@ -72,23 +71,25 @@ export default function useCharacterActions() {
   }
 
   function deleteSelectedCharacter(deps: CharacterActionDeps) {
-    const { characters, stories, characterId, getCharacter, saveCharacterList, repository, setSelectedCharacterSheetId, setActiveView } = deps;
-    if (!characters || !stories || !getCharacter || !saveCharacterList) return;
+    const { characters, storyMetas = [], characterId, getCharacter, saveCharacterList, repository, setSelectedCharacterSheetId, setActiveView } = deps;
+    if (!characters || !getCharacter || !saveCharacterList) return;
 
     const character = getCharacter(characterId!);
     if (!character) return;
 
-    const storiesUsingCharacter = stories.filter((s) => (s.characterIds || []).includes(character.id));
+    const storiesUsingCharacter = storyMetas.filter((meta) => (meta.characterIds || []).includes(character.id));
     if (storiesUsingCharacter.length > 0) {
       const storyNames = storiesUsingCharacter.map((s) => `"${s.title}"`).join(", ");
-      alert(`Cannot delete ${character.name}. This character is used in ${storiesUsingCharacter.length} story(s): ${storyNames}.\n\nDelete these stories first.`);
+      alert(`Cannot delete ${character.name}. This character is used in ${storiesUsingCharacter.length} story(s): ${storyNames}.
+
+Delete these stories first.`);
       return;
     }
 
     if (!confirm(`Delete ${character.name}?`)) return;
 
     saveCharacterList(characters.filter((item) => item.id !== character.id));
-    repository?.characters.removeLegacyChat(character.id);
+    repository?.characters.removeLegacyChat?.(character.id);
     setSelectedCharacterSheetId?.(characters.find((item) => item.id !== character.id)?.id || "");
     setActiveView?.("landing");
   }
@@ -96,17 +97,15 @@ export default function useCharacterActions() {
   function setCharacterPresenceInActiveStory(deps: CharacterActionDeps) {
     const {
       activeStory,
-      characters = [],
-      stories = [],
       characterId,
       presence,
       getCharacter,
-      saveStoryList,
+      saveActiveStory,
       setSelectedCharacterSheetId,
       setActiveView,
     } = deps;
 
-    if (!activeStory || !getCharacter || !saveStoryList || !characterId) return;
+    if (!activeStory || !getCharacter || !saveActiveStory || !characterId) return;
 
     const character = getCharacter(characterId);
     if (!character) return alert("Character not found.");
@@ -121,11 +120,7 @@ export default function useCharacterActions() {
       row.present = normalizedPresence !== "inactive";
     }
 
-    const nextStories = stories.map((story) =>
-      story.id === activeStory.id ? { ...story, castState: nextCastState } : story
-    );
-
-    saveStoryList(nextStories);
+    saveActiveStory({ ...activeStory, castState: nextCastState });
     setSelectedCharacterSheetId?.(character.id);
     setActiveView?.("story");
   }
@@ -133,47 +128,40 @@ export default function useCharacterActions() {
   function addCharacterToActiveStory(deps: CharacterActionDeps) {
     const {
       activeStory,
-      stories = [],
       characterId,
       getCharacter,
-      saveStoryList,
+      saveActiveStory,
       setSelectedCharacterSheetId,
     } = deps;
 
-    if (!activeStory || !getCharacter || !saveStoryList || !characterId) return;
+    if (!activeStory || !getCharacter || !saveActiveStory || !characterId) return;
 
     const character = getCharacter(characterId);
     if (!character) return alert("Character not found.");
 
-    const nextStories = stories.map((story) => {
-      if (story.id !== activeStory.id) return story;
-      const nextCharacterIds = uniqueCompact([...(story.characterIds || []), character.id]);
-      const storyCharacters = nextCharacterIds.map((id) => getCharacter(id)).filter(Boolean) as Character[];
-      const nextCastState = normalizeCastState(story.castState, storyCharacters, story.currentContext);
-      return {
-        ...story,
-        characterIds: nextCharacterIds,
-        mainCharacterId: story.mainCharacterId || nextCharacterIds[0] || "",
-        currentContext: normalizeCurrentContext(story.currentContext),
-        castState: nextCastState,
-      };
-    });
+    const nextCharacterIds = uniqueCompact([...(activeStory.characterIds || []), character.id]);
+    const storyCharacters = nextCharacterIds.map((id) => getCharacter(id)).filter(Boolean) as Character[];
+    const nextCastState = normalizeCastState(activeStory.castState, storyCharacters, activeStory.currentContext);
 
-    saveStoryList(nextStories);
+    saveActiveStory({
+      ...activeStory,
+      characterIds: nextCharacterIds,
+      currentContext: normalizeCurrentContext(activeStory.currentContext),
+      castState: nextCastState,
+    });
     setSelectedCharacterSheetId?.(character.id);
   }
 
   function removeCharacterFromActiveStory(deps: CharacterActionDeps) {
     const {
       activeStory,
-      stories = [],
       characterId,
       getCharacter,
-      saveStoryList,
+      saveActiveStory,
       setSelectedCharacterSheetId,
     } = deps;
 
-    if (!activeStory || !getCharacter || !saveStoryList || !characterId) return;
+    if (!activeStory || !getCharacter || !saveActiveStory || !characterId) return;
 
     const remainingIds = (activeStory.characterIds || []).filter((id) => id !== characterId);
     if (remainingIds.length === 0) {
@@ -181,20 +169,15 @@ export default function useCharacterActions() {
       return;
     }
 
-    const nextStories = stories.map((story) => {
-      if (story.id !== activeStory.id) return story;
-      const storyCharacters = remainingIds.map((id) => getCharacter(id)).filter(Boolean) as Character[];
-      const nextCastState = normalizeCastState(story.castState, storyCharacters, story.currentContext);
-      return {
-        ...story,
-        characterIds: remainingIds,
-        mainCharacterId: remainingIds.includes(story.mainCharacterId) ? story.mainCharacterId : remainingIds[0],
-        currentContext: normalizeCurrentContext(story.currentContext),
-        castState: nextCastState,
-      };
-    });
+    const storyCharacters = remainingIds.map((id) => getCharacter(id)).filter(Boolean) as Character[];
+    const nextCastState = normalizeCastState(activeStory.castState, storyCharacters, activeStory.currentContext);
 
-    saveStoryList(nextStories);
+    saveActiveStory({
+      ...activeStory,
+      characterIds: remainingIds,
+      currentContext: normalizeCurrentContext(activeStory.currentContext),
+      castState: nextCastState,
+    });
     setSelectedCharacterSheetId?.(remainingIds[0] || "");
   }
 

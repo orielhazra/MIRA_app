@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "../../constants/defaultData";
 import { cloneJson } from "../../utils/helpers";
+import { storyToMeta, upsertStoryMeta } from "../storyMeta";
 import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry } from "../../types";
 
 interface PersistenceStatus {
@@ -75,6 +76,10 @@ function writeLocalStorageJson<T>(key: string, value: T): boolean {
   }
 }
 
+function storyStorageKey(storyId: string): string {
+  return `roleplay_story_full_${storyId}`;
+}
+
 export const localStorageEngine = {
   async initialize(): Promise<void> {
     return Promise.resolve();
@@ -131,50 +136,60 @@ export const localStorageEngine = {
   },
 
   stories: {
-    // Returns lightweight metadata only (no mainCharacterId)
     listMeta(fallback: StoryMeta[] = []): StoryMeta[] {
-      const fullStories = readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, []);
-      return fullStories.map(s => ({
-        id: s.id,
-        title: s.title,
-        worldId: s.worldId,
-        characterIds: s.characterIds,
-        createdAt: s.createdAt
-      }));
+      return readLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, fallback);
     },
 
-    // Load full story from localStorage (no mainCharacterId)
     loadFull(storyId: string): Story | null {
       if (!storyId) return null;
-      const stories = readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, []);
-      return stories.find(s => s.id === storyId) || null;
+      return readLocalStorageJson<Story | null>(storyStorageKey(storyId), null);
     },
 
-    // Legacy
+    // Compatibility bridge for old call sites during the state refactor.
+    // Blank-slate storage does not persist a full story list.
     list(fallback: Story[] = []): Story[] {
-      return readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, fallback);
+      return cloneJson(fallback);
     },
 
+    // Compatibility bridge: save each provided story individually and persist only metas as the list.
     saveAll(stories: Story[]): boolean {
-      return withTrackedWrite("Save stories", () => writeLocalStorageJson<Story[]>(STORAGE_KEYS.stories, stories));
+      return withTrackedWrite("Save story metadata", () => {
+        const metas = stories.map(storyToMeta);
+        writeLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, metas);
+        for (const story of stories) {
+          writeLocalStorageJson<Story>(storyStorageKey(story.id), story);
+        }
+        return true;
+      });
     },
 
     saveStory(story: Story): boolean {
-      const stories = readLocalStorageJson<Story[]>(STORAGE_KEYS.stories, []);
-      const index = stories.findIndex(s => s.id === story.id);
-      
-      if (index >= 0) {
-        stories[index] = story;
-      } else {
-        stories.push(story);
-      }
-      
-      return withTrackedWrite("Save story", () => writeLocalStorageJson<Story[]>(STORAGE_KEYS.stories, stories));
+      return withTrackedWrite("Save story", () => {
+        const metas = readLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, []);
+        writeLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, upsertStoryMeta(metas, storyToMeta(story)));
+        return writeLocalStorageJson<Story>(storyStorageKey(story.id), story);
+      });
+    },
+
+    deleteStory(storyId: string): boolean {
+      if (!storyId) return false;
+      return withTrackedWrite("Delete story", () => {
+        const metas = readLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, []);
+        writeLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, metas.filter((meta) => meta.id !== storyId));
+        localStorage.removeItem(storyStorageKey(storyId));
+        localStorage.removeItem(`roleplay_story_chat_${storyId}`);
+        localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
+        return true;
+      });
     },
 
     clear(): void {
       withTrackedWrite("Clear stories", () => {
-        localStorage.removeItem(STORAGE_KEYS.stories);
+        const metas = readLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, []);
+        for (const meta of metas) {
+          localStorage.removeItem(storyStorageKey(meta.id));
+        }
+        localStorage.removeItem(STORAGE_KEYS.storyMetas);
       });
     }
   },
@@ -244,16 +259,22 @@ export const localStorageEngine = {
   maintenance: {
     clearKnownData(existingStories: Story[] = [], existingCharacters: Character[] = []): void {
       withTrackedWrite("Factory reset storage", () => {
-        for (const story of existingStories) {
-          localStorage.removeItem(`roleplay_story_chat_${story.id}`);
-          localStorage.removeItem(`roleplay_story_lore_memory_${story.id}`);
+        const knownMetas = readLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, []);
+        const knownStoryIds = new Set([
+          ...knownMetas.map((meta) => meta.id),
+          ...existingStories.map((story) => story.id),
+        ].filter(Boolean));
+        for (const storyId of knownStoryIds) {
+          localStorage.removeItem(storyStorageKey(storyId));
+          localStorage.removeItem(`roleplay_story_chat_${storyId}`);
+          localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
         }
         for (const character of existingCharacters) {
           localStorage.removeItem(`roleplay_chat_${character.id}`);
         }
         localStorage.removeItem(STORAGE_KEYS.worlds);
         localStorage.removeItem(STORAGE_KEYS.characters);
-        localStorage.removeItem(STORAGE_KEYS.stories);
+        localStorage.removeItem(STORAGE_KEYS.storyMetas);
         localStorage.removeItem(STORAGE_KEYS.activeStory);
       });
     },

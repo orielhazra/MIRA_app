@@ -169,3 +169,338 @@
   line-height: 1.45;
 }
 
+
+/* SHEET / LIBRARY POLISH FOR METADATA + ACTIVE-STORY ARCHITECTURE */
+
+.sheet-form input,
+.sheet-form textarea,
+.sheet-form select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #101014;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+
+.sheet-form select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.sheet-form input:focus,
+.sheet-form textarea:focus,
+.sheet-form select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(124, 92, 255, 0.18);
+}
+
+.sheet-form small.muted,
+.sheet-form .muted {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sheet-actions button:disabled.danger,
+.sheet-actions button.danger:disabled {
+  background: var(--danger);
+  opacity: 0.35;
+}
+
+.landing-with-sidepanel {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  background: var(--bg);
+}
+
+.landing-side-panel {
+  width: 340px;
+  min-width: 280px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  color: var(--text);
+  min-height: 0;
+}
+
+.landing-library-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.landing-library-header strong {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.landing-library-header span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.story-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.empty-library-note {
+  color: var(--muted);
+  padding: 12px 0;
+  line-height: 1.45;
+}
+
+.empty-library-note p {
+  margin: 0 0 8px;
+}
+
+.story-library-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.story-library-card:hover:not(:disabled),
+.story-library-card:focus-visible {
+  background: var(--panel-3);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.story-library-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+.story-library-meta {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.story-library-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+.story-library-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.story-library-action {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.story-library-action.edit {
+  color: #9fcfff;
+}
+
+.story-library-action.delete {
+  color: #ff9999;
+}
+
+.story-library-action:hover,
+.story-library-action:focus-visible {
+  filter: brightness(1.2);
+  outline: none;
+}
+
+.landing-library-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primary-library-button,
+.secondary-library-button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.primary-library-button {
+  background: var(--accent);
+  color: white;
+}
+
+.primary-library-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.secondary-library-button {
+  background: var(--panel-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.secondary-library-button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.landing-welcome-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(124, 92, 255, 0.08), transparent 55%), var(--bg);
+  padding: 24px;
+}
+
+.mira-landing {
+  text-align: center;
+}
+
+.mira-title {
+  font-size: clamp(38px, 6vw, 56px);
+  color: var(--text);
+  margin: 0 0 8px;
+  letter-spacing: 0.08em;
+}
+
+.mira-subtitle {
+  font-size: 20px;
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+
+.mira-landing-copy {
+  color: var(--muted);
+  max-width: 460px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.factory-reset-corner-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 16px;
+  background: rgba(201, 79, 79, 0.18);
+  color: #ff9999;
+  border: 1px solid rgba(255, 153, 153, 0.28);
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 10;
+}
+
+.factory-reset-corner-button:hover:not(:disabled) {
+  background: rgba(201, 79, 79, 0.32);
+}
+
+@media (max-width: 760px) {
+  .landing-with-sidepanel {
+    flex-direction: column;
+  }
+
+  .landing-side-panel {
+    width: auto;
+    min-width: 0;
+    max-height: 58vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .landing-welcome-panel {
+    min-height: 260px;
+  }
+
+  .factory-reset-corner-button {
+    position: static;
+    margin: 12px 16px 16px auto;
+  }
+}
+
+/* Library card action layout after separating Open/Edit/Delete controls */
+.story-library-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.story-library-open-button {
+  display: block;
+  width: 100%;
+  padding: 14px 16px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.story-library-open-button:hover:not(:disabled),
+.story-library-card:hover .story-library-open-button:not(:disabled) {
+  background: transparent;
+}
+
+.story-library-open-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.story-library-open-button .story-library-title,
+.story-library-open-button .story-library-meta,
+.story-library-open-button .story-library-dates {
+  display: block;
+}
+
+.story-library-actions {
+  padding: 0 16px 12px;
+}
+
+.story-library-action {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.story-library-action:hover:not(:disabled) {
+  background: transparent;
+}
+
+.story-library-action.play {
+  color: var(--accent-hover);
+}

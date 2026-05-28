@@ -53,22 +53,20 @@ describe("useLoreActions", () => {
   it("saveTemporaryLore normalizes and saves temporary lore to the active story", () => {
     const { stories } = createAppFixtures();
     const activeStory = stories[0] as any;
-    const saveStoryList = vi.fn();
+    const saveActiveStory = vi.fn();
     const { result } = renderHook(() => useLoreActions());
 
     act(() => {
       result.current.saveTemporaryLore({
         activeStory,
-        stories,
-        saveStoryList,
+        saveActiveStory,
         lorebook: [
           { name: "Temp Lore", keywords: ["temp"], content: "Temporary context", enabled: true, alwaysOn: false },
         ],
       });
     });
 
-    const nextStories = saveStoryList.mock.calls[0][0];
-    const updatedStory = nextStories.find((story: any) => story.id === activeStory.id);
+    const updatedStory = saveActiveStory.mock.calls[0][0];
     expect(updatedStory.temporaryLorebook).toEqual([
       expect.objectContaining({
         name: "Temp Lore",

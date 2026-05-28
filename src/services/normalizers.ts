@@ -293,8 +293,7 @@ export function normalizeStory(story: any = {}, worlds: World[] = [], characters
   const rawCharacterIds = Array.isArray(story.characterIds)
     ? story.characterIds.map(String).filter(Boolean)
     : [];
-  const characterIds = uniqueCompact(rawCharacterIds.length ? rawCharacterIds : [story.mainCharacterId || fallbackCharacter?.id || ""]);
-  const mainCharacterId = String(story.mainCharacterId || characterIds[0] || fallbackCharacter?.id || "");
+  const characterIds = uniqueCompact(rawCharacterIds.length ? rawCharacterIds : [fallbackCharacter?.id || ""]);
   const storyCharacters = (characters || []).filter((character) => characterIds.includes(character.id));
 
   return {
@@ -302,10 +301,10 @@ export function normalizeStory(story: any = {}, worlds: World[] = [], characters
     title: String(story.title || "Untitled Story"),
     worldId: String(story.worldId || fallbackWorld?.id || "liminal-station"),
     characterIds,
-    mainCharacterId,
     scenario: String(story.scenario || ""),
     greeting: String(story.greeting || "The scene begins."),
     createdAt: Number(story.createdAt || Date.now()),
+    lastPlayedAt: story.lastPlayedAt ? Number(story.lastPlayedAt) : undefined,
     storyLorebook: normalizeStoredLorebook(story.storyLorebook || story.lorebook),
     temporaryLorebook: normalizeStoredLorebook(story.temporaryLorebook || story.tempLorebook || []),
     storyMemory: normalizeStoryMemory(story.storyMemory || story.memory || {}),

@@ -84,7 +84,7 @@ describe("useStateUpdates", () => {
 
   it("applySelectedPendingUpdates saves normalized story changes and clears applied updates", () => {
     const { worlds, characters, stories } = createAppFixtures();
-    const saveStoryList = vi.fn();
+    const saveActiveStory = vi.fn();
     const setPendingUpdates = vi.fn();
     const setSelectedPendingUpdateIds = vi.fn();
     const setPendingUpdateStatus = vi.fn();
@@ -103,20 +103,18 @@ describe("useStateUpdates", () => {
     act(() => {
       result.current.applySelectedPendingUpdates({
         activeStory: stories[0],
-        stories,
         activeWorld: worlds[0],
         activeStoryCharacters: [characters[0]],
         pendingUpdates: [update],
         selectedPendingUpdateIds: ["update-1"],
-        saveStoryList,
+        saveActiveStory,
         setPendingUpdates,
         setSelectedPendingUpdateIds,
         setPendingUpdateStatus,
       });
     });
 
-    const nextStories = saveStoryList.mock.calls[0][0];
-    const updatedStory = nextStories.find((story: any) => story.id === stories[0].id);
+    const updatedStory = saveActiveStory.mock.calls[0][0];
     expect(updatedStory.currentContext.location.name).toBe("Platform 9");
     expect(setPendingUpdates).toHaveBeenCalledWith([]);
     expect(setSelectedPendingUpdateIds).toHaveBeenCalledWith([]);

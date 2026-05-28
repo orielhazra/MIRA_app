@@ -12,6 +12,7 @@ import {
 } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
 import { repository } from "../services/repository";
+import { storyToMeta } from "../services/storyMeta";
 import { cloneJson, createId } from "./helpers";
 import { getMessageDisplayText, isAssistantMessageWithOptions } from "./chatMessageUtils";
 
@@ -274,21 +275,56 @@ export function chooseActiveCastLead(story: Story | null, storyCharacters: Chara
 }
 
 export function loadInitialState() {
-  const worlds = repository.worlds.list(defaultWorlds).map(normalizeWorld);
-  const characters = repository.characters.list(defaultCharacters).map((character) => normalizeCharacter(character, worlds));
-  const stories = repository.stories.list(defaultStories).map((story) => normalizeStory(story, worlds, characters));
-  const storedStoryId = repository.activeStory.get();
-  const activeStory = stories.find((story) => story.id === storedStoryId) || null;
-  const activeStoryId = activeStory?.id || null;
-  if (activeStoryId) repository.activeStory.set(activeStoryId);
-  else repository.activeStory.clear();
+  const storedWorlds = repository.worlds.list([]).map(normalizeWorld);
+  const defaultWorldList = defaultWorlds.map(normalizeWorld);
+  const worldById = new Map<string, World>();
+  for (const world of [...storedWorlds, ...defaultWorldList]) worldById.set(world.id, world);
+  const worlds = [...worldById.values()];
+  repository.worlds.saveAll(worlds);
+
+  const storedCharacters = repository.characters.list([]).map((character) => normalizeCharacter(character, worlds));
+  const defaultCharacterList = defaultCharacters.map((character) => normalizeCharacter(character, worlds));
+  const characterById = new Map<string, Character>();
+  for (const character of [...storedCharacters, ...defaultCharacterList]) characterById.set(character.id, character);
+  const characters = [...characterById.values()];
+  repository.characters.saveAll(characters);
+
+  const normalizedDefaultStories = defaultStories.map((story) => normalizeStory(story, worlds, characters));
+  let storyMetas = repository.stories.listMeta([]);
+  let didSeedStory = false;
+
+  for (const story of normalizedDefaultStories) {
+    const existingMeta = storyMetas.find((meta) => meta.id === story.id);
+    const existingWorldAvailable = worlds.some((world) => world.id === story.worldId);
+    const existingCharactersAvailable = story.characterIds.every((id) => characters.some((character) => character.id === id));
+    const existingMetaHasCast = Boolean(existingMeta?.characterIds?.length);
+
+    if (!existingMeta || !existingWorldAvailable || !existingCharactersAvailable || !existingMetaHasCast) {
+      repository.stories.saveStory(story);
+      storyMetas = storyMetas.filter((meta) => meta.id !== story.id).concat(storyToMeta(story));
+      didSeedStory = true;
+    }
+  }
+
+  if (!storyMetas.length && normalizedDefaultStories.length && !didSeedStory) {
+    for (const story of normalizedDefaultStories) repository.stories.saveStory(story);
+    storyMetas = normalizedDefaultStories.map(storyToMeta);
+  }
+
+  // Blank-slate metadata architecture: startup loads only lightweight story metadata.
+  // A full story is loaded on demand when the user selects one from Landing.
+  repository.activeStory.clear();
+
   return {
-    worlds, characters, stories, activeStoryId,
-    activeView: activeStory ? "story" : "landing",
-    selectedCharacterSheetId: chooseActiveCastLead(activeStory, getStoryCharactersFromLists(activeStory, characters))?.id || characters[0]?.id || "",
-    selectedWorldSheetId: activeStory?.worldId || worlds[0]?.id || "",
-    chatHistory: activeStory ? loadChatForStory(activeStory, worlds, characters) : [],
-    activeLoreMemory: activeStory ? repository.loreMemory.load(activeStory.id, []) : []
+    worlds,
+    characters,
+    storyMetas,
+    activeStory: null,
+    activeView: "landing",
+    selectedCharacterSheetId: characters[0]?.id || "",
+    selectedWorldSheetId: worlds[0]?.id || "",
+    chatHistory: [],
+    activeLoreMemory: []
   };
 }
 
@@ -305,7 +341,7 @@ export function loadChatForStory(story: Story, worlds: World[], characters: Char
 export function getStoryCharactersFromLists(story: Story | null, characters: Character[]): Character[] {
   if (!story) return [];
   const ids = Array.isArray(story?.characterIds) ? [...story.characterIds] : [];
-  return uniqueCompact(ids.length ? ids : [story?.mainCharacterId])
+  return uniqueCompact(ids)
     .map((id) => characters.find((character) => character.id === id))
     .filter((c): c is Character => !!c);
 }
@@ -478,7 +514,7 @@ export function remapCastRows(rows: any[], idMap: Record<string, string>) {
   });
 }
 
-export function buildStoryExportBundle(story: Story, getWorld: (id: string) => World | null, getStoryCharacters: (story: Story) => Character[], chatHistory: ChatMessage[], activeStoryId: string | null) {
+export function buildStoryExportBundle(story: Story, getWorld: (id: string) => World | null, getStoryCharacters: (story: Story) => Character[], chatHistory: ChatMessage[]) {
   const world = getWorld(story.worldId);
   const storyCharacters = getStoryCharacters(story);
   return {
@@ -493,6 +529,6 @@ export function buildStoryExportBundle(story: Story, getWorld: (id: string) => W
       worldLorebook: cloneJson(world?.worldLorebook || []),
       characterLorebooks: storyCharacters.map((character) => ({ characterId: character.id, characterName: character.name, lorebook: cloneJson(character.lorebook || []) }))
     },
-    chatHistory: story.id === activeStoryId ? cloneJson(chatHistory) : cloneJson(loadChatForStory(story, [world].filter((w): w is World => !!w), storyCharacters))
+    chatHistory: cloneJson(chatHistory)
   };
 }

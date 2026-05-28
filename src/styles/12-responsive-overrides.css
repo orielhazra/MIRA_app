@@ -277,3 +277,30 @@
 .scene-control-panel textarea {
   min-height: 82px;
 }
+
+/* Full-width modes: Landing, story creation, and story edit do not render the global sidebar. */
+.app.no-sidebar,
+.app.without-editor.no-sidebar,
+.app.without-editor.no-sidebar.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app.no-sidebar .chat,
+.app.without-editor.no-sidebar .chat,
+.app.without-editor.no-sidebar.sidebar-collapsed .chat {
+  grid-column: 1;
+}
+
+@media (max-width: 1100px) {
+  .app.no-sidebar,
+  .app.without-editor.no-sidebar,
+  .app.without-editor.no-sidebar.sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app.no-sidebar .chat,
+  .app.without-editor.no-sidebar .chat,
+  .app.without-editor.no-sidebar.sidebar-collapsed .chat {
+    grid-column: 1;
+  }
+}

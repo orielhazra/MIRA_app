@@ -6,10 +6,9 @@ import { useApp } from "./AppContext";
 export function useStoryContext() {
   const app = useApp();
   return {
-    stories: app.stories,
+    storyMetas: app.storyMetas,
     worlds: app.worlds,
     characters: app.characters,
-    activeStoryId: app.activeStoryId,
     activeView: app.activeView,
     selectedCharacterSheetId: app.selectedCharacterSheetId,
     selectedWorldSheetId: app.selectedWorldSheetId,

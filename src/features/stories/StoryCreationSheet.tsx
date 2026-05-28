@@ -4,11 +4,23 @@ import { useEffect, useState } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import { uniqueCompact } from "../../utils/appHelpers";
 
-export default function StoryCreationSheet({ worlds, characters, initialDraft, onStart, onCancel, onImportStory }) {
+export default function StoryCreationSheet({ worlds = [], characters = [], initialDraft, onStart, onCancel, onImportStory }) {
   const [draft, setDraft] = useState(initialDraft);
   const [status, setStatus] = useState("");
 
   useEffect(() => setDraft(initialDraft), [initialDraft]);
+
+  if (!draft) {
+    return (
+      <section id="messages" className="messages sheet-view">
+        <div className="sheet">
+          <h2>Create New Story</h2>
+          <p className="sheet-subtitle">No story draft is currently available.</p>
+          <div className="sheet-actions"><button onClick={onCancel}>Back</button></div>
+        </div>
+      </section>
+    );
+  }
 
   function update(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -33,7 +45,7 @@ export default function StoryCreationSheet({ worlds, characters, initialDraft, o
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>Create New Story</h2>
-        <p className="sheet-subtitle">This will create a new chat using the selected world and story cast.</p>
+        <p className="sheet-subtitle">This creates one full story record that links a selected world with selected cast members.</p>
 
         <div className="sheet-actions">
           <button onClick={start}>Start Story</button>
@@ -49,7 +61,7 @@ export default function StoryCreationSheet({ worlds, characters, initialDraft, o
           </label>
 
           <label>
-            World
+            Story World
             <select value={draft.worldId || ""} onChange={(event) => update("worldId", event.target.value)}>
               {worlds.map((world) => <option key={world.id} value={world.id}>{world.name}</option>)}
             </select>
@@ -57,7 +69,7 @@ export default function StoryCreationSheet({ worlds, characters, initialDraft, o
 
           <div className="cast-picker">
             <span className="cast-picker-label">Story Cast</span>
-            <p className="muted">The AI may speak and act for selected cast members. Presence and live state are controlled in Cast State after the story starts.</p>
+            <p className="muted">Characters are reusable templates. Selecting them here links them to this story; they are not tied directly to a world.</p>
             <div className="cast-picker-list">
               {characters.map((character) => {
                 const selected = (draft.characterIds || []).includes(character.id);
@@ -70,11 +82,12 @@ export default function StoryCreationSheet({ worlds, characters, initialDraft, o
                     />
                     <span>
                       <strong>{character.name}</strong>
-                      <small>{character.shortDescription || "Story cast member"}</small>
+                      <small>{character.shortDescription || "Reusable cast member"}</small>
                     </span>
                   </label>
                 );
               })}
+              {!characters.length && <p className="muted">No character templates are available yet.</p>}
             </div>
           </div>
 

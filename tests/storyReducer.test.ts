@@ -2,33 +2,32 @@ import { describe, expect, it } from "vitest";
 import { storyInitialState, storyReducer } from "../src/reducers/storyReducer";
 
 describe("storyReducer", () => {
-  it("switches the active story and view", () => {
+  it("sets the active story directly", () => {
+    const story = { id: "story-2", title: "Story Two", worldId: "world-1", characterIds: [] } as any;
     const next = storyReducer(
       {
         ...storyInitialState,
         activeView: "landing",
         storyDraft: { id: "draft" } as any,
       },
-      { type: "SWITCH_STORY", payload: { storyId: "story-2" } }
+      { type: "SET_ACTIVE_STORY", payload: story }
     );
 
-    expect(next.activeStoryId).toBe("story-2");
-    expect(next.activeView).toBe("story");
-    expect(next.storyDraft).toBeNull();
+    expect(next.activeStory?.id).toBe("story-2");
   });
 
   it("clears the active story back to landing", () => {
     const next = storyReducer(
       {
         ...storyInitialState,
-        activeStoryId: "story-1",
+        activeStory: { id: "story-1", title: "Story One", worldId: "world-1", characterIds: [] } as any,
         activeView: "story",
         storyDraft: { id: "draft" } as any,
       },
       { type: "CLEAR_ACTIVE_STORY" }
     );
 
-    expect(next.activeStoryId).toBeNull();
+    expect(next.activeStory).toBeNull();
     expect(next.activeView).toBe("landing");
     expect(next.storyDraft).toBeNull();
   });

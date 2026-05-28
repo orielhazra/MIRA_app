@@ -29,7 +29,10 @@ export type StoryAction =
   | { type: "SAVE_WORLDS"; payload: World[] }
   | { type: "SAVE_CHARACTERS"; payload: Character[] }
   | { type: "SET_STORY_METAS"; payload: StoryMeta[] }
+  | { type: "UPSERT_STORY_META"; payload: StoryMeta }
+  | { type: "REMOVE_STORY_META"; payload: string }
   | { type: "SET_ACTIVE_STORY"; payload: Story | null }
+  | { type: "CLEAR_ACTIVE_STORY" }
   | { type: "SET_ACTIVE_VIEW"; payload: string }
   | { type: "SELECT_CHARACTER_SHEET"; payload: string }
   | { type: "SELECT_WORLD_SHEET"; payload: string }
@@ -51,8 +54,24 @@ export function storyReducer(state: StoryState, action: StoryAction): StoryState
     case "SET_STORY_METAS":
       return { ...state, storyMetas: action.payload };
 
+    case "UPSERT_STORY_META": {
+      const exists = state.storyMetas.some((meta) => meta.id === action.payload.id);
+      return {
+        ...state,
+        storyMetas: exists
+          ? state.storyMetas.map((meta) => (meta.id === action.payload.id ? action.payload : meta))
+          : [...state.storyMetas, action.payload],
+      };
+    }
+
+    case "REMOVE_STORY_META":
+      return { ...state, storyMetas: state.storyMetas.filter((meta) => meta.id !== action.payload) };
+
     case "SET_ACTIVE_STORY":
       return { ...state, activeStory: action.payload };
+
+    case "CLEAR_ACTIVE_STORY":
+      return { ...state, activeStory: null, activeView: "landing", storyDraft: null };
 
     case "SET_ACTIVE_VIEW":
       return { ...state, activeView: action.payload };

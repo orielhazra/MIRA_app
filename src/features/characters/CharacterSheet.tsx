@@ -1,12 +1,24 @@
 // Character sheet — reusable character template editor.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
 import { parseKeywords } from "../../utils/helpers";
 
-export default function CharacterSheet({ character, activeStory, onSave, onAddToStory, onRemoveFromStory, onSetActive, onSetInactive, onDelete, onExport, onImport }) {
+export default function CharacterSheet({
+  character,
+  storyMetas = [],
+  activeStory,
+  onSave,
+  onAddToStory,
+  onRemoveFromStory,
+  onSetActive,
+  onSetInactive,
+  onDelete,
+  onExport,
+  onImport
+}) {
   const [draft, setDraft] = useState(character);
   const [status, setStatus] = useState("");
   const isInActiveStory = Boolean(activeStory?.id && character?.id && (activeStory.characterIds || []).includes(character.id));
@@ -14,9 +26,14 @@ export default function CharacterSheet({ character, activeStory, onSave, onAddTo
   const isActiveInScene = isInActiveStory && contextRow?.present !== false;
   const canAddToStory = activeStory?.id && !isInActiveStory;
   const canRemoveFromStory = activeStory?.id && isInActiveStory && (activeStory.characterIds || []).length > 1;
+  const storyUsage = useMemo(
+    () => storyMetas.filter((meta) => character?.id && (meta.characterIds || []).includes(character.id)),
+    [storyMetas, character?.id]
+  );
+  const canDelete = storyUsage.length === 0;
 
   useEffect(() => setDraft(character), [character]);
-  if (!character) return null;
+  if (!character || !draft) return null;
 
   function update(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -28,11 +45,21 @@ export default function CharacterSheet({ character, activeStory, onSave, onAddTo
     setTimeout(() => setStatus(""), 1500);
   }
 
+  function deleteCharacter() {
+    if (!canDelete) {
+      setStatus(`Cannot delete: linked to ${storyUsage.length} stor${storyUsage.length === 1 ? "y" : "ies"}.`);
+      return;
+    }
+    onDelete(character.id);
+  }
+
   return (
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>{character.name}</h2>
-        <p className="sheet-subtitle">Reusable character template. Permanent story identity is edited from Story & Cast; live state is edited from Cast State.</p>
+        <p className="sheet-subtitle">
+          Reusable character template. Characters are linked to stories through story cast metadata, not directly to worlds.
+        </p>
 
         <div className="sheet-actions">
           <button onClick={save}>Save Template</button>
@@ -43,12 +70,17 @@ export default function CharacterSheet({ character, activeStory, onSave, onAddTo
           {isInActiveStory && <button disabled>{isActiveInScene ? "Active in scene" : "Inactive / off-scene"}</button>}
           <button onClick={() => onExport(character)}>Export Template</button>
           <button onClick={onImport}>Import Template</button>
-          <button className="danger" onClick={() => onDelete(character.id)}>Delete Template</button>
+          <button className="danger" disabled={!canDelete} onClick={deleteCharacter}>Delete Template</button>
         </div>
         <p className="sheet-status">{status}</p>
 
         <div className="sheet-form">
           <TextInput label="Name" value={draft.name} onChange={(value) => update("name", value)} />
+          {storyUsage.length > 0 && (
+            <p className="muted">
+              Linked to {storyUsage.length} stor{storyUsage.length === 1 ? "y" : "ies"}: {storyUsage.map((story) => story.title).join(", ")}
+            </p>
+          )}
           <TextInput label="Short Description" value={draft.shortDescription} onChange={(value) => update("shortDescription", value)} />
           <TextInput label="Race / Type" value={draft.race || ""} onChange={(value) => update("race", value)} />
           <TextInput label="Story Role" value={draft.role || ""} onChange={(value) => update("role", value)} />

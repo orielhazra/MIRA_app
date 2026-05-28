@@ -1,18 +1,23 @@
 // World sheet — world editor with locations and lorebook.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
 import { parseKeywords } from "../../utils/helpers";
 
-export default function WorldSheet({ world, activeStory, onSave, onUse, onDelete, onExport, onImport }) {
+export default function WorldSheet({ world, storyMetas = [], activeStory, onSave, onUse, onDelete, onExport, onImport }) {
   const [draft, setDraft] = useState(world);
   const [status, setStatus] = useState("");
   const canAssign = activeStory?.id && world?.id !== activeStory.worldId;
+  const storyUsage = useMemo(
+    () => storyMetas.filter((meta) => world?.id && meta.worldId === world.id),
+    [storyMetas, world?.id]
+  );
+  const canDelete = storyUsage.length === 0;
 
   useEffect(() => setDraft(world), [world]);
-  if (!world) return null;
+  if (!world || !draft) return null;
 
   function update(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -60,20 +65,35 @@ export default function WorldSheet({ world, activeStory, onSave, onUse, onDelete
     setTimeout(() => setStatus(""), 1500);
   }
 
+  function deleteWorld() {
+    if (!canDelete) {
+      setStatus(`Cannot delete: used by ${storyUsage.length} stor${storyUsage.length === 1 ? "y" : "ies"}.`);
+      return;
+    }
+    onDelete(world.id);
+  }
+
   return (
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>{world.name}</h2>
-        <p className="sheet-subtitle">{world.shortDescription}</p>
+        <p className="sheet-subtitle">
+          {world.shortDescription || "Reusable world template."} Worlds are stored separately; stories reference them by lightweight metadata.
+        </p>
 
         <div className="sheet-actions">
           <button onClick={save}>Save World</button>
           {canAssign && <button onClick={() => onUse(world.id)}>Use In Active Story</button>}
           <button onClick={() => onExport(world)}>Export World</button>
           <button onClick={onImport}>Import World</button>
-          <button className="danger" onClick={() => onDelete(world.id)}>Delete World</button>
+          <button className="danger" disabled={!canDelete} onClick={deleteWorld}>Delete World</button>
         </div>
         <p className="sheet-status">{status}</p>
+        {storyUsage.length > 0 && (
+          <p className="muted">
+            Used by {storyUsage.length} stor{storyUsage.length === 1 ? "y" : "ies"}: {storyUsage.map((story) => story.title).join(", ")}
+          </p>
+        )}
 
         <div className="sheet-form">
           <TextInput label="World Name" value={draft.name} onChange={(value) => update("name", value)} />
