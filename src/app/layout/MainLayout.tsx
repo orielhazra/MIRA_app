@@ -96,11 +96,17 @@ export default function MainLayout() {
         <Landing
           storyMetas={app.storyMetas}
           worlds={app.worlds}
+          characters={app.characters}
           onNewStory={app.openStoryCreationSheet}
           onImportStory={() => app.storyImportRef.current?.click()}
           onSelectStory={app.switchStory}
-          onEditStory={app.openStoryEditSheet}
           onDeleteStory={app.deleteStoryById}
+          onNewCharacter={app.createBlankCharacter}
+          onSelectCharacter={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("character"); app.setStoryDraft(null); }}
+          onDeleteCharacter={app.deleteSelectedCharacter}
+          onNewWorld={app.createBlankWorld}
+          onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
+          onDeleteWorld={app.deleteSelectedWorld}
           onFactoryReset={app.factoryReset}
           isGenerating={app.isGenerating}
         />
@@ -234,7 +240,7 @@ export default function MainLayout() {
       </div>
 
       <input ref={app.storyImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportStoryFile} />
-      <input ref={app.characterImportRef} type="file" accept=".json,application.json" hidden onChange={app.handleImportCharacterFile} />
+      <input ref={app.characterImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportCharacterFile} />
       <input ref={app.worldImportRef} type="file" accept=".json,application/json" hidden onChange={app.handleImportWorldFile} />
 
       <DebugModal

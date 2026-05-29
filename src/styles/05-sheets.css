@@ -504,3 +504,216 @@
 .story-library-action.play {
   color: var(--accent-hover);
 }
+
+/* ─── Library Tabs ─── */
+
+.library-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.library-tab {
+  flex: 1;
+  padding: 8px 6px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.library-tab:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.library-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-count {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+.library-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+/* ─── Character Cards ─── */
+
+.character-library-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  overflow: hidden;
+}
+
+.character-library-card:hover:not(:disabled) {
+  background: var(--panel-3);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.character-library-open-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.character-library-open-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.character-library-name {
+  display: block;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+.character-library-meta {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.character-library-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 0;
+}
+
+/* ─── World Cards ─── */
+
+.world-library-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  overflow: hidden;
+}
+
+.world-library-card:hover:not(:disabled) {
+  background: var(--panel-3);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.world-library-open-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.world-library-open-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.world-library-name {
+  display: block;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+.world-library-meta {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.world-library-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+.world-library-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 0;
+}
+
+/* ─── Fixed bottom actions + scrollable list ─── */
+
+.landing-side-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.landing-library-header {
+  flex-shrink: 0;
+}
+
+.library-tabs {
+  flex-shrink: 0;
+}
+
+.library-tab-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.landing-library-actions {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  padding-bottom: 4px;
+  padding-left: 0;
+  padding-right: 0;
+}
