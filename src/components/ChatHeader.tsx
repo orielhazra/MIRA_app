@@ -4,7 +4,6 @@ export default function ChatHeader({
   activeView,
   activeStory,
   activeWorld,
-  activeCharacter,
   activeCharacters = [],
   selectedWorld,
   selectedCharacter,
@@ -46,7 +45,7 @@ export default function ChatHeader({
     title = activeStory?.title || "Untitled Story";
     const castNames = activeCharacters.length
       ? activeCharacters.map((character) => character.name).join(", ")
-      : activeCharacter?.name || "No character";
+      : "No cast selected";
     subtitle = `${castNames} • ${activeWorld?.name || "No world"}`;
   }
 

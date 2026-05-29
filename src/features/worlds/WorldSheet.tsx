@@ -20,7 +20,9 @@ export default function WorldSheet({ world, worlds = [], storyMetas = [], active
     [storyMetas, familyVersionIds]
   );
   const canDelete = storyUsage.length === 0;
-  const isActiveStoryTemplate = !!(activeStory?.id && world?.id === activeStory.templateWorldId);
+  const isActiveStoryTemplate = !!(activeStory?.id && familyVersionIds.has(activeStory.templateWorldId));
+  const isExactPinnedVersion = activeStory?.templateWorldId === world?.id;
+  
   const backLabel = isActiveStoryTemplate ? "Back To Story" : "Back To Home";
 
   useEffect(() => setDraft(world), [world]);
@@ -89,13 +91,20 @@ export default function WorldSheet({ world, worlds = [], storyMetas = [], active
     onDelete(world.id);
   }
 
+  const patch = (isExactPinnedVersion && activeStory?.worldOverlay?.worldPatch) || {};
+
   return (
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>{world.name}</h2>
-        <p className="muted">Template family: {world.templateKey || world.id} • Version {world.templateVersion || 1}</p>
+        <p className="muted">Global Template Family: {world.templateKey || world.id} • Version {world.templateVersion || 1}</p>
         <p className="sheet-subtitle">
-          {world.shortDescription || "Reusable world template."} Worlds are stored separately; stories reference them by lightweight metadata.
+          {isActiveStoryTemplate 
+            ? (isExactPinnedVersion 
+                ? "This is the exact world template version currently used in your active story."
+                : "A different version of this world template family is used in your active story.")
+            : "This is a reusable global template. Editing it creates a new version for use in future or existing stories."
+          }
         </p>
 
         <div className="sheet-actions">
@@ -106,6 +115,14 @@ export default function WorldSheet({ world, worlds = [], storyMetas = [], active
           <button onClick={onImport}>Import World</button>
           <button className="danger" disabled={!canDelete} onClick={deleteWorld}>Delete World</button>
         </div>
+        
+        {isExactPinnedVersion && (
+          <p className="info-box">
+            <span className="overridden-dot"></span>
+            This world has story-specific customizations in your active story. Use the <strong>Story & Cast</strong> panel to edit the effective story version.
+          </p>
+        )}
+        
         <p className="sheet-status">{status}</p>
         {storyUsage.length > 0 && (
           <p className="muted">
@@ -114,12 +131,12 @@ export default function WorldSheet({ world, worlds = [], storyMetas = [], active
         )}
 
         <div className="sheet-form">
-          <TextInput label="World Name" value={draft.name} onChange={(value) => update("name", value)} />
-          <TextInput label="Short Description" value={draft.shortDescription} onChange={(value) => update("shortDescription", value)} />
-          <TextArea label="Smart Prompt Overview" value={draft.overview || ""} onChange={(value) => update("overview", value)} />
-          <TextInput label="Prompt Keywords" value={(draft.promptKeywords || []).join(", ")} onChange={(value) => update("promptKeywords", parseKeywords(value))} />
-          <TextArea label="World Description" value={draft.description} onChange={(value) => update("description", value)} />
-          <TextArea label="World Rules" value={draft.rules} onChange={(value) => update("rules", value)} />
+          <TextInput label="World Name" value={draft.name} onChange={(value) => update("name", value)} isOverridden={patch.name !== undefined} />
+          <TextInput label="Short Description" value={draft.shortDescription} onChange={(value) => update("shortDescription", value)} isOverridden={patch.shortDescription !== undefined} />
+          <TextArea label="Smart Prompt Overview" value={draft.overview || ""} onChange={(value) => update("overview", value)} isOverridden={patch.overview !== undefined} />
+          <TextInput label="Prompt Keywords" value={(draft.promptKeywords || []).join(", ")} onChange={(value) => update("promptKeywords", parseKeywords(value))} isOverridden={patch.promptKeywords !== undefined} />
+          <TextArea label="World Description" value={draft.description} onChange={(value) => update("description", value)} isOverridden={patch.description !== undefined} />
+          <TextArea label="World Rules" value={draft.rules} onChange={(value) => update("rules", value)} isOverridden={patch.rules !== undefined} />
 
           <div className="sheet-section">
             <h3>Available Locations</h3>

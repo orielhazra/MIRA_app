@@ -44,14 +44,12 @@ export function buildDirectorNotesPrompt(notes: DirectorNotes | undefined): stri
 interface CombinedParams {
   story: Story;
   world: World;
-  character: Character | null;
   characters?: Character[];
 }
 
 export function getCombinedRuntimeLorebook({
   story,
   world,
-  character,
   characters = [],
 }: CombinedParams): LoreEntry[] {
   const temporaryLore = normalizeRuntimeLorebook(
@@ -69,7 +67,7 @@ export function getCombinedRuntimeLorebook({
     "World",
     world?.id || "world"
   );
-  const cast = uniqueCharacters(characters, character);
+  const cast = uniqueCharacters(characters);
   const characterLore = cast.flatMap((castCharacter) =>
     normalizeRuntimeLorebook(
       castCharacter?.lorebook || [],
@@ -111,7 +109,6 @@ export function makeLoreRuntimeId(
 interface InspectParams {
   story: Story;
   world: World;
-  character: Character | null;
   characters?: Character[];
   history: ChatMessage[];
   activeLoreMemory: LoreEntry[];
@@ -120,13 +117,12 @@ interface InspectParams {
 export function inspectLoreInjection({
   story,
   world,
-  character,
   characters = [],
   history,
   activeLoreMemory,
 }: InspectParams) {
   const triggerText = getRecentLoreTriggerText(history, story?.directorNotes);
-  const combinedLorebook = getCombinedRuntimeLorebook({ story, world, character, characters });
+  const combinedLorebook = getCombinedRuntimeLorebook({ story, world, characters });
 
   const inspectedEntries = combinedLorebook.map((entry) => ({
     ...entry,
@@ -311,15 +307,11 @@ export function formatSingleLoreEntry(entry: LoreEntry): string {
 }
 
 function uniqueCharacters(
-  characters: Character[] = [],
-  fallbackCharacter: Character | null = null
+  characters: Character[] = []
 ): Character[] {
   const byId = new Map<string, Character>();
   for (const character of characters || []) {
     if (character?.id && !byId.has(character.id)) byId.set(character.id, character);
-  }
-  if (fallbackCharacter?.id && !byId.has(fallbackCharacter.id)) {
-    byId.set(fallbackCharacter.id, fallbackCharacter);
   }
   return Array.from(byId.values()).filter(Boolean);
 }

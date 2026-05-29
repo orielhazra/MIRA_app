@@ -7,6 +7,7 @@ import {
   syncDirectorNotesFromContext,
 } from "../src/utils/appHelpers";
 import { createAppFixtures } from "./testFixtures";
+import { createEmptyCharacterOverlay } from "../src/constants/defaultData";
 
 describe("appHelpers", () => {
   it("returns story characters from character ids", () => {
@@ -28,15 +29,17 @@ describe("appHelpers", () => {
         relationships: [],
       },
       castMembers: [
-        { id: "cast-1", templateCharacterId: "char-1" },
-        { id: "cast-2", templateCharacterId: "char-2" }
+        { id: "cast-1", templateCharacterId: "char-1", overlay: createEmptyCharacterOverlay() },
+        { id: "cast-2", templateCharacterId: "char-2", overlay: createEmptyCharacterOverlay() }
       ]
-    };
+    } as any;
 
-    const lead = chooseActiveCastLead(story as any, characters);
+    const storyCharacters = getStoryCharactersFromLists(story, characters);
+    const lead = chooseActiveCastLead(story, storyCharacters);
 
     // lead character from resolveEffectiveStoryCharacters should have the name/details of char-2 but id of cast-2
     expect(lead?.name).toBe("Ari");
+    expect(lead?.id).toBe("cast-2");
   });
 
   it("parses suggested updates from fenced JSON", () => {
@@ -95,12 +98,13 @@ describe("appHelpers", () => {
     });
   });
 
-  it("uses story characters to seed the initial current objective", () => {
+  it("seeds the initial current context from world", () => {
     const { worlds, characters } = createAppFixtures();
 
     const context = createInitialCurrentContext(worlds[0] as any, [characters[1]] as any);
 
     expect(context.location.name).toBe(worlds[0].name);
-    expect(context.scene.currentObjective).toBe(characters[1].goals);
+    // Objective is now empty by default, not seeded from first character
+    expect(context.scene.currentObjective).toBe("");
   });
 });

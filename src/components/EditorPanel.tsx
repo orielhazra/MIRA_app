@@ -17,7 +17,6 @@ const PANEL_LABELS = {
 export default function EditorPanel({
   activeStory,
   activeWorld,
-  activeCharacter,
   activeCharacters = [],
   characters = [], // All characters for template resolution
   activeLoreMemory,
@@ -33,6 +32,7 @@ export default function EditorPanel({
   onUpdateStoryCharacterLoreEntry,
   onRemoveStoryCharacterLoreEntry,
   onResetStoryCharacterOverlay,
+  onUpgradeStoryCastMemberTemplate,
   onExportCharacterTemplate,
   onImportCharacterTemplate,
   onUpdateStoryLore,
@@ -49,13 +49,15 @@ export default function EditorPanel({
   onUpdateStoryWorldLoreEntry,
   onRemoveStoryWorldLoreEntry,
   onResetStoryWorldOverlay,
+  onUpgradeStoryWorldTemplate,
   currentContext,
   storyMemory,
   castState,
   onSaveStoryMemory,
   onSaveCastState,
   onExtractUpdates,
-  isExtractingUpdates = false
+  isExtractingUpdates = false,
+  worlds = [],
 }) {
   const [activePanel, setActivePanel] = useState(null);
   const [temporaryLoreDraft, setTemporaryLoreDraft] = useState(activeStory?.temporaryLorebook || []);
@@ -64,7 +66,7 @@ export default function EditorPanel({
   const [memoryStatus, setMemoryStatus] = useState("");
   const [castStatus, setCastStatus] = useState("");
 
-  const storyCharacters = (activeCharacters.length ? activeCharacters : [activeCharacter]).filter(Boolean);
+  const storyCharacters = activeCharacters.filter(Boolean);
 
   useEffect(() => {
     setTemporaryLoreDraft(activeStory?.temporaryLorebook || []);
@@ -199,6 +201,7 @@ export default function EditorPanel({
                   activeWorld={activeWorld}
                   storyCharacters={storyCharacters}
                   characters={characters}
+                  worlds={worlds}
                   onExportStory={onExportStory}
                   onDeleteStory={onDeleteStory}
                   onUpdateStoryCharacterPatch={onUpdateStoryCharacterPatch}
@@ -206,6 +209,7 @@ export default function EditorPanel({
                   onUpdateStoryCharacterLoreEntry={onUpdateStoryCharacterLoreEntry}
                   onRemoveStoryCharacterLoreEntry={onRemoveStoryCharacterLoreEntry}
                   onResetStoryCharacterOverlay={onResetStoryCharacterOverlay}
+                  onUpgradeStoryCastMemberTemplate={onUpgradeStoryCastMemberTemplate}
                   onExportCharacterTemplate={onExportCharacterTemplate}
                   onImportCharacterTemplate={onImportCharacterTemplate}
                   onSaveStoryWorldPatch={onSaveStoryWorldPatch}
@@ -216,6 +220,7 @@ export default function EditorPanel({
                   onUpdateStoryWorldLoreEntry={onUpdateStoryWorldLoreEntry}
                   onRemoveStoryWorldLoreEntry={onRemoveStoryWorldLoreEntry}
                   onResetStoryWorldOverlay={onResetStoryWorldOverlay}
+                  onUpgradeStoryWorldTemplate={onUpgradeStoryWorldTemplate}
                 />
               )}
 
@@ -232,7 +237,6 @@ export default function EditorPanel({
                 <LoreRulesPanel
                   activeStory={activeStory}
                   activeWorld={activeWorld}
-                  activeCharacter={activeCharacter}
                   storyCharacters={storyCharacters}
                   activeLoreMemory={activeLoreMemory}
                   temporaryLoreDraft={temporaryLoreDraft}

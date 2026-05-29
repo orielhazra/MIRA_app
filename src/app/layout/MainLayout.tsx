@@ -188,7 +188,6 @@ export default function MainLayout() {
             activeView={app.activeView}
             activeStory={app.activeStory}
             activeWorld={app.activeWorld}
-            activeCharacter={app.activeCharacter}
             activeCharacters={app.activeStoryCharacters}
             selectedWorld={app.selectedWorld}
             selectedCharacter={app.selectedCharacter}
@@ -216,9 +215,9 @@ export default function MainLayout() {
             key={app.activeStory.id}
             activeStory={app.activeStory}
             activeWorld={app.activeWorld}
-            activeCharacter={app.activeCharacter}
             activeCharacters={app.activeStoryCharacters}
             characters={app.characters}
+            worlds={app.worlds}
             activeLoreMemory={app.activeLoreMemory}
             loreStatusText={app.loreStatusText}
             isCollapsed={app.editorCollapsed}
@@ -244,11 +243,13 @@ export default function MainLayout() {
             onUpdateStoryWorldLoreEntry={app.updateStoryWorldLoreEntry}
             onRemoveStoryWorldLoreEntry={app.removeStoryWorldLoreEntry}
             onResetStoryWorldOverlay={app.resetStoryWorldOverlay}
+            onUpgradeStoryWorldTemplate={app.upgradeStoryWorldTemplate}
             onUpdateStoryCharacterPatch={app.updateStoryCharacterPatch}
             onAddStoryCharacterLoreEntry={app.addStoryCharacterLoreEntry}
             onUpdateStoryCharacterLoreEntry={app.updateStoryCharacterLoreEntry}
             onRemoveStoryCharacterLoreEntry={app.removeStoryCharacterLoreEntry}
             onResetStoryCharacterOverlay={app.resetStoryCharacterOverlay}
+            onUpgradeStoryCastMemberTemplate={app.upgradeStoryCastMemberTemplate}
             currentContext={app.activeStory.currentContext}
             storyMemory={app.activeStory.storyMemory}
             castState={app.activeStory.castState}
@@ -269,7 +270,6 @@ export default function MainLayout() {
         onClose={() => app.setDebugOpen(false)}
         story={app.activeStory}
         world={app.activeWorld}
-        character={app.activeCharacter}
         characters={app.activeStoryCharacters}
         history={app.chatHistory}
         activeLoreMemory={app.activeLoreMemory}

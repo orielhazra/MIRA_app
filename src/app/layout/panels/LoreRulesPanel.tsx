@@ -4,7 +4,6 @@ import LoreEditor, { LoreInfoList } from "../../../components/LoreEditor";
 export default function LoreRulesPanel({
   activeStory,
   activeWorld,
-  activeCharacter,
   storyCharacters = [],
   activeLoreMemory,
   temporaryLoreDraft,
@@ -23,7 +22,7 @@ export default function LoreRulesPanel({
       <div className="info-text-block">{activeWorld.rules || ""}</div>
 
       <h3>Character Rules</h3>
-      {(storyCharacters.length ? storyCharacters : [activeCharacter]).filter(Boolean).map((character) => (
+      {storyCharacters.filter(Boolean).map((character) => (
         <details key={`${character.id}-rules`} className="context-card">
           <summary>
             <strong>{character.name}</strong>
@@ -54,7 +53,7 @@ export default function LoreRulesPanel({
       </div>
 
       <h3>Character Lorebooks</h3>
-      {(storyCharacters.length ? storyCharacters : [activeCharacter]).filter(Boolean).map((character) => (
+      {storyCharacters.filter(Boolean).map((character) => (
         <details key={`${character.id}-lorebook`} className="context-card">
           <summary>
             <strong>{character.name}</strong>

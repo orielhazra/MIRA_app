@@ -55,6 +55,29 @@
   border-color: var(--accent);
 }
 
+.info-box {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 10px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.upgrade-box {
+  border-left: 3px solid var(--accent);
+  background: rgba(124, 92, 255, 0.05);
+}
+
+.upgrade-box button {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: var(--accent);
+  color: white;
+}
+
 /* BUTTONS */
 
 button {

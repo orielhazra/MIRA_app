@@ -16,7 +16,6 @@ export function useStoryContext() {
     activeStory: app.activeStory,
     activeWorld: app.activeWorld,
     activeStoryCharacters: app.activeStoryCharacters,
-    activeCharacter: app.activeCharacter,
     selectedCharacter: app.selectedCharacter,
     selectedWorld: app.selectedWorld,
     getWorld: app.getWorld,

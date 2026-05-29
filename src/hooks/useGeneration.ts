@@ -1,5 +1,5 @@
 // Generation core hook — LLM streaming, abort, retry, progress tracking.
-// Depends on: activeStory, activeWorld, activeCharacter, activeStoryCharacters, activeLoreMemory.
+// Depends on: activeStory, activeWorld, activeStoryCharacters, activeLoreMemory.
 // Used by: useChatActions (generateAssistantReply).
 
 import { useRef } from "react";
@@ -22,7 +22,6 @@ interface GenerationDeps {
   finalBuilder: (reply: string) => ChatMessage[];
   activeStory: Story;
   activeWorld: World;
-  activeCharacter: Character | null;
   activeStoryCharacters: Character[];
   activeLoreMemory: LoreEntry[];
   setChatHistory: (history: ChatMessage[]) => void;
@@ -56,7 +55,6 @@ export default function useGeneration() {
       finalBuilder,
       activeStory,
       activeWorld,
-      activeCharacter,
       activeStoryCharacters,
       activeLoreMemory,
       setChatHistory,
@@ -90,7 +88,6 @@ export default function useGeneration() {
     const inspection = inspectLoreInjection({
       story: activeStory,
       world: activeWorld,
-      character: activeCharacter,
       characters: activeStoryCharacters,
       history: promptHistory,
       activeLoreMemory,
@@ -102,7 +99,6 @@ export default function useGeneration() {
     const requestMessages = buildMessagesForRequest({
       story: activeStory,
       world: activeWorld,
-      character: activeCharacter,
       characters: activeStoryCharacters,
       history: promptHistory,
       activeLoreMemory: inspection.selectedEntries,

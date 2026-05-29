@@ -130,7 +130,8 @@ function cancelScheduledWrite(writeKey: string): void {
 
   if (scheduledWriteTasks.delete(writeKey)) {
     updatePersistenceStatus({
-      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+      pendingWrites: persistenceStatus.pendingWrites + 1,
+      lastOperation: operationLabel,
     });
   }
 }
@@ -278,7 +279,7 @@ export const sqliteEngine = {
         templateVersion: Number(row.templateVersion || 1),
         name: row.name,
         overview: row.overview || "",
-        shortDescription: row.overview || "",
+        shortDescription: row.shortDescription || row.overview || "",
         description: row.description || "",
         rules: row.rules || "",
         locations: row.locations ? JSON.parse(row.locations) : [],

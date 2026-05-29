@@ -9,7 +9,6 @@ export function createStoryBindings(ctx: any, storyActions: any) {
       worlds: ctx.worlds,
       characters: ctx.characters,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       setStoryDraft: ctx.setStoryDraft,
       setActiveView: ctx.setActiveView,
     }),
@@ -250,7 +249,6 @@ export function createChatBindings(ctx: any, chatActions: any, generation: any) 
     retryLastGeneration: () => generation.retryLastGeneration({
       activeStory: ctx.activeStory,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       activeStoryCharacters: ctx.activeStoryCharacters,
       activeLoreMemory: ctx.activeLoreMemory,
       setChatHistory: ctx.setChatHistory,
@@ -383,6 +381,7 @@ export function createStoryCharacterBindings(ctx: any, storyCharacterActions: an
     updateStoryCharacterLoreEntry: (castMemberId: string, entryId: string, patch: any) => storyCharacterActions.updateStoryCharacterLoreEntry(castMemberId, entryId, patch, deps),
     removeStoryCharacterLoreEntry: (castMemberId: string, entryId: string) => storyCharacterActions.removeStoryCharacterLoreEntry(castMemberId, entryId, deps),
     resetStoryCharacterOverlay: (castMemberId: string) => storyCharacterActions.resetStoryCharacterOverlay(castMemberId, deps),
+    upgradeStoryCastMemberTemplate: (castMemberId: string) => storyCharacterActions.upgradeStoryCastMemberTemplate(castMemberId, deps),
   };
 }
 
@@ -422,7 +421,6 @@ export function createLoreBindings(ctx: any, loreActions: any) {
     updateStoryLore: (index: number, patch: any) => loreActions.updateStoryLore({
       activeStory: ctx.activeStory,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       characters: ctx.characters,
       saveActiveStory: ctx.saveActiveStory,
       activeLoreMemory: ctx.activeLoreMemory,
@@ -438,7 +436,6 @@ export function createLoreBindings(ctx: any, loreActions: any) {
       worlds: ctx.worlds,
       saveWorldList: ctx.saveWorldList,
       activeStory: ctx.activeStory,
-      activeCharacter: ctx.activeCharacter,
       characters: ctx.characters,
       activeLoreMemory: ctx.activeLoreMemory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
@@ -455,7 +452,6 @@ export function createLoreBindings(ctx: any, loreActions: any) {
       saveCharacterList: ctx.saveCharacterList,
       activeStory: ctx.activeStory,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       activeLoreMemory: ctx.activeLoreMemory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
       saveLoreForActiveStory: ctx.saveLoreForActiveStory,
@@ -467,7 +463,6 @@ export function createLoreBindings(ctx: any, loreActions: any) {
       lorebook,
       story: ctx.activeStory,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       characters: ctx.characters,
       activeLoreMemory: ctx.activeLoreMemory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
@@ -479,7 +474,6 @@ export function createLoreBindings(ctx: any, loreActions: any) {
       saveActiveStory: ctx.saveActiveStory,
       story: ctx.activeStory,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       characters: ctx.characters,
       activeLoreMemory: ctx.activeLoreMemory,
       setActiveLoreMemory: ctx.setActiveLoreMemory,
@@ -489,7 +483,6 @@ export function createLoreBindings(ctx: any, loreActions: any) {
     refreshActiveLore: () => loreActions.refreshActiveLore({
       activeStory: ctx.activeStory,
       activeWorld: ctx.activeWorld,
-      activeCharacter: ctx.activeCharacter,
       activeStoryCharacters: ctx.activeStoryCharacters,
       chatHistory: ctx.chatHistory,
       activeLoreMemory: ctx.activeLoreMemory,
@@ -551,13 +544,19 @@ export function createStoryWorldBindings(ctx: any, storyWorldActions: any) {
       activeStory: ctx.activeStory,
       saveActiveStory: ctx.saveActiveStory,
     }),
+
+    upgradeStoryWorldTemplate: () => storyWorldActions.upgradeStoryWorldTemplate({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      worlds: ctx.worlds,
+    }),
   };
 }
 
 export function createImportExportBindings(ctx: any, importExport: any) {
   return {
     exportCharacter: (character?: any) => importExport.exportCharacter({
-      character: character || ctx.selectedCharacter || ctx.activeCharacter || undefined,
+      character: character || ctx.selectedCharacter || undefined,
     }),
 
     exportWorld: (world?: any) => importExport.exportWorld({

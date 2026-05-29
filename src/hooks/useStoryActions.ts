@@ -24,9 +24,7 @@ import { createId } from "../utils/helpers";
 import {
   createInitialCastState,
   createInitialCurrentContext,
-  chooseActiveCastLead,
   loadChatForStory,
-  getStoryCharactersFromLists,
   uniqueCompact,
   syncDirectorNotesFromContext,
   syncCurrentContextFromDirectorNotes,
@@ -95,7 +93,7 @@ export default function useStoryActions() {
   }
 
   function openStoryCreationSheet(deps: any) {
-    const { isGenerating, worlds = [], characters = [], activeWorld, activeCharacter, setStoryDraft, setActiveView } = deps;
+    const { isGenerating, worlds = [], characters = [], activeWorld, setStoryDraft, setActiveView } = deps;
     if (isGenerating) return;
     if (worlds.length === 0 || characters.length === 0) {
       alert("You need at least one world and one character to create a story.");
@@ -115,7 +113,7 @@ export default function useStoryActions() {
       templateWorldKey: templateWorld?.templateKey || templateWorld?.id || "",
       templateWorldVersion: Number(templateWorld?.templateVersion || 1),
       worldOverlay: createEmptyWorldOverlay(),
-      characterIds: uniqueCompact([activeCharacter?.templateCharacterId || activeCharacter?.id || characters[0]?.id || ""]),
+      characterIds: [characters[0]?.id || ""],
       scenario: "",
       greeting: "",
       storyLorebook: [],
@@ -157,7 +155,6 @@ export default function useStoryActions() {
 
     const story = normalizeStory({ ...loadedStory, lastPlayedAt: Date.now() }, worlds, characters);
     const storyCharacters = resolveEffectiveStoryCharacters(story, characters);
-    const leadCharacter = chooseActiveCastLead(story, storyCharacters) || storyCharacters[0] || characters[0] || null;
     const fallbackWorld = resolveEffectiveWorld(story, worlds) || worlds.find((item: World) => item.id === story.templateWorldId) || worlds[0] || null;
 
     let nextChatHistory: any[] = [];
@@ -165,8 +162,8 @@ export default function useStoryActions() {
       nextChatHistory = loadChatForStory(story, worlds, characters);
     } catch (error) {
       console.error("Failed to load chat for selected story. Falling back to opening message.", error);
-      nextChatHistory = fallbackWorld && leadCharacter
-        ? [{ role: "assistant", content: buildOpeningMessage(story, leadCharacter, fallbackWorld, storyCharacters) }]
+      nextChatHistory = fallbackWorld
+        ? [{ role: "assistant", content: buildOpeningMessage(story, fallbackWorld, storyCharacters) }]
         : [];
     }
 
@@ -185,9 +182,9 @@ export default function useStoryActions() {
     setChatHistory?.(nextChatHistory);
     setActiveLoreMemory?.(nextLoreMemory);
     
-    // Map lead character back to template ID for the library view
-    const leadCastMember = story.castMembers.find(m => m.id === leadCharacter?.id);
-    setSelectedCharacterSheetId?.(leadCastMember?.templateCharacterId || characters[0]?.id || "");
+    // Select first character by template ID for the library view
+    const firstMember = story.castMembers[0];
+    setSelectedCharacterSheetId?.(firstMember?.templateCharacterId || characters[0]?.id || "");
     
     setSelectedWorldSheetId?.(story.templateWorldId || worlds[0]?.id || "");
     setStoryDraft?.(null);
@@ -215,7 +212,6 @@ export default function useStoryActions() {
     const selectedCharacters = selectedCharacterIds
       .map((id) => characters.find((item: Character) => item.id === id))
       .filter(Boolean);
-    const leadCharacter = selectedCharacters[0] || null;
 
     if (!world) return { error: "Please choose a valid world." };
     if (selectedCharacters.length === 0) return { error: "Please choose at least one story character." };
@@ -260,12 +256,12 @@ export default function useStoryActions() {
     saveActiveStory?.(newStory);
     repository?.activeStory.set(newStory.id);
 
-    const opening = [{ role: "assistant", content: buildOpeningMessage(newStory, leadCharacter, effectiveWorld, selectedCharacters) }];
+    const opening = [{ role: "assistant", content: buildOpeningMessage(newStory, effectiveWorld, selectedCharacters) }];
     setChatHistory?.(opening);
     repository?.chats.save(newStory.id, opening);
     setActiveLoreMemory?.([]);
     repository?.loreMemory.save(newStory.id, []);
-    setSelectedCharacterSheetId?.(leadCharacter?.id || "");
+    setSelectedCharacterSheetId?.(selectedCharacters[0]?.id || "");
     setSelectedWorldSheetId?.(world.id);
     setStoryDraft?.(null);
     setActiveView?.("story");

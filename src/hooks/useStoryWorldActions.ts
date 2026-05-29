@@ -1,6 +1,6 @@
 import { Story, StoryWorldOverlay, World, WorldLocation, LoreEntry, CurrentContext } from "../types";
 import { normalizeStoredLorebook, normalizeStoryWorldOverlay, normalizeWorldLocations } from "../services/normalizers";
-import { createEmptyWorldOverlay } from "../services/storyWorld";
+import { createEmptyWorldOverlay, getLatestTemplateByKey } from "../services/storyWorld";
 import { createId } from "../utils/helpers";
 
 interface StoryWorldActionDeps {
@@ -12,6 +12,7 @@ interface StoryWorldActionDeps {
   locationId?: string;
   loreEntry?: Partial<LoreEntry>;
   entryId?: string;
+  worlds?: World[];
 }
 
 export default function useStoryWorldActions() {
@@ -206,6 +207,22 @@ export default function useStoryWorldActions() {
     saveActiveStory({ ...activeStory, worldOverlay: createEmptyWorldOverlay() });
   }
 
+  function upgradeStoryWorldTemplate({ activeStory, saveActiveStory, worlds = [] }: StoryWorldActionDeps) {
+    if (!activeStory || !saveActiveStory) return;
+    const templateKey = activeStory.templateWorldKey || activeStory.templateWorldId;
+    const latest = getLatestTemplateByKey(templateKey, worlds);
+    
+    if (!latest) return alert("Latest template version not found.");
+    if (latest.id === activeStory.templateWorldId) return alert("Already using the latest version.");
+
+    saveActiveStory({
+      ...activeStory,
+      templateWorldId: latest.id,
+      templateWorldKey: latest.templateKey || latest.id,
+      templateWorldVersion: latest.templateVersion || 1,
+    });
+  }
+
   return {
     updateStoryWorldPatch,
     addStoryWorldLocation,
@@ -215,6 +232,7 @@ export default function useStoryWorldActions() {
     updateStoryWorldLoreEntry,
     removeStoryWorldLoreEntry,
     resetStoryWorldOverlay,
+    upgradeStoryWorldTemplate,
   };
 }
 

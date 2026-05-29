@@ -2,12 +2,15 @@ import React, { useMemo, useState, useEffect } from "react";
 import LoreEditor from "../../../components/LoreEditor";
 import { parseKeywords } from "../../../utils/helpers";
 import { resolveEffectiveStoryCharacter } from "../../../services/storyCharacters";
+import { getLatestTemplateByKey } from "../../../services/storyWorld";
+import { getLatestTemplateCharacterByKey } from "../../../services/storyCharacters";
 
 export default function StoryWorldPanel({
   activeStory,
   activeWorld,
   storyCharacters,
   characters,
+  worlds,
   onExportStory,
   onDeleteStory,
   onUpdateStoryCharacterPatch,
@@ -15,6 +18,7 @@ export default function StoryWorldPanel({
   onUpdateStoryCharacterLoreEntry,
   onRemoveStoryCharacterLoreEntry,
   onResetStoryCharacterOverlay,
+  onUpgradeStoryCastMemberTemplate,
   onExportCharacterTemplate,
   onImportCharacterTemplate,
   onSaveStoryWorldPatch,
@@ -25,6 +29,7 @@ export default function StoryWorldPanel({
   onUpdateStoryWorldLoreEntry,
   onRemoveStoryWorldLoreEntry,
   onResetStoryWorldOverlay,
+  onUpgradeStoryWorldTemplate,
 }: any) {
   const [worldDraft, setWorldDraft] = useState(() => buildWorldDraft(activeWorld));
   const [locationDrafts, setLocationDrafts] = useState(() => buildLocationDrafts(activeWorld?.locations || []));
@@ -165,6 +170,15 @@ export default function StoryWorldPanel({
     showStatus("Story world overlay reset.");
   }
 
+  function upgradeWorld() {
+    onUpgradeStoryWorldTemplate?.();
+    showStatus("Story world upgraded to latest template version.");
+  }
+
+  const worldPatch = activeStory.worldOverlay?.worldPatch || {};
+  const latestWorldTemplate = getLatestTemplateByKey(activeStory.templateWorldKey || activeStory.templateWorldId, worlds);
+  const isWorldUpgradeAvailable = latestWorldTemplate && latestWorldTemplate.id !== activeStory.templateWorldId;
+
   return (
     <div className="info-panel active">
       <h3>Story</h3>
@@ -173,7 +187,7 @@ export default function StoryWorldPanel({
       <InfoField label="Greeting" value={activeStory.greeting || "—"} />
 
       <h3>Story Cast Identity</h3>
-      <p className="muted">Permanent identity for this story lives here. Cast State controls how each person is doing right now.</p>
+      <p className="muted">Story-specific permanent identity overrides. Edits here affect ONLY this story.</p>
       <div className="cast-summary-list">
         {(activeStory.castMembers || []).map((castMember: any) => {
           const effectiveCharacter = resolveEffectiveStoryCharacter(castMember, characters);
@@ -183,12 +197,14 @@ export default function StoryWorldPanel({
               key={castMember.id}
               castMember={castMember}
               effectiveCharacter={effectiveCharacter}
+              characters={characters}
               presenceLabel={getPresenceLabel(activeStory, castMember.id)}
               onUpdatePatch={onUpdateStoryCharacterPatch}
               onAddLore={onAddStoryCharacterLoreEntry}
               onUpdateLore={onUpdateStoryCharacterLoreEntry}
               onRemoveLore={onRemoveStoryCharacterLoreEntry}
               onResetOverlay={onResetStoryCharacterOverlay}
+              onUpgradeTemplate={onUpgradeStoryCastMemberTemplate}
               onExportTemplate={onExportCharacterTemplate}
             />
           );
@@ -201,17 +217,24 @@ export default function StoryWorldPanel({
 
       <h3>Story World</h3>
       <InfoField
-        label="Based On Template"
+        label="Base Template"
         value={`${activeStory.templateWorldKey || activeStory.templateWorldId || "Unknown"} • v${activeStory.templateWorldVersion || 1}`}
       />
+      {isWorldUpgradeAvailable && (
+        <div className="info-box upgrade-box">
+          <p>A newer version (v{latestWorldTemplate.templateVersion}) of this world template is available.</p>
+          <button type="button" onClick={upgradeWorld}>Upgrade World to v{latestWorldTemplate.templateVersion}</button>
+        </div>
+      )}
+      <p className="muted">Story-specific world overrides. Edits here affect ONLY this story.</p>
       <p className="sheet-status">{status}</p>
 
       <div className="context-grid">
-        <ContextInput label="Story World Name" value={worldDraft.name} onChange={(value) => updateWorldField("name", value)} />
-        <ContextInput label="Story World Short Description" value={worldDraft.shortDescription} onChange={(value) => updateWorldField("shortDescription", value)} />
-        <ContextTextarea label="Story World Overview" value={worldDraft.overview} onChange={(value) => updateWorldField("overview", value)} />
-        <ContextTextarea label="Story World Description" value={worldDraft.description} onChange={(value) => updateWorldField("description", value)} />
-        <ContextTextarea label="Story World Rules" value={worldDraft.rules} onChange={(value) => updateWorldField("rules", value)} />
+        <ContextInput label="Story World Name" value={worldDraft.name} onChange={(value) => updateWorldField("name", value)} isOverridden={worldPatch.name !== undefined} />
+        <ContextInput label="Story World Short Description" value={worldDraft.shortDescription} onChange={(value) => updateWorldField("shortDescription", value)} isOverridden={worldPatch.shortDescription !== undefined} />
+        <ContextTextarea label="Story World Overview" value={worldDraft.overview} onChange={(value) => updateWorldField("overview", value)} isOverridden={worldPatch.overview !== undefined} />
+        <ContextTextarea label="Story World Description" value={worldDraft.description} onChange={(value) => updateWorldField("description", value)} isOverridden={worldPatch.description !== undefined} />
+        <ContextTextarea label="Story World Rules" value={worldDraft.rules} onChange={(value) => updateWorldField("rules", value)} isOverridden={worldPatch.rules !== undefined} />
       </div>
 
       <div className="sheet-actions compact-actions">
@@ -220,7 +243,7 @@ export default function StoryWorldPanel({
       </div>
 
       <h3>Story World Locations</h3>
-      <p className="muted">These are the effective locations for this story. Saving changes writes only to the story overlay.</p>
+      <p className="muted">Effective locations for this story (Template + Overlays).</p>
       <div className="sheet-actions compact-actions">
         <button type="button" onClick={addLocation}>Add Story Location</button>
       </div>
@@ -253,7 +276,7 @@ export default function StoryWorldPanel({
       ) : <p className="muted">No world locations saved yet.</p>}
 
       <h3>Story World Lore</h3>
-      <p className="muted">Story-world lore extends or overrides the template world lore for this story only.</p>
+      <p className="muted">Effective lore for this story (Template + Overlays).</p>
       <div className="sheet-actions compact-actions">
         <button type="button" onClick={addLoreEntry}>Add Story World Lore</button>
       </div>
@@ -297,7 +320,7 @@ export default function StoryWorldPanel({
   );
 }
 
-function StoryCastIdentityCard({ castMember, effectiveCharacter, presenceLabel, onUpdatePatch, onAddLore, onUpdateLore, onRemoveLore, onResetOverlay, onExportTemplate }: any) {
+function StoryCastIdentityCard({ castMember, effectiveCharacter, characters, presenceLabel, onUpdatePatch, onAddLore, onUpdateLore, onRemoveLore, onResetOverlay, onUpgradeTemplate, onExportTemplate }: any) {
   const [draft, setDraft] = useState(effectiveCharacter);
   const [status, setStatus] = useState("");
 
@@ -350,31 +373,55 @@ function StoryCastIdentityCard({ castMember, effectiveCharacter, presenceLabel, 
     setTimeout(() => setStatus(""), 1400);
   }
 
+  function upgradeTemplate() {
+    onUpgradeTemplate?.(castMember.id);
+    setStatus("Template upgraded.");
+    setTimeout(() => setStatus(""), 1400);
+  }
+
+  const patch = castMember.overlay?.identityPatch || {};
+  const latestCharacterTemplate = getLatestTemplateCharacterByKey(castMember.templateCharacterKey || castMember.templateCharacterId, characters);
+  const isUpgradeAvailable = latestCharacterTemplate && latestCharacterTemplate.id !== castMember.templateCharacterId;
+
   return (
     <details className="character-profile-card identity-card">
       <summary>
         <strong>{effectiveCharacter.name}</strong>
         <span>{presenceLabel}</span>
       </summary>
+      
+      <div style={{ padding: '0 10px' }}>
+        <p className="muted">
+          Story instance of <strong>{castMember.templateCharacterKey || castMember.templateCharacterId} (v{castMember.templateCharacterVersion || 1})</strong>.
+        </p>
+        
+        {isUpgradeAvailable && (
+          <div className="info-box upgrade-box">
+            <p>A newer template version (v{latestCharacterTemplate.templateVersion}) is available.</p>
+            <button type="button" onClick={upgradeTemplate}>Upgrade to v{latestCharacterTemplate.templateVersion}</button>
+          </div>
+        )}
+      </div>
 
       <div className="context-grid identity-grid">
-        <ContextInput label="Name" value={draft.name || ""} onChange={(value) => update("name", value)} />
-        <ContextInput label="Short Description" value={draft.shortDescription || ""} onChange={(value) => update("shortDescription", value)} />
-        <ContextInput label="Race / Type" value={draft.race || ""} onChange={(value) => update("race", value)} />
-        <ContextInput label="Story Role" value={draft.role || ""} onChange={(value) => update("role", value)} />
-        <ContextInput label="Aliases" value={(draft.aliases || []).join(", ")} onChange={(value) => update("aliases", parseKeywords(value))} />
-        <ContextInput label="Prompt Keywords" value={(draft.promptKeywords || []).join(", ")} onChange={(value) => update("promptKeywords", parseKeywords(value))} />
-        <ContextTextarea label="Smart Prompt Summary" value={draft.profileSummary || ""} onChange={(value) => update("profileSummary", value)} />
-        <ContextTextarea label="Default Outfit" value={draft.defaultOutfit || ""} onChange={(value) => update("defaultOutfit", value)} />
-        <ContextTextarea label="Description" value={draft.description || ""} onChange={(value) => update("description", value)} />
-        <ContextTextarea label="Personality" value={draft.personality || ""} onChange={(value) => update("personality", value)} />
-        <ContextTextarea label="Appearance" value={draft.appearance || ""} onChange={(value) => update("appearance", value)} />
-        <ContextTextarea label="Backstory" value={draft.backstory || ""} onChange={(value) => update("backstory", value)} />
-        <ContextTextarea label="Speaking Style" value={draft.speakingStyle || ""} onChange={(value) => update("speakingStyle", value)} />
-        <ContextTextarea label="Base Relationship to User" value={draft.relationshipToUser || ""} onChange={(value) => update("relationshipToUser", value)} />
-        <ContextTextarea label="Permanent Goals / Motivation" value={draft.goals || ""} onChange={(value) => update("goals", value)} />
-        <ContextTextarea label="Character Rules" value={draft.characterRules || ""} onChange={(value) => update("characterRules", value)} />
+        <ContextInput label="Name" value={draft.name || ""} onChange={(value) => update("name", value)} isOverridden={patch.name !== undefined} />
+        <ContextInput label="Short Description" value={draft.shortDescription || ""} onChange={(value) => update("shortDescription", value)} isOverridden={patch.shortDescription !== undefined} />
+        <ContextInput label="Race / Type" value={draft.race || ""} onChange={(value) => update("race", value)} isOverridden={patch.race !== undefined} />
+        <ContextInput label="Story Role" value={draft.role || ""} onChange={(value) => update("role", value)} isOverridden={patch.role !== undefined} />
+        <ContextInput label="Aliases" value={(draft.aliases || []).join(", ")} onChange={(value) => update("aliases", parseKeywords(value))} isOverridden={patch.aliases !== undefined} />
+        <ContextInput label="Prompt Keywords" value={(draft.promptKeywords || []).join(", ")} onChange={(value) => update("promptKeywords", parseKeywords(value))} isOverridden={patch.promptKeywords !== undefined} />
+        <ContextTextarea label="Smart Prompt Summary" value={draft.profileSummary || ""} onChange={(value) => update("profileSummary", value)} isOverridden={patch.profileSummary !== undefined} />
+        <ContextTextarea label="Default Outfit" value={draft.defaultOutfit || ""} onChange={(value) => update("defaultOutfit", value)} isOverridden={patch.defaultOutfit !== undefined} />
+        <ContextTextarea label="Description" value={draft.description || ""} onChange={(value) => update("description", value)} isOverridden={patch.description !== undefined} />
+        <ContextTextarea label="Personality" value={draft.personality || ""} onChange={(value) => update("personality", value)} isOverridden={patch.personality !== undefined} />
+        <ContextTextarea label="Appearance" value={draft.appearance || ""} onChange={(value) => update("appearance", value)} isOverridden={patch.appearance !== undefined} />
+        <ContextTextarea label="Backstory" value={draft.backstory || ""} onChange={(value) => update("backstory", value)} isOverridden={patch.backstory !== undefined} />
+        <ContextTextarea label="Speaking Style" value={draft.speakingStyle || ""} onChange={(value) => update("speakingStyle", value)} isOverridden={patch.speakingStyle !== undefined} />
+        <ContextTextarea label="Base Relationship to User" value={draft.relationshipToUser || ""} onChange={(value) => update("relationshipToUser", value)} isOverridden={patch.relationshipToUser !== undefined} />
+        <ContextTextarea label="Permanent Goals / Motivation" value={draft.goals || ""} onChange={(value) => update("goals", value)} isOverridden={patch.goals !== undefined} />
+        <ContextTextarea label="Character Rules" value={draft.characterRules || ""} onChange={(value) => update("characterRules", value)} isOverridden={patch.characterRules !== undefined} />
         <label className="lore-checkbox context-present-toggle">
+          {patch.promptPinned !== undefined && <span className="overridden-dot" title="Overridden for this story"></span>}
           <input type="checkbox" checked={draft.promptPinned === true} onChange={(event) => update("promptPinned", event.target.checked)} />
           Always include full details in smart prompt
         </label>
@@ -463,18 +510,20 @@ function formatPresenceLabel(presence: string) {
   return "Active";
 }
 
-function ContextInput({ label, value = "", onChange }: any) {
+function ContextInput({ label, value = "", onChange, isOverridden = false }: any) {
   return (
     <label>
+      {isOverridden && <span className="overridden-dot" title="Overridden for this story"></span>}
       {label}
       <input value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
 
-function ContextTextarea({ label, value = "", onChange }: any) {
+function ContextTextarea({ label, value = "", onChange, isOverridden = false }: any) {
   return (
     <label>
+      {isOverridden && <span className="overridden-dot" title="Overridden for this story"></span>}
       {label}
       <textarea value={value} onChange={(event) => onChange(event.target.value)} />
     </label>

@@ -154,19 +154,13 @@ export default function Landing({
       }
       return characters.map((character) => (
         <article key={character.id} className="character-library-card">
-          <button
-            className="character-library-open-button"
-            onClick={() => onSelectCharacter(character.id)}
-            disabled={isGenerating}
-            type="button"
-            aria-label={`Edit ${character.name}`}
-          >
+          <div className="character-library-details">
             <span className="character-library-name">{character.name}</span>
             <span className="character-library-meta">
               {character.race ? `${character.race} • ` : ""}
               {character.shortDescription || "No description"}
             </span>
-          </button>
+          </div>
 
           <div className="character-library-actions" aria-label={`Actions for ${character.name}`}>
             <button
@@ -206,13 +200,7 @@ export default function Landing({
       const locationCount = world.locations?.length || 0;
       return (
         <article key={world.id} className="world-library-card">
-          <button
-            className="world-library-open-button"
-            onClick={() => onSelectWorld(world.id)}
-            disabled={isGenerating}
-            type="button"
-            aria-label={`Edit ${world.name}`}
-          >
+          <div className="world-library-details">
             <span className="world-library-name">{world.name}</span>
             <span className="world-library-meta">
               {world.shortDescription || "No description"}
@@ -222,7 +210,7 @@ export default function Landing({
               {storyCount > 0 && <span>{storyCount} stor{storyCount === 1 ? "y" : "ies"}</span>}
               {locationCount > 0 && <span>{locationCount} location{locationCount === 1 ? "" : "s"}</span>}
             </span>
-          </button>
+          </div>
 
           <div className="world-library-actions" aria-label={`Actions for ${world.name}`}>
             <button

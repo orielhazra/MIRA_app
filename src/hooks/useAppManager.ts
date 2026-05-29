@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useReducer, useState } from "react";
-import { ChatMessage, StoryCastMember } from "../types";
+import { ChatMessage, StoryCastMember, Character } from "../types";
 import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
@@ -7,7 +7,6 @@ import { repository, isTauri } from "../services/repository";
 import { resolveEffectiveWorld } from "../services/storyWorld";
 import { storyToMeta } from "../services/storyMeta";
 import {
-  chooseActiveCastLead,
   loadInitialState,
   getStoryCharactersFromLists,
   createInitialCastState,
@@ -126,14 +125,41 @@ export default function useAppManager() {
     () => (activeStory ? getStoryCharactersFromLists(activeStory, characters) : characters[0] ? [characters[0]] : []),
     [activeStory, characters]
   );
-  const activeCharacter = useMemo(
-    () => chooseActiveCastLead(activeStory, activeStoryCharacters) || characters[0] || null,
-    [activeStory, activeStoryCharacters, characters]
-  );
-  const selectedCharacter = useMemo(
-    () => characters.find((character) => character.id === selectedCharacterSheetId) || characters[0] || null,
-    [characters, selectedCharacterSheetId]
-  );
+  const selectedCharacter = useMemo(() => {
+    if (!selectedCharacterSheetId) return characters[0] || null;
+
+    // 1. Try to find by template ID in the global library (the primary ID used for character sheets)
+    let found = characters.find((c) => c.id === selectedCharacterSheetId);
+    if (found) return found;
+
+    // 2. If not found in library, check if it's a cast member ID from the active story
+    if (activeStory) {
+      const member = activeStory.castMembers.find((m) => m.id === selectedCharacterSheetId);
+      if (member) {
+        found = characters.find((c) => c.id === member.templateCharacterId);
+        if (found) return found;
+      }
+    }
+
+    // 3. Last attempt: Check the activeStoryCharacters list directly (matches castMember ID)
+    const effectiveFound = activeStoryCharacters.find(c => c.id === selectedCharacterSheetId);
+    if (effectiveFound) {
+       // Find template for this effective character
+       const member = activeStory?.castMembers.find(m => m.id === selectedCharacterSheetId);
+       if (member) {
+          return characters.find(c => c.id === member.templateCharacterId) || effectiveFound;
+       }
+       return effectiveFound;
+    }
+
+    // fallback: if we have an ID but still haven't found it, something is wrong, but don't just return Mira
+    // if we are NOT in active story, characters[0] is fine.
+    if (!activeStory) return characters[0] || null;
+    
+    // if in active story, and we were looking for a character, return whatever we have
+    return found || effectiveFound || characters[0] || null;
+  }, [characters, selectedCharacterSheetId, activeStory, activeStoryCharacters]);
+
   const selectedWorld = useMemo(
     () => worlds.find((world) => world.id === selectedWorldSheetId) || worlds[0] || null,
     [worlds, selectedWorldSheetId]
@@ -383,8 +409,7 @@ export default function useAppManager() {
   ) => {
     if (!storyId || !story || !world) return;
     const cast = (storyCharacters?.length ? storyCharacters : getStoryCharacters(story)).filter(Boolean);
-    const lead = chooseActiveCastLead(story, cast);
-    const opening: ChatMessage[] = [{ role: "assistant", content: buildOpeningMessage(story, lead, world, cast) }];
+    const opening: ChatMessage[] = [{ role: "assistant", content: buildOpeningMessage(story, world, cast) }];
     setActiveLoreMemory([]);
     repository.loreMemory.save(storyId, []);
     setChatHistory(opening);
@@ -397,7 +422,6 @@ export default function useAppManager() {
       ...overrides,
       activeStory,
       activeWorld,
-      activeCharacter,
       activeStoryCharacters,
       activeLoreMemory,
       setChatHistory,
@@ -447,7 +471,6 @@ export default function useAppManager() {
     isExtractingUpdates,
     activeWorld,
     activeStoryCharacters,
-    activeCharacter,
     selectedCharacter,
     selectedWorld,
     saveKoboldBaseUrl,
@@ -505,7 +528,6 @@ export default function useAppManager() {
 
   return {
     abortControllerRef: generation.abortControllerRef,
-    activeCharacter,
     activeLoreMemory,
     activeStory,
     activeStoryCharacters,

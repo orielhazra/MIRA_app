@@ -1,6 +1,7 @@
 import { Story, StoryCharacterOverlay, LoreEntry, Character } from "../types/index";
 import { normalizeStoryCharacterOverlay } from "../services/normalizers";
 import { createId } from "../utils/helpers";
+import { getLatestTemplateCharacterByKey } from "../services/storyCharacters";
 
 interface StoryCharacterActionDeps {
   activeStory: Story | null;
@@ -138,12 +139,42 @@ export default function useStoryCharacterActions() {
     saveActiveStory({ ...activeStory, castMembers: nextCastMembers });
   }
 
+  function upgradeStoryCastMemberTemplate(
+    castMemberId: string,
+    { activeStory, saveActiveStory, characters }: StoryCharacterActionDeps
+  ) {
+    if (!activeStory || !saveActiveStory) return;
+
+    const castMember = activeStory.castMembers.find(m => m.id === castMemberId);
+    if (!castMember) return;
+
+    const templateKey = castMember.templateCharacterKey || castMember.templateCharacterId;
+    const latest = getLatestTemplateCharacterByKey(templateKey, characters);
+
+    if (!latest) return alert("Latest template version not found.");
+    if (latest.id === castMember.templateCharacterId) return alert("Already using the latest version.");
+
+    const nextCastMembers = activeStory.castMembers.map(member => {
+      if (member.id !== castMemberId) return member;
+      
+      return {
+        ...member,
+        templateCharacterId: latest.id,
+        templateCharacterKey: latest.templateKey || latest.id,
+        templateCharacterVersion: latest.templateVersion || 1,
+      };
+    });
+
+    saveActiveStory({ ...activeStory, castMembers: nextCastMembers });
+  }
+
   return {
     updateStoryCharacterPatch,
     addStoryCharacterLoreEntry,
     updateStoryCharacterLoreEntry,
     removeStoryCharacterLoreEntry,
     resetStoryCharacterOverlay,
+    upgradeStoryCastMemberTemplate,
   };
 }
 

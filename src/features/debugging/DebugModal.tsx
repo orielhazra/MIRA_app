@@ -3,17 +3,16 @@ import { messagesToPromptText } from "../../services/koboldApi";
 import { buildSystemPrompt } from "../../services/prompt";
 import { inspectLoreInjection, formatLoreForPrompt } from "../../services/lore";
 
-export default function DebugModal({ open, onClose, story, world, character, characters = [], history, activeLoreMemory }) {
+export default function DebugModal({ open, onClose, story, world, characters = [], history, activeLoreMemory }) {
   const [tab, setTab] = useState("lore");
   const [copyStatus, setCopyStatus] = useState("");
 
   const snapshot = useMemo(() => {
-    const loreInspection = inspectLoreInjection({ story, world, character, characters, history, activeLoreMemory });
+    const loreInspection = inspectLoreInjection({ story, world, characters, history, activeLoreMemory });
     const injectedLoreText = formatLoreForPrompt(loreInspection.selectedEntries);
     const systemPrompt = buildSystemPrompt({
       story,
       world,
-      character,
       characters,
       history,
       injectedLoreText
@@ -41,7 +40,7 @@ export default function DebugModal({ open, onClose, story, world, character, cha
       sectionStats,
       promptText
     };
-  }, [story, world, character, characters, history, activeLoreMemory]);
+  }, [story, world, characters, history, activeLoreMemory]);
 
   if (!open) return null;
 

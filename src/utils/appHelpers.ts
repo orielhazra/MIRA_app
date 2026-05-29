@@ -60,14 +60,12 @@ export function syncCurrentContextFromDirectorNotes(context: CurrentContext, not
 }
 
 export function createInitialCurrentContext(world: World | null, effectiveCharacters: Character[] = []): CurrentContext {
-  const leadCharacter = effectiveCharacters[0] || null;
-
   return normalizeCurrentContext({
     scene: {
       timeOfDay: "",
       atmosphere: "",
       currentConflict: "",
-      currentObjective: leadCharacter?.goals || ""
+      currentObjective: ""
     },
     location: {
       locationId: world?.locations?.[0]?.id || "",
@@ -318,7 +316,9 @@ export function ensureRelationshipState(castState: CastState, castMemberId: stri
 }
 
 export function chooseActiveCastLead(story: Story | null, effectiveCharacters: Character[] = []): Character | null {
-  if (!story || !effectiveCharacters.length) return effectiveCharacters[0] || null;
+  // Method legacy: we no longer choose a "lead" in the UI sense, but LLM generation sometimes needs a primary perspective.
+  // We'll return the first active character if available, else null.
+  if (!story || !effectiveCharacters.length) return null;
   const contextRows = Array.isArray(story.castState?.activeCharacters) ? story.castState.activeCharacters : [];
   const activeIds = contextRows
     .filter((row) => {
@@ -328,16 +328,12 @@ export function chooseActiveCastLead(story: Story | null, effectiveCharacters: C
     .map((row) => row.castMemberId)
     .filter(Boolean);
   
-  // Need to map castMemberId back to effective character
   for (const castMemberId of activeIds) {
-    const member = story.castMembers.find(m => m.id === castMemberId);
-    if (member) {
-      const char = effectiveCharacters.find(c => c.id === member.templateCharacterId || c.id === member.id);
-      if (char) return char;
-    }
+    const char = effectiveCharacters.find(c => c.id === castMemberId);
+    if (char) return char;
   }
 
-  return effectiveCharacters[0] || null;
+  return null;
 }
 
 export function loadInitialState() {
@@ -396,9 +392,8 @@ export function loadChatForStory(story: Story, worlds: World[], characters: Char
   if (Array.isArray(saved)) return saved.map(normalizeChatMessage);
   const world = worlds.find((item) => item.id === story.templateWorldId) || worlds[0];
   const storyCharacters = getStoryCharactersFromLists(story, characters);
-  const lead = chooseActiveCastLead(story, storyCharacters) || characters[0];
-  if (!story || !world || !lead) return [];
-  return [{ role: "assistant", content: buildOpeningMessage(story, lead, world, storyCharacters) }];
+  if (!story || !world || !storyCharacters.length) return [];
+  return [{ role: "assistant", content: buildOpeningMessage(story, world, storyCharacters) }];
 }
 
 export function getStoryCharactersFromLists(story: Story | null, characters: Character[]): Character[] {

@@ -11,7 +11,7 @@ describe("prompt service", () => {
       characterIds: ["char-1", "char-2"],
     } as any;
 
-    const opening = buildOpeningMessage(story, characters[0] as any, worlds[0] as any, characters as any);
+    const opening = buildOpeningMessage(story, worlds[0] as any, characters as any);
 
     expect(opening).toContain("Mira waits in World One");
     expect(opening).toContain("Mira, Ari");
@@ -22,7 +22,6 @@ describe("prompt service", () => {
     const messages = buildMessagesForRequest({
       story: stories[0] as any,
       world: worlds[0] as any,
-      character: characters[0] as any,
       characters: characters as any,
       history: [
         { role: "user", content: "Hello there" },
@@ -75,7 +74,6 @@ describe("prompt service", () => {
     const prompt = buildSystemPrompt({
       story,
       world,
-      character: characters[0] as any,
       characters: characters as any,
       history: [] as any,
       injectedLoreText: "",
@@ -102,7 +100,6 @@ describe("prompt service", () => {
     const prompt = buildSystemPrompt({
       story,
       world: worlds[0] as any,
-      character: characters[0] as any,
       characters: characters as any,
       history: [{ role: "user", content: "Where is the archive?" }] as any,
       injectedLoreText: "[Story] Lore\nHidden lore",

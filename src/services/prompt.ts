@@ -10,7 +10,6 @@ const MAX_RELEVANT_OBJECTS = 8;
 interface RequestParams {
   story: Story;
   world: World;
-  character: Character;
   characters?: Character[];
   history?: ChatMessage[];
   activeLoreMemory?: LoreEntry[];
@@ -21,7 +20,6 @@ interface RequestParams {
 export function buildMessagesForRequest({
   story,
   world,
-  character,
   characters = [],
   history = [],
   activeLoreMemory = [],
@@ -34,7 +32,6 @@ export function buildMessagesForRequest({
       content: buildSystemPrompt({
         story,
         world,
-        character,
         characters,
         history,
         injectedLoreText: formatLoreForPrompt(activeLoreMemory),
@@ -56,7 +53,6 @@ export function toApiMessage(message: ChatMessage): ChatMessage {
 interface PromptParams {
   story: Story;
   world: World;
-  character: Character;
   characters?: Character[];
   history?: ChatMessage[];
   injectedLoreText?: string;
@@ -66,7 +62,6 @@ interface PromptParams {
 export function buildSystemPrompt({
   story,
   world,
-  character,
   characters = [],
   history = [],
   injectedLoreText = "",
@@ -75,16 +70,15 @@ export function buildSystemPrompt({
   const smartContext = buildSmartPromptContext({
     story,
     world,
-    character,
     characters,
     history,
     privateInstruction
   });
 
-  const activeNames = smartContext.fullCharacters.map((item) => item.name).join(", ") || "None";
-  const nearbyNames = smartContext.nearbyCharacters.map((item) => item.name).join(", ") || "None";
-  const inactiveNames = smartContext.inactiveCharacters.map((item) => item.name).join(", ") || "None";
-  const castNames = smartContext.allCharacters.map((item) => item.name).join(", ") || "No cast selected";
+  const activeNames = smartContext.fullCharacters.map((item: any) => item.name).join(", ") || "None";
+  const nearbyNames = smartContext.nearbyCharacters.map((item: any) => item.name).join(", ") || "None";
+  const inactiveNames = smartContext.inactiveCharacters.map((item: any) => item.name).join(", ") || "None";
+  const castNames = smartContext.allCharacters.map((item: any) => item.name).join(", ") || "No cast selected";
 
   return `
 You are roleplaying the AI-controlled cast for this story.
@@ -155,19 +149,16 @@ export function section(title: string, value: string | undefined): string {
   return `${title}:\n${String(value).trim()}`;
 }
 
-export function buildOpeningMessage(story: Story, character: Character | null, world: World | null, characters: Character[] = []): string {
-  const safeCharacter = character || { name: "The character" };
+export function buildOpeningMessage(story: Story, world: World | null, characters: Character[] = []): string {
   const safeWorld = world || { name: "the world" };
-  const castNames = normalizePromptCharacters(characters, character).map((item) => item.name).join(", ");
-  const template = story?.greeting || `${safeCharacter.name} looks at you.`;
+  const castNames = characters.map((item) => item.name).join(", ");
+  const template = story?.greeting || `The scene begins with ${castNames || "the characters"}.`;
 
   return String(template)
-    .replaceAll("{{character}}", safeCharacter.name)
-    .replaceAll("{{characterName}}", safeCharacter.name)
-    .replaceAll("{{mainCharacter}}", safeCharacter.name)
-    .replaceAll("{{mainCharacterName}}", safeCharacter.name)
-    .replaceAll("{{cast}}", castNames || safeCharacter.name)
-    .replaceAll("{{castNames}}", castNames || safeCharacter.name)
+    .replaceAll("{{character}}", characters[0]?.name || "The character")
+    .replaceAll("{{characterName}}", characters[0]?.name || "The character")
+    .replaceAll("{{cast}}", castNames || "the cast")
+    .replaceAll("{{castNames}}", castNames || "the cast")
     .replaceAll("{{world}}", safeWorld.name)
     .replaceAll("{{worldName}}", safeWorld.name);
 }
@@ -175,18 +166,16 @@ export function buildOpeningMessage(story: Story, character: Character | null, w
 interface SmartPromptParams {
   story: Story;
   world: World;
-  character: Character;
   characters?: Character[];
   history?: ChatMessage[];
   privateInstruction?: string;
 }
 
-export function buildSmartPromptContext({ story, world, character, characters = [], history = [], privateInstruction = "" }: SmartPromptParams): any {
-  const allCharacters = normalizePromptCharacters(characters, character);
+export function buildSmartPromptContext({ story, world, characters = [], history = [], privateInstruction = "" }: SmartPromptParams): any {
+  const allCharacters = characters;
   const context = story?.currentContext || ({} as CurrentContext);
   const castState = story?.castState || ({} as CastState);
   
-  // characterStateById and relationshipById should now use castMemberId
   const characterStateById = new Map<string, any>((castState.activeCharacters || []).map((row: any) => [row.castMemberId || row.characterId, row]));
   const relationshipById = new Map<string, any>((castState.relationships || []).map((row: any) => [row.castMemberId || row.characterId, row]));
   
@@ -219,7 +208,6 @@ export function buildSmartPromptContext({ story, world, character, characters = 
     if (presence === "active") activeIds.add(id);
     if (presence === "nearby") nearbyIds.add(id);
   }
-  if (activeIds.size === 0 && allCharacters[0]?.id) activeIds.add(allCharacters[0].id);
 
   const mentionedIds = new Set<string>();
   const pinnedIds = new Set<string>();
@@ -351,7 +339,7 @@ function formatFullCharacterProfiles(characters: Character[], characterStateById
   return characters.map((character) => {
     const state = characterStateById.get(character.id) || {};
     const relationship = relationshipById.get(character.id) || {};
-    const roleLabel = "Active Character";
+    const roleLabel = "Character Profile";
     const stateLines = [
       state.outfit || character.defaultOutfit ? `Current Outfit: ${state.outfit || character.defaultOutfit}` : "",
       state.mood ? `Mood: ${state.mood}` : "",
@@ -423,12 +411,11 @@ function formatCastRules(characters: Character[]): string {
   return rules.length ? rules.join("\n\n") : "None.";
 }
 
-function normalizePromptCharacters(characters: Character[] = [], fallbackCharacter: Character | null = null): Character[] {
+function normalizePromptCharacters(characters: Character[] = []): Character[] {
   const byId = new Map<string, Character>();
   for (const character of characters || []) {
     if (character?.id && !byId.has(character.id)) byId.set(character.id, character);
   }
-  if (fallbackCharacter?.id && !byId.has(fallbackCharacter.id)) byId.set(fallbackCharacter.id, fallbackCharacter);
   return Array.from(byId.values()).filter(Boolean);
 }
 
