@@ -4,6 +4,7 @@ import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories } from "../cons
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
 import { repository, isTauri } from "../services/repository";
+import { resolveEffectiveWorld } from "../services/storyWorld";
 import { storyToMeta } from "../services/storyMeta";
 import {
   chooseActiveCastLead,
@@ -21,6 +22,7 @@ import useChatActions from "./useChatActions";
 import useStoryActions from "./useStoryActions";
 import useCharacterActions from "./useCharacterActions";
 import useWorldActions from "./useWorldActions";
+import useStoryWorldActions from "./useStoryWorldActions";
 import useLoreActions from "./useLoreActions";
 import useStateUpdates from "./useStateUpdates";
 import useImportExport from "./useImportExport";
@@ -31,6 +33,7 @@ import {
   createCharacterBindings,
   createWorldBindings,
   createLoreBindings,
+  createStoryWorldBindings,
   createImportExportBindings,
   createMaintenanceBindings,
 } from "./useAppManagerBindings";
@@ -113,7 +116,7 @@ export default function useAppManager() {
   });
 
   const activeWorld = useMemo(
-    () => (activeStory ? worlds.find((world) => world.id === activeStory.worldId) || worlds[0] || null : worlds[0] || null),
+    () => (activeStory ? resolveEffectiveWorld(activeStory, worlds) || worlds[0] || null : worlds[0] || null),
     [worlds, activeStory]
   );
   const activeStoryCharacters = useMemo(
@@ -169,6 +172,7 @@ export default function useAppManager() {
   const storyActions = useStoryActions();
   const characterActions = useCharacterActions();
   const worldActions = useWorldActions();
+  const storyWorldActions = useStoryWorldActions();
   const loreActions = useLoreActions();
   const stateUpdates = useStateUpdates();
   const importExport = useImportExport();
@@ -308,14 +312,14 @@ export default function useAppManager() {
     if (!loadedStory) {
       const meta = storyMetas.find((storyMeta) => storyMeta.id === storyId);
       if (meta) {
-        const world = worlds.find((item) => item.id === meta.worldId) || worlds[0] || null;
+        const world = worlds.find((item) => item.id === meta.templateWorldId) || worlds[0] || null;
         const storyCharacters = (meta.characterIds || [])
           .map((id) => characters.find((character) => character.id === id))
           .filter(Boolean);
         loadedStory = normalizeStory({
           id: meta.id,
           title: meta.title,
-          worldId: meta.worldId || world?.id || "",
+          templateWorldId: meta.templateWorldId || world?.id || "",
           characterIds: storyCharacters.map((character: any) => character.id),
           greeting: "The scene begins.",
           currentContext: createInitialCurrentContext(world, storyCharacters as any),
@@ -338,7 +342,7 @@ export default function useAppManager() {
 
   const saveStoryEdits = (storyDraft: any) => {
     if (!storyDraft) return { error: "No story draft is loaded." };
-    if (!storyDraft.worldId || !worlds.some((world) => world.id === storyDraft.worldId)) {
+    if (!storyDraft.templateWorldId || !worlds.some((world) => world.id === storyDraft.templateWorldId)) {
       return { error: "Please choose a valid world." };
     }
     const selectedCharacterIds = Array.isArray(storyDraft.characterIds) ? storyDraft.characterIds.filter(Boolean) : [];
@@ -494,6 +498,7 @@ export default function useAppManager() {
   const stateUpdateBindings = createStateUpdateBindings(managerContext, stateUpdates);
   const characterBindings = createCharacterBindings(managerContext, characterActions);
   const worldBindings = createWorldBindings(managerContext, worldActions);
+  const storyWorldBindings = createStoryWorldBindings(managerContext, storyWorldActions);
   const loreBindings = createLoreBindings(managerContext, loreActions);
   const importExportBindings = createImportExportBindings(managerContext, importExport);
   const maintenanceBindings = createMaintenanceBindings(managerContext);
@@ -560,6 +565,7 @@ export default function useAppManager() {
     ...stateUpdateBindings,
     ...characterBindings,
     ...worldBindings,
+    ...storyWorldBindings,
     ...loreBindings,
     ...importExportBindings,
     ...maintenanceBindings,

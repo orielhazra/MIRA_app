@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import LoreEditor from "../../../components/LoreEditor";
 import { parseKeywords } from "../../../utils/helpers";
 
@@ -10,8 +10,155 @@ export default function StoryWorldPanel({
   onDeleteStory,
   onSaveCharacterIdentity,
   onExportCharacterTemplate,
-  onImportCharacterTemplate
+  onImportCharacterTemplate,
+  onSaveStoryWorldPatch,
+  onAddStoryWorldLocation,
+  onUpdateStoryWorldLocation,
+  onRemoveStoryWorldLocation,
+  onAddStoryWorldLoreEntry,
+  onUpdateStoryWorldLoreEntry,
+  onRemoveStoryWorldLoreEntry,
+  onResetStoryWorldOverlay,
 }: any) {
+  const [worldDraft, setWorldDraft] = useState(() => buildWorldDraft(activeWorld));
+  const [locationDrafts, setLocationDrafts] = useState(() => buildLocationDrafts(activeWorld?.locations || []));
+  const [loreDrafts, setLoreDrafts] = useState(() => buildLoreDrafts(activeWorld?.worldLorebook || []));
+  const [status, setStatus] = useState("");
+
+  const addedLocationIds = useMemo(
+    () => new Set((activeStory?.worldOverlay?.addedLocations || []).map((location: any) => location.id)),
+    [activeStory?.worldOverlay?.addedLocations]
+  );
+  const modifiedLocationIds = useMemo(
+    () => new Set(Object.keys(activeStory?.worldOverlay?.modifiedLocations || {})),
+    [activeStory?.worldOverlay?.modifiedLocations]
+  );
+  const addedLoreIds = useMemo(
+    () => new Set((activeStory?.worldOverlay?.addedLoreEntries || []).map((entry: any) => entry.id)),
+    [activeStory?.worldOverlay?.addedLoreEntries]
+  );
+  const modifiedLoreIds = useMemo(
+    () => new Set(Object.keys(activeStory?.worldOverlay?.modifiedLoreEntries || {})),
+    [activeStory?.worldOverlay?.modifiedLoreEntries]
+  );
+
+  useEffect(() => {
+    setWorldDraft(buildWorldDraft(activeWorld));
+    setLocationDrafts(buildLocationDrafts(activeWorld?.locations || []));
+    setLoreDrafts(buildLoreDrafts(activeWorld?.worldLorebook || []));
+    setStatus("");
+  }, [activeStory?.id, activeWorld]);
+
+  function showStatus(nextStatus: string) {
+    setStatus(nextStatus);
+    setTimeout(() => setStatus(""), 1500);
+  }
+
+  function updateWorldField(field: string, value: string) {
+    setWorldDraft((current: any) => ({ ...current, [field]: value }));
+  }
+
+  function saveWorldPatch() {
+    onSaveStoryWorldPatch?.({
+      name: worldDraft.name,
+      overview: worldDraft.overview,
+      shortDescription: worldDraft.shortDescription,
+      description: worldDraft.description,
+      rules: worldDraft.rules,
+    });
+    showStatus("Story world details saved.");
+  }
+
+  function addLocation() {
+    onAddStoryWorldLocation?.({
+      name: "New Story Location",
+      summary: "",
+      description: "",
+      mood: "",
+      visibleExits: "",
+      hazards: "",
+      connectedTo: "",
+      keywords: [],
+    });
+    showStatus("Story location added.");
+  }
+
+  function updateLocationDraft(locationId: string, field: string, value: any) {
+    setLocationDrafts((current: any) => ({
+      ...current,
+      [locationId]: {
+        ...(current[locationId] || {}),
+        [field]: value,
+      },
+    }));
+  }
+
+  function saveLocation(locationId: string) {
+    const draft = locationDrafts[locationId];
+    onUpdateStoryWorldLocation?.(locationId, {
+      name: draft.name,
+      summary: draft.summary,
+      description: draft.description,
+      mood: draft.mood,
+      visibleExits: draft.visibleExits,
+      hazards: draft.hazards,
+      connectedTo: draft.connectedTo,
+      keywords: draft.keywords,
+    });
+    showStatus(`Saved location ${draft.name || locationId}.`);
+  }
+
+  function removeLocation(locationId: string, locationName?: string) {
+    onRemoveStoryWorldLocation?.(locationId);
+    showStatus(`Removed ${locationName || "location"}.`);
+  }
+
+  function addLoreEntry() {
+    onAddStoryWorldLoreEntry?.({
+      name: "New Story World Lore",
+      keywords: [],
+      content: "",
+      enabled: true,
+      alwaysOn: false,
+      priority: 0,
+    });
+    showStatus("Story world lore entry added.");
+  }
+
+  function updateLoreDraft(entryId: string, field: string, value: any) {
+    setLoreDrafts((current: any) => ({
+      ...current,
+      [entryId]: {
+        ...(current[entryId] || {}),
+        [field]: value,
+      },
+    }));
+  }
+
+  function saveLoreEntry(entryId: string) {
+    const draft = loreDrafts[entryId];
+    onUpdateStoryWorldLoreEntry?.(entryId, {
+      name: draft.name,
+      keywords: draft.keywords,
+      content: draft.content,
+      enabled: draft.enabled,
+      alwaysOn: draft.alwaysOn,
+      priority: draft.priority,
+    });
+    showStatus(`Saved lore entry ${draft.name || entryId}.`);
+  }
+
+  function removeLoreEntry(entryId: string, entryName?: string) {
+    onRemoveStoryWorldLoreEntry?.(entryId);
+    showStatus(`Removed ${entryName || "lore entry"}.`);
+  }
+
+  function resetOverlay() {
+    if (!confirm("Reset all story-world customizations back to the base template?")) return;
+    onResetStoryWorldOverlay?.();
+    showStatus("Story world overlay reset.");
+  }
+
   return (
     <div className="info-panel active">
       <h3>Story</h3>
@@ -37,29 +184,95 @@ export default function StoryWorldPanel({
       </div>
       <p className="muted">Imported templates are secondary: after import, add them to a story cast and edit the story version as needed.</p>
 
-      <h3>World</h3>
-      <InfoField label="Name" value={activeWorld.name} />
-      <InfoField label="Smart Prompt Overview" value={activeWorld.overview || activeWorld.shortDescription || "—"} />
-      <InfoField label="Description" value={activeWorld.description || "—"} />
+      <h3>Story World</h3>
+      <InfoField
+        label="Based On Template"
+        value={`${activeStory.templateWorldKey || activeStory.templateWorldId || "Unknown"} • v${activeStory.templateWorldVersion || 1}`}
+      />
+      <p className="sheet-status">{status}</p>
 
-      <h3>Available Locations</h3>
+      <div className="context-grid">
+        <ContextInput label="Story World Name" value={worldDraft.name} onChange={(value) => updateWorldField("name", value)} />
+        <ContextInput label="Story World Short Description" value={worldDraft.shortDescription} onChange={(value) => updateWorldField("shortDescription", value)} />
+        <ContextTextarea label="Story World Overview" value={worldDraft.overview} onChange={(value) => updateWorldField("overview", value)} />
+        <ContextTextarea label="Story World Description" value={worldDraft.description} onChange={(value) => updateWorldField("description", value)} />
+        <ContextTextarea label="Story World Rules" value={worldDraft.rules} onChange={(value) => updateWorldField("rules", value)} />
+      </div>
+
+      <div className="sheet-actions compact-actions">
+        <button type="button" onClick={saveWorldPatch}>Save Story World Details</button>
+        <button type="button" className="danger" onClick={resetOverlay}>Reset Story World Overlay</button>
+      </div>
+
+      <h3>Story World Locations</h3>
+      <p className="muted">These are the effective locations for this story. Saving changes writes only to the story overlay.</p>
+      <div className="sheet-actions compact-actions">
+        <button type="button" onClick={addLocation}>Add Story Location</button>
+      </div>
       {(activeWorld.locations || []).length ? (
         <div className="context-card-list">
-          {(activeWorld.locations || []).map((location: any) => (
-            <details key={location.id || location.name} className="context-card">
-              <summary>
-                <strong>{location.name}</strong>
-                <span>{location.summary || "location"}</span>
-              </summary>
-              <InfoField label="Summary" value={location.summary || "—"} />
-              <InfoField label="Description" value={location.description || "—"} />
-              <InfoField label="Mood" value={location.mood || "—"} />
-              <InfoField label="Exits" value={location.visibleExits || "—"} />
-              <InfoField label="Hazards" value={location.hazards || "—"} />
-            </details>
-          ))}
+          {(activeWorld.locations || []).map((location: any) => {
+            const draft = locationDrafts[location.id] || location;
+            return (
+              <details key={location.id || location.name} className="context-card">
+                <summary>
+                  <strong>{draft.name || location.name}</strong>
+                  <span>{getLocationBadge(location.id, addedLocationIds, modifiedLocationIds)}</span>
+                </summary>
+                <ContextInput label="Location Name" value={draft.name || ""} onChange={(value) => updateLocationDraft(location.id, "name", value)} />
+                <ContextInput label="Summary" value={draft.summary || ""} onChange={(value) => updateLocationDraft(location.id, "summary", value)} />
+                <ContextTextarea label="Description" value={draft.description || ""} onChange={(value) => updateLocationDraft(location.id, "description", value)} />
+                <ContextInput label="Mood" value={draft.mood || ""} onChange={(value) => updateLocationDraft(location.id, "mood", value)} />
+                <ContextInput label="Visible Exits" value={draft.visibleExits || ""} onChange={(value) => updateLocationDraft(location.id, "visibleExits", value)} />
+                <ContextInput label="Connected To" value={draft.connectedTo || ""} onChange={(value) => updateLocationDraft(location.id, "connectedTo", value)} />
+                <ContextInput label="Keywords" value={(draft.keywords || []).join(", ")} onChange={(value) => updateLocationDraft(location.id, "keywords", parseKeywords(value))} />
+                <ContextTextarea label="Hazards" value={draft.hazards || ""} onChange={(value) => updateLocationDraft(location.id, "hazards", value)} />
+                <div className="sheet-actions compact-actions">
+                  <button type="button" onClick={() => saveLocation(location.id)}>Save Location</button>
+                  <button type="button" className="danger small" onClick={() => removeLocation(location.id, draft.name || location.name)}>Remove Location</button>
+                </div>
+              </details>
+            );
+          })}
         </div>
       ) : <p className="muted">No world locations saved yet.</p>}
+
+      <h3>Story World Lore</h3>
+      <p className="muted">Story-world lore extends or overrides the template world lore for this story only.</p>
+      <div className="sheet-actions compact-actions">
+        <button type="button" onClick={addLoreEntry}>Add Story World Lore</button>
+      </div>
+      {(activeWorld.worldLorebook || []).length ? (
+        <div className="context-card-list">
+          {(activeWorld.worldLorebook || []).map((entry: any) => {
+            const draft = loreDrafts[entry.id] || entry;
+            return (
+              <details key={entry.id || entry.name} className="context-card">
+                <summary>
+                  <strong>{draft.name || entry.name}</strong>
+                  <span>{getLoreBadge(entry.id, addedLoreIds, modifiedLoreIds)}</span>
+                </summary>
+                <ContextInput label="Lore Name" value={draft.name || ""} onChange={(value) => updateLoreDraft(entry.id, "name", value)} />
+                <ContextInput label="Keywords" value={(draft.keywords || []).join(", ")} onChange={(value) => updateLoreDraft(entry.id, "keywords", parseKeywords(value))} />
+                <ContextTextarea label="Content" value={draft.content || ""} onChange={(value) => updateLoreDraft(entry.id, "content", value)} />
+                <label className="lore-checkbox context-present-toggle">
+                  <input type="checkbox" checked={draft.enabled !== false} onChange={(event) => updateLoreDraft(entry.id, "enabled", event.target.checked)} />
+                  Enabled
+                </label>
+                <label className="lore-checkbox context-present-toggle">
+                  <input type="checkbox" checked={draft.alwaysOn === true} onChange={(event) => updateLoreDraft(entry.id, "alwaysOn", event.target.checked)} />
+                  Always On
+                </label>
+                <ContextInput label="Priority" value={String(draft.priority ?? 0)} onChange={(value) => updateLoreDraft(entry.id, "priority", Number(value || 0))} />
+                <div className="sheet-actions compact-actions">
+                  <button type="button" onClick={() => saveLoreEntry(entry.id)}>Save Lore Entry</button>
+                  <button type="button" className="danger small" onClick={() => removeLoreEntry(entry.id, draft.name || entry.name)}>Remove Lore Entry</button>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      ) : <p className="muted">No world lore saved yet.</p>}
 
       <div className="info-actions">
         <button onClick={onExportStory}>Export Story</button>
@@ -128,6 +341,36 @@ function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTempl
       <p className="sheet-status">{status}</p>
     </details>
   );
+}
+
+function buildWorldDraft(activeWorld: any) {
+  return {
+    name: activeWorld?.name || "",
+    overview: activeWorld?.overview || "",
+    shortDescription: activeWorld?.shortDescription || "",
+    description: activeWorld?.description || "",
+    rules: activeWorld?.rules || "",
+  };
+}
+
+function buildLocationDrafts(locations: any[]) {
+  return Object.fromEntries((locations || []).map((location: any) => [location.id, { ...location, keywords: [...(location.keywords || [])] }]));
+}
+
+function buildLoreDrafts(entries: any[]) {
+  return Object.fromEntries((entries || []).map((entry: any) => [entry.id, { ...entry, keywords: [...(entry.keywords || [])] }]));
+}
+
+function getLocationBadge(locationId: string, addedLocationIds: Set<string>, modifiedLocationIds: Set<string>) {
+  if (addedLocationIds.has(locationId)) return "Story-only location";
+  if (modifiedLocationIds.has(locationId)) return "Template override";
+  return "Template location";
+}
+
+function getLoreBadge(entryId: string, addedLoreIds: Set<string>, modifiedLoreIds: Set<string>) {
+  if (addedLoreIds.has(entryId)) return "Story-only lore";
+  if (modifiedLoreIds.has(entryId)) return "Template override";
+  return "Template lore";
 }
 
 function getPresenceLabel(story: any, characterId: string) {

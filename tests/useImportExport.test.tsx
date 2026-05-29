@@ -61,9 +61,9 @@ describe("useImportExport", () => {
       "story-one.story.json",
       expect.objectContaining({
         type: "roleplay-story-bundle",
-        version: 1,
-        story: expect.objectContaining({ id: "story-1", title: "Story One" }),
-        world: expect.objectContaining({ id: "world-1", name: "World One" }),
+        version: 2,
+        story: expect.objectContaining({ id: "story-1", title: "Story One", templateWorldId: "world-1" }),
+        world: expect.objectContaining({ id: "world-1", name: "World One", templateKey: "world-1", templateVersion: 1 }),
         characters: expect.any(Array),
       })
     );
@@ -160,6 +160,9 @@ describe("useImportExport", () => {
         parsed: {
           type: "roleplay-world",
           world: {
+            id: "old-world-id",
+            templateKey: "imported-world",
+            templateVersion: 4,
             name: "Imported World",
             shortDescription: "Imported world",
             worldLorebook: [{ name: "World Lore", keywords: ["imported"], content: "Lore", enabled: true, alwaysOn: false }],
@@ -177,8 +180,41 @@ describe("useImportExport", () => {
     expect(importedWorld).toMatchObject({
       name: "Imported World",
       shortDescription: "Imported world",
+      templateKey: "imported-world",
+      templateVersion: 4,
     });
     expect(setSelectedWorldSheetId).toHaveBeenCalledWith(importedWorld.id);
+    expect(setActiveView).toHaveBeenCalledWith("world");
+  });
+
+  it("reuses an existing matching template version when importing a world bundle", () => {
+    const { worlds } = createAppFixtures();
+    const saveWorldList = vi.fn();
+    const setSelectedWorldSheetId = vi.fn();
+    const setActiveView = vi.fn();
+    const { result } = renderHook(() => useImportExport());
+
+    act(() => {
+      result.current.importWorldBundle({
+        parsed: {
+          type: "roleplay-world",
+          world: {
+            id: "foreign-id",
+            templateKey: worlds[0].templateKey,
+            templateVersion: worlds[0].templateVersion,
+            name: "Imported Duplicate World",
+            shortDescription: "Should reuse existing",
+          },
+        },
+        worlds: worlds as any,
+        saveWorldList,
+        setSelectedWorldSheetId,
+        setActiveView,
+      });
+    });
+
+    expect(saveWorldList).not.toHaveBeenCalled();
+    expect(setSelectedWorldSheetId).toHaveBeenCalledWith(worlds[0].id);
     expect(setActiveView).toHaveBeenCalledWith("world");
   });
 
@@ -209,7 +245,18 @@ describe("useImportExport", () => {
           story: {
             id: "old-story",
             title: "Imported Story",
-            worldId: "old-world",
+            templateWorldId: "old-world",
+            templateWorldKey: "aldmyr",
+            templateWorldVersion: 7,
+            worldOverlay: {
+              worldPatch: { shortDescription: "Imported overlay summary" },
+              modifiedLocations: {},
+              addedLocations: [],
+              removedLocationIds: [],
+              modifiedLoreEntries: {},
+              addedLoreEntries: [],
+              removedLoreEntryIds: [],
+            },
             characterIds: ["old-char"],
             storyLorebook: [{ name: "Story Lore", keywords: ["story"], content: "Lore", enabled: true, alwaysOn: false }],
             currentContext: {
@@ -226,6 +273,8 @@ describe("useImportExport", () => {
           },
           world: {
             id: "old-world",
+            templateKey: "aldmyr",
+            templateVersion: 7,
             name: "Imported World",
             shortDescription: "Imported world",
           },
@@ -262,9 +311,14 @@ describe("useImportExport", () => {
     const importedStory = saveActiveStory.mock.calls[0][0];
 
     expect(importedWorld.name).toBe("Imported World");
+    expect(importedWorld.templateKey).toBe("aldmyr");
+    expect(importedWorld.templateVersion).toBe(7);
     expect(importedCharacter.name).toBe("Imported Mira");
     expect(importedStory.title).toBe("Imported Story");
-    expect(importedStory.worldId).toBe(importedWorld.id);
+    expect(importedStory.templateWorldId).toBe(importedWorld.id);
+    expect(importedStory.templateWorldKey).toBe("aldmyr");
+    expect(importedStory.templateWorldVersion).toBe(7);
+    expect(importedStory.worldOverlay).toMatchObject({ worldPatch: { shortDescription: "Imported overlay summary" } });
     expect(importedStory.characterIds).toEqual([importedCharacter.id]);
     expect(importedStory.castState.activeCharacters[0].characterId).toBe(importedCharacter.id);
     expect(setActiveStory).toHaveBeenCalledWith(importedStory);
@@ -277,5 +331,82 @@ describe("useImportExport", () => {
     expect(setSelectedWorldSheetId).toHaveBeenCalledWith(importedWorld.id);
     expect(setStoryDraft).toHaveBeenCalledWith(null);
     expect(setActiveView).toHaveBeenCalledWith("story");
+  });
+
+  it("reuses an existing matching template version when importing a story bundle", () => {
+    const { worlds, characters } = createAppFixtures();
+    const saveWorldList = vi.fn();
+    const saveCharacterList = vi.fn();
+    const saveActiveStory = vi.fn();
+    const setActiveStory = vi.fn();
+    const setChatHistory = vi.fn();
+    const setActiveLoreMemory = vi.fn();
+    const setSelectedCharacterSheetId = vi.fn();
+    const setSelectedWorldSheetId = vi.fn();
+    const setStoryDraft = vi.fn();
+    const setActiveView = vi.fn();
+    const repository = {
+      activeStory: { set: vi.fn() },
+      chats: { save: vi.fn() },
+      loreMemory: { save: vi.fn() },
+    };
+
+    const { result } = renderHook(() => useImportExport());
+
+    act(() => {
+      result.current.importStoryBundle({
+        parsed: {
+          type: "roleplay-story-bundle",
+          story: {
+            id: "old-story-2",
+            title: "Imported Reused Story",
+            templateWorldId: "foreign-world",
+            templateWorldKey: worlds[0].templateKey,
+            templateWorldVersion: worlds[0].templateVersion,
+            worldOverlay: {
+              worldPatch: {},
+              modifiedLocations: {},
+              addedLocations: [],
+              removedLocationIds: [],
+              modifiedLoreEntries: {},
+              addedLoreEntries: [],
+              removedLoreEntryIds: [],
+            },
+            characterIds: ["old-char"],
+            currentContext: { scene: {}, location: {}, objects: [], recentFacts: {} },
+            castState: { activeCharacters: [{ characterId: "old-char", presence: "active", present: true }], relationships: [] },
+            greeting: "Imported greeting",
+          },
+          world: {
+            id: "foreign-world",
+            templateKey: worlds[0].templateKey,
+            templateVersion: worlds[0].templateVersion,
+            name: "Duplicate Imported World",
+          },
+          characters: [{ id: "old-char", name: "Imported Mira", shortDescription: "Imported char" }],
+          chatHistory: [{ role: "assistant", content: "Imported chat" }],
+        },
+        worlds: worlds as any,
+        characters: characters as any,
+        saveWorldList,
+        saveCharacterList,
+        saveActiveStory,
+        setActiveStory,
+        repository,
+        setChatHistory,
+        setActiveLoreMemory,
+        setSelectedCharacterSheetId,
+        setSelectedWorldSheetId,
+        setStoryDraft,
+        setActiveView,
+      });
+    });
+
+    expect(saveWorldList).not.toHaveBeenCalled();
+    const importedStory = saveActiveStory.mock.calls[0][0];
+    expect(importedStory.templateWorldId).toBe(worlds[0].id);
+    expect(importedStory.templateWorldKey).toBe(worlds[0].templateKey);
+    expect(importedStory.templateWorldVersion).toBe(worlds[0].templateVersion);
+    expect(setSelectedWorldSheetId).toHaveBeenCalledWith(worlds[0].id);
   });
 });

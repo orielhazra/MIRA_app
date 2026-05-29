@@ -45,6 +45,48 @@ describe("prompt service", () => {
     ]);
   });
 
+
+  it("buildSystemPrompt resolves the current location by locationId before stale names", () => {
+    const { worlds, characters, stories } = createAppFixtures();
+    const world = {
+      ...worlds[0],
+      locations: [
+        { id: "loc_square", name: "Market Square", description: "Crowded and bright.", visibleExits: "North Gate" },
+        { id: "loc_archive", name: "Hidden Archive", description: "Dusty shelves and lantern light.", visibleExits: "Stone stair" },
+      ],
+    } as any;
+    const story = {
+      ...stories[0],
+      currentContext: {
+        scene: { currentObjective: "Find the records" },
+        location: {
+          locationId: "loc_archive",
+          name: "Old Hall",
+          description: "Outdated text",
+          visibleExits: "Broken exit",
+          availableLocations: "Market Square",
+          hazards: "None",
+        },
+        objects: [],
+        recentFacts: {},
+      },
+    } as any;
+
+    const prompt = buildSystemPrompt({
+      story,
+      world,
+      character: characters[0] as any,
+      characters: characters as any,
+      history: [] as any,
+      injectedLoreText: "",
+      privateInstruction: "",
+    });
+
+    expect(prompt).toContain("Current Location: Hidden Archive");
+    expect(prompt).toContain("Dusty shelves and lantern light.");
+    expect(prompt).not.toContain("Current Location: Old Hall");
+  });
+
   it("buildSystemPrompt includes story, context, and rule sections", () => {
     const { worlds, characters, stories } = createAppFixtures();
     const story = {

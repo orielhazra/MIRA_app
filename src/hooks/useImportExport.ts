@@ -2,6 +2,7 @@
 
 import { Character, World, Story, ChatMessage } from "../types/index";
 import { normalizeCharacter, normalizeChatMessage, normalizeStory, normalizeWorld } from "../services/normalizers";
+import { createEmptyWorldOverlay, getTemplateWorldByKeyAndVersion, resolveEffectiveWorld } from "../services/storyWorld";
 import { buildOpeningMessage } from "../services/prompt";
 import { cloneJson, createId, downloadJson, readJsonFile, safeFileName } from "../utils/helpers";
 import {
@@ -149,15 +150,22 @@ export default function useImportExport() {
       return;
     }
 
-    const newWorld = normalizeWorld({
+    const importedTemplateKey = imported.templateKey || imported.id || createId("world_template");
+    const importedTemplateVersion = Number(imported.templateVersion || 1);
+    const existingWorld = getTemplateWorldByKeyAndVersion(importedTemplateKey, importedTemplateVersion, worlds);
+    const newWorld = existingWorld || normalizeWorld({
       ...imported,
       id: createId("world"),
+      templateKey: importedTemplateKey,
+      templateVersion: importedTemplateVersion,
       name: imported.name || "Imported World",
       shortDescription: imported.shortDescription || "Imported world",
       worldLorebook: Array.isArray(imported.worldLorebook) ? imported.worldLorebook : imported.lorebook || [],
     });
 
-    saveWorldList([...worlds, newWorld]);
+    if (!existingWorld) {
+      saveWorldList([...worlds, newWorld]);
+    }
     setSelectedWorldSheetId(newWorld.id);
     setActiveView("world");
   }
@@ -191,9 +199,14 @@ export default function useImportExport() {
     hydrateBundleLore(bundle, importedStorySource, importedWorldSource, importedCharacterSources);
 
     const oldToNewCharacterIds: Record<string, string> = {};
-    const newWorld = normalizeWorld({
+    const importedTemplateKey = importedStorySource.templateWorldKey || importedWorldSource.templateKey || importedWorldSource.id || createId("world_template");
+    const importedTemplateVersion = Number(importedStorySource.templateWorldVersion || importedWorldSource.templateVersion || 1);
+    const reusedWorld = getTemplateWorldByKeyAndVersion(importedTemplateKey, importedTemplateVersion, worlds);
+    const newWorld = reusedWorld || normalizeWorld({
       ...importedWorldSource,
       id: createId("world"),
+      templateKey: importedTemplateKey,
+      templateVersion: importedTemplateVersion,
       worldLorebook: Array.isArray(importedWorldSource.worldLorebook)
         ? importedWorldSource.worldLorebook
         : importedWorldSource.lorebook || [],
@@ -238,7 +251,10 @@ export default function useImportExport() {
         ...importedStorySource,
         id: createId("story"),
         title: importedStorySource.title || "Imported Story",
-        worldId: newWorld.id,
+        templateWorldId: newWorld.id,
+        templateWorldKey: importedStorySource.templateWorldKey || newWorld.templateKey,
+        templateWorldVersion: Number(importedStorySource.templateWorldVersion || newWorld.templateVersion || 1),
+        worldOverlay: importedStorySource.worldOverlay || createEmptyWorldOverlay(),
         characterIds: remappedCharacterIds,
         currentContext: remappedCurrentContext,
         castState: remappedCastState,
@@ -249,7 +265,7 @@ export default function useImportExport() {
       newCharacters
     );
 
-    const nextWorlds = [...worlds, newWorld];
+    const nextWorlds = reusedWorld ? [...worlds] : [...worlds, newWorld];
     const nextCharacters = [...characters, ...newCharacters];
 
     saveWorldList(nextWorlds);
@@ -259,6 +275,7 @@ export default function useImportExport() {
 
     repository?.activeStory.set(newStory.id);
 
+    const effectiveWorld = resolveEffectiveWorld(newStory, [newWorld]) || newWorld;
     const importedChat = Array.isArray(bundle.chatHistory)
       ? bundle.chatHistory.map(normalizeChatMessage)
       : [
@@ -267,7 +284,7 @@ export default function useImportExport() {
             content: buildOpeningMessage(
               newStory,
               newCharacters.find((item) => item.id === fallbackCharacterId) || newCharacters[0],
-              newWorld,
+              effectiveWorld,
               newCharacters
             ),
           },

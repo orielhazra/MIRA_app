@@ -41,6 +41,8 @@ export interface WorldLocation {
 
 export interface World {
   id: string;
+  templateKey?: string;
+  templateVersion?: number;
   name: string;
   overview?: string;
   shortDescription?: string;
@@ -52,6 +54,22 @@ export interface World {
   startingScenario?: string;
   lorebook?: any;
   createdAt?: number;
+}
+
+export interface StoryWorldOverlay {
+  worldPatch: {
+    name?: string;
+    overview?: string;
+    shortDescription?: string;
+    description?: string;
+    rules?: string;
+  };
+  modifiedLocations: Record<string, Partial<WorldLocation>>;
+  addedLocations: WorldLocation[];
+  removedLocationIds: string[];
+  modifiedLoreEntries: Record<string, Partial<LoreEntry>>;
+  addedLoreEntries: LoreEntry[];
+  removedLoreEntryIds: string[];
 }
 
 export interface Character {
@@ -133,6 +151,7 @@ export interface SceneFacts {
 }
 
 export interface LocationContext {
+  locationId?: string;
   id?: string;
   name?: string;
   description?: string;
@@ -180,7 +199,7 @@ export interface DirectorNotes {
 export interface StoryMeta {
   id: string;
   title: string;
-  worldId: string;
+  templateWorldId: string;
   characterIds: string[];
   characterCount: number;
   createdAt?: number;
@@ -191,7 +210,10 @@ export interface StoryMeta {
 export interface Story {
   id: string;
   title: string;
-  worldId: string;
+  templateWorldId: string;
+  templateWorldKey?: string;
+  templateWorldVersion?: number;
+  worldOverlay: StoryWorldOverlay;
   characterIds: string[];
   scenario?: string;
   greeting?: string;

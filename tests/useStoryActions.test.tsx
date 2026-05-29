@@ -88,6 +88,126 @@ describe("useStoryActions", () => {
     expect(setActiveView).toHaveBeenCalledWith("story");
   });
 
+
+  it("startStoryFromCreationSheet pins template metadata and creates an empty world overlay", () => {
+    const { worlds, characters } = createAppFixtures();
+    const saveActiveStory = vi.fn();
+    const setActiveStory = vi.fn();
+    const setChatHistory = vi.fn();
+    const setActiveLoreMemory = vi.fn();
+    const setSelectedCharacterSheetId = vi.fn();
+    const setSelectedWorldSheetId = vi.fn();
+    const setStoryDraft = vi.fn();
+    const setActiveView = vi.fn();
+
+    const targetWorld = { ...worlds[1], templateKey: "world-two", templateVersion: 3 } as any;
+    const { result } = renderHook(() => useStoryActions());
+
+    act(() => {
+      result.current.startStoryFromCreationSheet({
+        draft: {
+          title: "Overlay Story",
+          templateWorldId: targetWorld.id,
+          templateWorldKey: targetWorld.templateKey,
+          templateWorldVersion: targetWorld.templateVersion,
+          characterIds: [characters[1].id],
+          scenario: "Scene setup",
+          greeting: "Opening greeting",
+          storyLorebook: [],
+        },
+        worlds: [worlds[0], targetWorld],
+        characters,
+        saveActiveStory,
+        setActiveStory,
+        repository: mockRepository,
+        setChatHistory,
+        setActiveLoreMemory,
+        setSelectedCharacterSheetId,
+        setSelectedWorldSheetId,
+        setStoryDraft,
+        setActiveView,
+      });
+    });
+
+    const createdStory = saveActiveStory.mock.calls[0][0];
+    expect(createdStory).toMatchObject({
+      title: "Overlay Story",
+      templateWorldId: targetWorld.id,
+      templateWorldKey: "world-two",
+      templateWorldVersion: 3,
+    });
+    expect(createdStory.worldOverlay).toEqual({
+      worldPatch: {},
+      modifiedLocations: {},
+      addedLocations: [],
+      removedLocationIds: [],
+      modifiedLoreEntries: {},
+      addedLoreEntries: [],
+      removedLoreEntryIds: [],
+    });
+    expect(setSelectedWorldSheetId).toHaveBeenCalledWith(targetWorld.id);
+    expect(setActiveView).toHaveBeenCalledWith("story");
+  });
+
+  it("assignWorldToStory re-bases the story on a template and resets the overlay", () => {
+    const { worlds, characters, stories } = createAppFixtures();
+    const saveActiveStory = vi.fn();
+    const resetCurrentStoryState = vi.fn();
+    const setSelectedWorldSheetId = vi.fn();
+    const setActiveView = vi.fn();
+
+    const targetWorld = { ...worlds[1], templateKey: "world-two", templateVersion: 5 } as any;
+    const activeStory = {
+      ...stories[0],
+      templateWorldId: worlds[0].id,
+      templateWorldKey: worlds[0].templateKey,
+      templateWorldVersion: worlds[0].templateVersion,
+      worldOverlay: {
+        worldPatch: { shortDescription: "Modified story world" },
+        modifiedLocations: {},
+        addedLocations: [],
+        removedLocationIds: [],
+        modifiedLoreEntries: {},
+        addedLoreEntries: [],
+        removedLoreEntryIds: [],
+      },
+    } as any;
+
+    const { result } = renderHook(() => useStoryActions());
+
+    act(() => {
+      result.current.assignWorldToStory({
+        worldId: targetWorld.id,
+        activeStory,
+        characters,
+        getWorld: (id: string) => [worlds[0], targetWorld].find((world) => world.id === id),
+        saveActiveStory,
+        resetCurrentStoryState,
+        setSelectedWorldSheetId,
+        setActiveView,
+      });
+    });
+
+    const updatedStory = saveActiveStory.mock.calls[0][0];
+    expect(updatedStory).toMatchObject({
+      templateWorldId: targetWorld.id,
+      templateWorldKey: "world-two",
+      templateWorldVersion: 5,
+    });
+    expect(updatedStory.worldOverlay).toEqual({
+      worldPatch: {},
+      modifiedLocations: {},
+      addedLocations: [],
+      removedLocationIds: [],
+      modifiedLoreEntries: {},
+      addedLoreEntries: [],
+      removedLoreEntryIds: [],
+    });
+    expect(setSelectedWorldSheetId).toHaveBeenCalledWith(targetWorld.id);
+    expect(setActiveView).toHaveBeenCalledWith("story");
+    expect(resetCurrentStoryState).toHaveBeenCalledWith(activeStory.id, updatedStory, targetWorld, expect.any(Array));
+  });
+
   it("deleteActiveStory removes runtime data and clears selection", () => {
     const { stories } = createAppFixtures();
     const clearActiveStorySelection = vi.fn();

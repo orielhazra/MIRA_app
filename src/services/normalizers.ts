@@ -1,6 +1,6 @@
 import { 
   DirectorNotes, StoryJournal, CurrentContext, CastState, 
-  LoreEntry, World, WorldLocation, Character, Story, ChatMessage,
+  LoreEntry, World, WorldLocation, StoryWorldOverlay, Character, Story, ChatMessage,
   CastMemberState, RelationshipState, ObjectContext
 } from "../types/index";
 import { defaultWorlds } from "../constants/defaultData";
@@ -95,6 +95,7 @@ export const DEFAULT_CURRENT_CONTEXT: CurrentContext = {
     currentObjective: ""
   },
   location: {
+    locationId: "",
     name: "",
     description: "",
     visibleExits: "",
@@ -137,6 +138,7 @@ export function normalizeCurrentContext(context: any = {}): CurrentContext {
       currentObjective: String(source.scene?.currentObjective || source.scene?.objective || "")
     },
     location: {
+      locationId: String(source.location?.locationId || source.location?.id || ""),
       name: String(source.location?.name || ""),
       description: String(source.location?.description || ""),
       visibleExits: String(source.location?.visibleExits || source.location?.exits || ""),
@@ -213,14 +215,20 @@ export function normalizeCastState(castState: any = {}, characters: Character[] 
 
 export function normalizeStoredLorebook(lorebook: any): LoreEntry[] {
   if (!Array.isArray(lorebook)) return [];
+  const seenIds = new Map<string, number>();
   return lorebook
     .map((entry: any, index: number) => {
       const source = entry && typeof entry === "object" ? entry : {};
       const enabled = source.enabled !== false;
+      const name = String(source.name || `Lore ${index + 1}`);
+      const keywords = parseKeywords(source.keywords);
       return {
-        id: String(source.id || ""),
-        name: String(source.name || `Lore ${index + 1}`),
-        keywords: parseKeywords(source.keywords),
+        id: makeUniqueStableId(
+          String(source.id || buildStableEntityId("lore", name || keywords[0] || `lore-${index + 1}`)),
+          seenIds
+        ),
+        name,
+        keywords,
         content: String(source.content || ""),
         enabled,
         alwaysOn: enabled && source.alwaysOn === true,
@@ -231,26 +239,35 @@ export function normalizeStoredLorebook(lorebook: any): LoreEntry[] {
 }
 
 export function normalizeWorld(world: any = {}): World {
+  const id = String(world.id || createId("world"));
   return {
-    id: String(world.id || createId("world")),
+    id,
+    templateKey: String(world.templateKey || id),
+    templateVersion: Number(world.templateVersion || 1),
     name: String(world.name || "Unnamed World"),
     shortDescription: String(world.shortDescription || "Roleplay world"),
     overview: String(world.overview || world.shortDescription || ""),
     description: String(world.description || ""),
     rules: String(world.rules || ""),
     locations: normalizeWorldLocations(world.locations || world.worldLocations || []),
-    worldLorebook: normalizeStoredLorebook(world.worldLorebook || world.lorebook)
+    worldLorebook: normalizeStoredLorebook(world.worldLorebook || world.lorebook),
+    createdAt: Number.isFinite(Number(world.createdAt)) ? Number(world.createdAt) : undefined,
   };
 }
 
 export function normalizeWorldLocations(locations: any): WorldLocation[] {
   if (!Array.isArray(locations)) return [];
+  const seenIds = new Map<string, number>();
   return locations
     .map((location: any, index: number) => {
       const source = location && typeof location === "object" ? location : {};
+      const name = String(source.name || source.title || `Location ${index + 1}`);
       return {
-        id: String(source.id || `location_${index}_${createId("loc").slice(-6)}`),
-        name: String(source.name || source.title || `Location ${index + 1}`),
+        id: makeUniqueStableId(
+          String(source.id || buildStableEntityId("location", name || `location-${index + 1}`)),
+          seenIds
+        ),
+        name,
         summary: String(source.summary || source.shortDescription || ""),
         description: String(source.description || ""),
         mood: String(source.mood || source.atmosphere || ""),
@@ -288,18 +305,23 @@ export function normalizeCharacter(character: any = {}, worlds: World[] = []): C
 }
 
 export function normalizeStory(story: any = {}, worlds: World[] = [], characters: Character[] = []): Story {
-  const fallbackWorld = worlds?.[0] || defaultWorlds[0];
+  const fallbackWorld = normalizeWorld(worlds?.[0] || defaultWorlds[0]);
   const fallbackCharacter = characters?.[0];
   const rawCharacterIds = Array.isArray(story.characterIds)
     ? story.characterIds.map(String).filter(Boolean)
     : [];
   const characterIds = uniqueCompact(rawCharacterIds.length ? rawCharacterIds : [fallbackCharacter?.id || ""]);
   const storyCharacters = (characters || []).filter((character) => characterIds.includes(character.id));
+  const templateWorldId = String(story.templateWorldId || fallbackWorld?.id || "liminal-station");
+  const templateWorld = normalizeWorld((worlds || []).find((world) => world.id === templateWorldId) || fallbackWorld);
 
   return {
     id: String(story.id || createId("story")),
     title: String(story.title || "Untitled Story"),
-    worldId: String(story.worldId || fallbackWorld?.id || "liminal-station"),
+    templateWorldId,
+    templateWorldKey: String(story.templateWorldKey || templateWorld.templateKey || templateWorldId),
+    templateWorldVersion: Number(story.templateWorldVersion || templateWorld.templateVersion || 1),
+    worldOverlay: normalizeStoryWorldOverlay(story.worldOverlay),
     characterIds,
     scenario: String(story.scenario || ""),
     greeting: String(story.greeting || "The scene begins."),
@@ -312,6 +334,49 @@ export function normalizeStory(story: any = {}, worlds: World[] = [], characters
     currentContext: normalizeCurrentContext(story.currentContext),
     castState: normalizeCastState(story.castState, storyCharacters, story.currentContext)
   };
+}
+
+export function normalizeStoryWorldOverlay(overlay: any = {}): StoryWorldOverlay {
+  const source = overlay && typeof overlay === "object" ? overlay : {};
+  return {
+    worldPatch: normalizePartialRecord(source.worldPatch, ["name", "overview", "shortDescription", "description", "rules"]),
+    modifiedLocations: source.modifiedLocations && typeof source.modifiedLocations === "object"
+      ? Object.fromEntries(Object.entries(source.modifiedLocations).map(([id, patch]) => [String(id), normalizePartialRecord(patch)]))
+      : {},
+    addedLocations: normalizeWorldLocations(source.addedLocations || []),
+    removedLocationIds: Array.isArray(source.removedLocationIds) ? source.removedLocationIds.map(String).filter(Boolean) : [],
+    modifiedLoreEntries: source.modifiedLoreEntries && typeof source.modifiedLoreEntries === "object"
+      ? Object.fromEntries(Object.entries(source.modifiedLoreEntries).map(([id, patch]) => [String(id), normalizePartialRecord(patch)]))
+      : {},
+    addedLoreEntries: normalizeStoredLorebook(source.addedLoreEntries || []),
+    removedLoreEntryIds: Array.isArray(source.removedLoreEntryIds) ? source.removedLoreEntryIds.map(String).filter(Boolean) : [],
+  };
+}
+
+function normalizePartialRecord(value: any, allowedFields?: string[]): Record<string, any> {
+  if (!value || typeof value !== "object") return {};
+  const entries = Object.entries(value)
+    .filter(([key]) => !allowedFields || allowedFields.includes(key))
+    .map(([key, fieldValue]) => [key, typeof fieldValue === "string" ? String(fieldValue) : fieldValue])
+    .filter(([, fieldValue]) => fieldValue !== undefined);
+  return Object.fromEntries(entries);
+}
+
+
+function buildStableEntityId(prefix: string, seed: string): string {
+  const normalizedSeed = String(seed || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .trim();
+  return `${prefix}_${normalizedSeed || prefix}`;
+}
+
+function makeUniqueStableId(baseId: string, seenIds: Map<string, number>): string {
+  const normalizedBaseId = String(baseId || "").trim() || "entry";
+  const count = seenIds.get(normalizedBaseId) || 0;
+  seenIds.set(normalizedBaseId, count + 1);
+  return count === 0 ? normalizedBaseId : `${normalizedBaseId}_${count + 1}`;
 }
 
 function normalizePresence(value: any, legacyPresent: boolean = true): "active" | "nearby" | "inactive" {

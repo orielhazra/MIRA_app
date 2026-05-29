@@ -31,9 +31,30 @@ describe("StoryEditSheet", () => {
       expect.objectContaining({
         id: stories[0].id,
         title: "Edited Story",
-        worldId: worlds[1].id,
+        templateWorldId: worlds[1].id,
         characterIds: [characters[0].id, characters[1].id],
       })
     );
+  });
+
+  it("shows the current pinned template version even if it is not the latest", () => {
+    const worlds = [
+      { id: "world-old", templateKey: "station", templateVersion: 1, name: "Station", shortDescription: "Old" },
+      { id: "world-new", templateKey: "station", templateVersion: 2, name: "Station", shortDescription: "Latest" },
+    ];
+
+    render(
+      <StoryEditSheet
+        worlds={worlds as any}
+        characters={[] as any}
+        initialDraft={{ id: "story-1", title: "Story", templateWorldId: "world-old", characterIds: [] }}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onOpenStory={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("option", { name: /Station \(v1\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Station \(v2\)/i })).toBeInTheDocument();
   });
 });

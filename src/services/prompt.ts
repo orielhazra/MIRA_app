@@ -440,18 +440,31 @@ function doesTriggerMentionCharacter(triggerText: string, character: Character):
 }
 
 function selectCurrentLocation(contextLocation: any = {}, worldLocations: any[] = [], triggerText: string = ""): any {
+  const contextLocationId = String(contextLocation?.locationId || contextLocation?.id || "").trim();
   const contextName = contextLocation?.name || "";
-  const exact = worldLocations.find((location) => sameText(location.name, contextName));
-  if (exact) {
-    return mergeLocation(exact, contextLocation);
+
+  const exactById = contextLocationId
+    ? worldLocations.find((location) => String(location?.id || "") === contextLocationId)
+    : null;
+  if (exactById) {
+    return {
+      ...exactById,
+      id: String(exactById.id || contextLocationId),
+      availableLocations: contextLocation.availableLocations || exactById.availableLocations,
+    };
+  }
+
+  const exactByName = worldLocations.find((location) => sameText(location.name, contextName));
+  if (exactByName) {
+    return mergeLocation(exactByName, contextLocation);
   }
 
   const mentioned = worldLocations.find((location) => doesTriggerMentionLocation(triggerText, location));
-  if (mentioned && !contextName) return mentioned;
+  if (mentioned && !contextName && !contextLocationId) return mentioned;
 
-  if (contextName || contextLocation?.description) {
+  if (contextName || contextLocation?.description || contextLocationId) {
     return {
-      id: contextLocation.id || "current_location",
+      id: contextLocationId || contextLocation.id || "current_location",
       name: contextName,
       summary: contextLocation.summary || "",
       description: contextLocation.description || "",
@@ -473,6 +486,7 @@ interface SelectLocationsParams {
 }
 
 function selectAvailableLocations({ contextLocation = {}, currentLocation = null, worldLocations = [], triggerText = "" }: SelectLocationsParams): any[] {
+  const currentId = String(currentLocation?.id || contextLocation?.locationId || contextLocation?.id || "").trim();
   const currentName = currentLocation?.name || contextLocation?.name || "";
   const explicitText = String(contextLocation?.availableLocations || "").trim();
   const explicitLocations = explicitText
@@ -489,17 +503,17 @@ function selectAvailableLocations({ contextLocation = {}, currentLocation = null
     : [];
 
   const connectedLocations = worldLocations.filter((location) => {
-    if (sameText(location.name, currentName)) return false;
+    if (isSameLocation(location, currentId, currentName)) return false;
     const connectionText = normalizeMatchText([location.connectedTo, location.visibleExits, location.exits].filter(Boolean).join(" "));
-    return currentName && connectionText && textIncludesNeedle(connectionText, currentName);
+    return Boolean(connectionText) && ((currentId && textIncludesNeedle(connectionText, currentId)) || (currentName && textIncludesNeedle(connectionText, currentName)));
   });
 
   const mentionedLocations = worldLocations.filter((location) => {
-    if (sameText(location.name, currentName)) return false;
+    if (isSameLocation(location, currentId, currentName)) return false;
     return doesTriggerMentionLocation(triggerText, location);
   });
 
-  const fallbackLocations = worldLocations.filter((location) => !sameText(location.name, currentName));
+  const fallbackLocations = worldLocations.filter((location) => !isSameLocation(location, currentId, currentName));
   return uniqueLocations([...explicitLocations, ...connectedLocations, ...mentionedLocations, ...fallbackLocations])
     .slice(0, MAX_AVAILABLE_LOCATIONS);
 }
@@ -563,6 +577,7 @@ function doesTriggerMentionLocation(triggerText: string, location: any): boolean
 function mergeLocation(worldLocation: any, contextLocation: any): any {
   return {
     ...worldLocation,
+    id: String(contextLocation.locationId || contextLocation.id || worldLocation.id || ""),
     name: contextLocation.name || worldLocation.name,
     description: contextLocation.description || worldLocation.description,
     visibleExits: contextLocation.visibleExits || worldLocation.visibleExits,
@@ -572,12 +587,18 @@ function mergeLocation(worldLocation: any, contextLocation: any): any {
 }
 
 function uniqueLocations(locations: any[]): any[] {
-  const byName = new Map<string, any>();
+  const byKey = new Map<string, any>();
   for (const location of locations || []) {
-    const key = normalizeMatchText(location?.name || location?.id || "");
-    if (key && !byName.has(key)) byName.set(key, location);
+    const key = normalizeMatchText(String(location?.id || "")) || normalizeMatchText(location?.name || "");
+    if (key && !byKey.has(key)) byKey.set(key, location);
   }
-  return Array.from(byName.values());
+  return Array.from(byKey.values());
+}
+
+function isSameLocation(location: any, currentId: string, currentName: string): boolean {
+  if (currentId && String(location?.id || "") === currentId) return true;
+  if (currentName && sameText(location?.name || "", currentName)) return true;
+  return false;
 }
 
 function sameText(a: string, b: string): boolean {

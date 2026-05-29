@@ -1,8 +1,9 @@
 // Story edit sheet — edits a full story record loaded from the metadata library.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import { uniqueCompact } from "../../utils/appHelpers";
+import { getLatestTemplateWorlds } from "../../services/storyWorld";
 
 interface StoryEditSheetProps {
   worlds?: any[];
@@ -29,6 +30,14 @@ export default function StoryEditSheet({
   const [status, setStatus] = useState("");
 
   const isEditingActiveStory = !!(activeStory && draft && activeStory.id === draft.id);
+  const latestWorlds = useMemo(() => getLatestTemplateWorlds(worlds), [worlds]);
+  const selectableWorlds = useMemo(() => {
+    const selectedWorld = worlds.find((world: any) => world.id === draft?.templateWorldId);
+    if (selectedWorld && !latestWorlds.some((world: any) => world.id === selectedWorld.id)) {
+      return [selectedWorld, ...latestWorlds];
+    }
+    return latestWorlds;
+  }, [worlds, latestWorlds, draft?.templateWorldId]);
 
   useEffect(() => setDraft(initialDraft), [initialDraft]);
 
@@ -45,7 +54,18 @@ export default function StoryEditSheet({
   }
 
   function update(field: string, value: any) {
-    setDraft((current) => ({ ...current, [field]: value }));
+    setDraft((current) => {
+      if (field === "templateWorldId") {
+        const selectedWorld = selectableWorlds.find((world: any) => world.id === value) || worlds.find((world: any) => world.id === value);
+        return {
+          ...current,
+          templateWorldId: value,
+          templateWorldKey: selectedWorld?.templateKey || value || "",
+          templateWorldVersion: Number(selectedWorld?.templateVersion || 1),
+        };
+      }
+      return { ...current, [field]: value };
+    });
   }
 
   function toggleStoryCharacter(characterId: string) {
@@ -105,8 +125,8 @@ export default function StoryEditSheet({
 
           <label>
             Story World
-            <select value={draft.worldId || ""} onChange={(event) => update("worldId", event.target.value)}>
-              {worlds.map((world: any) => <option key={world.id} value={world.id}>{world.name}</option>)}
+            <select value={draft.templateWorldId || ""} onChange={(event) => update("templateWorldId", event.target.value)}>
+              {selectableWorlds.map((world: any) => <option key={world.id} value={world.id}>{world.name} (v{world.templateVersion || 1})</option>)}
             </select>
           </label>
 

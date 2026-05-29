@@ -1,13 +1,14 @@
 // Landing screen — M.I.R.A. home page with tabbed library for stories, characters, and worlds.
 
 import { useState } from "react";
+import { getLatestTemplateWorlds } from "../../services/storyWorld";
 
 type LibraryTab = "stories" | "characters" | "worlds";
 
 interface StoryMeta {
   id: string;
   title: string;
-  worldId: string;
+  templateWorldId: string;
   characterIds: string[];
   characterCount?: number;
   createdAt?: number;
@@ -24,6 +25,8 @@ interface Character {
 
 interface World {
   id: string;
+  templateKey?: string;
+  templateVersion?: number;
   name: string;
   shortDescription?: string;
   description?: string;
@@ -54,6 +57,7 @@ function formatDate(value?: number) {
   return new Date(value).toLocaleDateString();
 }
 
+
 const TABS: { key: LibraryTab; label: string }[] = [
   { key: "stories", label: "Stories" },
   { key: "characters", label: "Characters" },
@@ -78,6 +82,7 @@ export default function Landing({
   isGenerating = false,
 }: LandingProps) {
   const [activeTab, setActiveTab] = useState<LibraryTab>("stories");
+  const latestWorlds = getLatestTemplateWorlds(worlds);
 
   function renderTabContent() {
     if (activeTab === "stories") {
@@ -90,7 +95,7 @@ export default function Landing({
         );
       }
       return storyMetas.map((meta) => {
-        const world = worlds.find((w) => w.id === meta.worldId);
+        const world = worlds.find((w) => w.id === meta.templateWorldId);
         const created = formatDate(meta.createdAt);
         const lastPlayed = formatDate(meta.lastPlayedAt);
         const castCount = meta.characterCount ?? meta.characterIds?.length ?? 0;
@@ -186,7 +191,7 @@ export default function Landing({
     }
 
     // worlds
-    if (worlds.length === 0) {
+    if (latestWorlds.length === 0) {
       return (
         <div className="empty-library-note">
           <p>No world templates yet.</p>
@@ -194,8 +199,10 @@ export default function Landing({
         </div>
       );
     }
-    return worlds.map((world) => {
-      const storyCount = storyMetas.filter((s) => s.worldId === world.id).length;
+    return latestWorlds.map((world) => {
+      const templateKey = String(world.templateKey || world.id);
+      const templateVersionIds = new Set(worlds.filter((entry) => String(entry.templateKey || entry.id) === templateKey).map((entry) => entry.id));
+      const storyCount = storyMetas.filter((s) => templateVersionIds.has(s.templateWorldId)).length;
       const locationCount = world.locations?.length || 0;
       return (
         <article key={world.id} className="world-library-card">
@@ -211,6 +218,7 @@ export default function Landing({
               {world.shortDescription || "No description"}
             </span>
             <span className="world-library-dates">
+              <span>v{world.templateVersion || 1}</span>
               {storyCount > 0 && <span>{storyCount} stor{storyCount === 1 ? "y" : "ies"}</span>}
               {locationCount > 0 && <span>{locationCount} location{locationCount === 1 ? "" : "s"}</span>}
             </span>
@@ -284,7 +292,7 @@ export default function Landing({
           {TABS.map((tab) => {
             const count = tab.key === "stories" ? storyMetas.length
               : tab.key === "characters" ? characters.length
-              : worlds.length;
+              : latestWorlds.length;
 
             return (
               <button

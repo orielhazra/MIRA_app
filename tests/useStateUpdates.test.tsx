@@ -37,6 +37,10 @@ describe("useStateUpdates", () => {
 
   it("extractStateUpdates parses updates and selects them by default", async () => {
     const { worlds, characters, stories } = createAppFixtures();
+    const activeWorld = {
+      ...worlds[0],
+      locations: [{ id: "loc_platform_9", name: "Platform 9", description: "A foggy platform." }],
+    } as any;
     vi.mocked(streamChatCompletion).mockResolvedValueOnce(
       '{"updates":[{"category":"location","title":"Move scene","target":"Scene","to":"Platform 9","details":"The cast moved.","confidence":0.9}]}'
     );
@@ -51,7 +55,7 @@ describe("useStateUpdates", () => {
     await act(async () => {
       await result.current.extractStateUpdates({
         activeStory: stories[0],
-        activeWorld: worlds[0],
+        activeWorld: activeWorld,
         activeStoryCharacters: [characters[0]],
         isGenerating: false,
         isExtractingUpdates: false,
@@ -84,6 +88,12 @@ describe("useStateUpdates", () => {
 
   it("applySelectedPendingUpdates saves normalized story changes and clears applied updates", () => {
     const { worlds, characters, stories } = createAppFixtures();
+    const activeWorld = {
+      ...worlds[0],
+      locations: [
+        { id: "loc_platform_9", name: "Platform 9", description: "A foggy platform.", visibleExits: "South stairs", hazards: "Slippery stone" },
+      ],
+    } as any;
     const saveActiveStory = vi.fn();
     const setPendingUpdates = vi.fn();
     const setSelectedPendingUpdateIds = vi.fn();
@@ -103,7 +113,7 @@ describe("useStateUpdates", () => {
     act(() => {
       result.current.applySelectedPendingUpdates({
         activeStory: stories[0],
-        activeWorld: worlds[0],
+        activeWorld: activeWorld,
         activeStoryCharacters: [characters[0]],
         pendingUpdates: [update],
         selectedPendingUpdateIds: ["update-1"],
@@ -116,6 +126,8 @@ describe("useStateUpdates", () => {
 
     const updatedStory = saveActiveStory.mock.calls[0][0];
     expect(updatedStory.currentContext.location.name).toBe("Platform 9");
+    expect(updatedStory.currentContext.location.locationId).toBe("loc_platform_9");
+    expect(updatedStory.currentContext.location.visibleExits).toBe("South stairs");
     expect(setPendingUpdates).toHaveBeenCalledWith([]);
     expect(setSelectedPendingUpdateIds).toHaveBeenCalledWith([]);
     expect(setPendingUpdateStatus).toHaveBeenCalledWith(

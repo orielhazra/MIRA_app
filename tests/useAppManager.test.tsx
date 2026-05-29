@@ -14,8 +14,8 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       { id: "char-2", name: "Ari", shortDescription: "Lead two", goals: "Protect the station", relationshipToUser: "Wary" },
     ],
     stories: [
-      { id: "story-1", title: "Story One", worldId: "world-1", characterIds: ["char-1"], greeting: "Opening one" },
-      { id: "story-2", title: "Story Two", worldId: "world-2", characterIds: ["char-2"], greeting: "Opening two" },
+      { id: "story-1", title: "Story One", templateWorldId: "world-1", characterIds: ["char-1"], greeting: "Opening one" },
+      { id: "story-2", title: "Story Two", templateWorldId: "world-2", characterIds: ["char-2"], greeting: "Opening two", worldOverlay: { worldPatch: { shortDescription: "Overlay world two" }, modifiedLocations: {}, addedLocations: [], removedLocationIds: [], modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] } },
     ],
     chats: {
       "story-1": [{ role: "assistant", content: "Saved chat one" }],
@@ -55,7 +55,7 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
         ? state.stories.map((story: any) => ({
             id: story.id,
             title: story.title,
-            worldId: story.worldId,
+            templateWorldId: story.templateWorldId,
             characterIds: story.characterIds || [],
             characterCount: (story.characterIds || []).length,
             createdAt: story.createdAt,
@@ -144,6 +144,7 @@ describe("useAppManager", () => {
     expect(result.current.activeStory?.id).toBe("story-2");
     expect(result.current.activeView).toBe("story");
     expect(result.current.activeStory?.title).toBe("Story Two");
+    expect(result.current.activeWorld?.shortDescription).toBe("Overlay world two");
     expect(result.current.chatHistory[0]?.content).toBe("Saved chat two");
     expect(result.current.activeLoreMemory[0]?.name).toBe("Lore Two");
     expect(result.current.selectedWorldSheetId).toBe("world-2");

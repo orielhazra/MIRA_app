@@ -16,7 +16,7 @@ describe("Landing", () => {
         storyMetas={stories.map((story) => ({
           id: story.id,
           title: story.title,
-          worldId: story.worldId,
+          templateWorldId: story.templateWorldId,
           characterIds: story.characterIds,
           characterCount: story.characterIds.length,
           createdAt: story.createdAt,
@@ -49,7 +49,7 @@ describe("Landing", () => {
         storyMetas={stories.map((story) => ({
           id: story.id,
           title: story.title,
-          worldId: story.worldId,
+          templateWorldId: story.templateWorldId,
           characterIds: story.characterIds,
           characterCount: story.characterIds.length,
           createdAt: story.createdAt,
@@ -80,6 +80,47 @@ describe("Landing", () => {
     // Story cards should be visible
     expect(screen.getByText("Story One")).toBeInTheDocument();
     expect(screen.getByText("Story Two")).toBeInTheDocument();
+  });
+
+
+  it("shows only the latest template version in the worlds tab", async () => {
+    const user = userEvent.setup();
+    const { stories, characters } = createAppFixtures();
+    const worlds = [
+      { id: "world-old", templateKey: "world-family", templateVersion: 1, name: "World One", shortDescription: "Old version" },
+      { id: "world-new", templateKey: "world-family", templateVersion: 2, name: "World One", shortDescription: "Latest version" },
+      { id: "world-two", templateKey: "world-two", templateVersion: 1, name: "World Two", shortDescription: "Second world" },
+    ];
+
+    render(
+      <Landing
+        storyMetas={stories.map((story) => ({
+          id: story.id,
+          title: story.title,
+          templateWorldId: story.templateWorldId,
+          characterIds: story.characterIds,
+          characterCount: story.characterIds.length,
+          createdAt: story.createdAt,
+        })).concat([{ id: "legacy-story", title: "Legacy Story", templateWorldId: "world-old", characterIds: [characters[0].id], characterCount: 1 } as any])}
+        worlds={worlds as any}
+        characters={characters}
+        onNewStory={vi.fn()}
+        onImportStory={vi.fn()}
+        onSelectStory={vi.fn()}
+        onDeleteStory={vi.fn()}
+        onNewCharacter={vi.fn()}
+        onSelectCharacter={vi.fn()}
+        onDeleteCharacter={vi.fn()}
+        onNewWorld={vi.fn()}
+        onSelectWorld={vi.fn()}
+        onDeleteWorld={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Worlds/i }));
+    expect(screen.getByText("Latest version")).toBeInTheDocument();
+    expect(screen.getByText("v2")).toBeInTheDocument();
+    expect(screen.queryByText("Old version")).not.toBeInTheDocument();
   });
 
   it("switches between tabs and shows correct content", async () => {

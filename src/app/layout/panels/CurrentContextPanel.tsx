@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
-export default function CurrentContextPanel({ context, directorNotes, status, onSave, onClearDirectorNotes, onExtractUpdates, isExtractingUpdates }) {
+export default function CurrentContextPanel({ context, activeWorld, directorNotes, status, onSave, onClearDirectorNotes, onExtractUpdates, isExtractingUpdates }) {
   const [draft, setDraft] = useState(() => buildCurrentContextDraft(context));
   const [directorDraft, setDirectorDraft] = useState(() => buildDirectorGuidanceDraft(directorNotes));
   const [dirty, setDirty] = useState(false);
   const contextResetKey = `${JSON.stringify(context || {})}::${JSON.stringify(directorNotes || {})}`;
+  const worldLocations = useMemo(() => Array.isArray(activeWorld?.locations) ? activeWorld.locations : [], [activeWorld?.locations]);
+  const linkedLocation = worldLocations.find((location) => location.id === draft.location.locationId) || null;
 
   useEffect(() => {
     setDraft(buildCurrentContextDraft(context));
@@ -35,10 +37,45 @@ export default function CurrentContextPanel({ context, directorNotes, status, on
   }
 
   function setLocationField(field, value) {
-    updateDraft((current) => ({
-      ...current,
-      location: { ...current.location, [field]: value }
-    }));
+    updateDraft((current) => {
+      const nextLocation = { ...current.location, [field]: value };
+      if (field === "name") {
+        const matchedLocation = resolveLocationByName(worldLocations, value);
+        nextLocation.locationId = matchedLocation?.id || "";
+      }
+      return {
+        ...current,
+        location: nextLocation
+      };
+    });
+  }
+
+  function selectLocation(locationId) {
+    updateDraft((current) => {
+      const selectedLocation = worldLocations.find((location) => location.id === locationId) || null;
+      if (!selectedLocation) {
+        return {
+          ...current,
+          location: {
+            ...current.location,
+            locationId: "",
+          }
+        };
+      }
+
+      return {
+        ...current,
+        location: {
+          ...current.location,
+          locationId: selectedLocation.id || "",
+          name: selectedLocation.name || current.location.name || "",
+          description: selectedLocation.description || current.location.description || "",
+          visibleExits: selectedLocation.visibleExits || current.location.visibleExits || "",
+          availableLocations: buildAvailableLocationsText(selectedLocation, worldLocations),
+          hazards: selectedLocation.hazards || current.location.hazards || ""
+        }
+      };
+    });
   }
 
   function setRecentFactField(field, value) {
@@ -109,12 +146,28 @@ export default function CurrentContextPanel({ context, directorNotes, status, on
 
       <h3>Location</h3>
       <div className="context-grid">
+        <label>
+          Story World Location
+          <select value={draft.location.locationId || ""} onChange={(event) => selectLocation(event.target.value)}>
+            <option value="">Manual / Unlinked</option>
+            {worldLocations.map((location) => (
+              <option key={location.id} value={location.id}>{location.name}</option>
+            ))}
+          </select>
+        </label>
         <ContextInput label="Current Location" value={draft.location.name} onChange={(value) => setLocationField("name", value)} />
         <ContextTextarea label="Location Description" value={draft.location.description} onChange={(value) => setLocationField("description", value)} />
         <ContextTextarea label="Visible Exits" value={draft.location.visibleExits} onChange={(value) => setLocationField("visibleExits", value)} />
         <ContextTextarea label="Available / Nearby Locations" value={draft.location.availableLocations} onChange={(value) => setLocationField("availableLocations", value)} />
         <ContextTextarea label="Hazards" value={draft.location.hazards} onChange={(value) => setLocationField("hazards", value)} />
       </div>
+      <p className="muted">
+        {linkedLocation
+          ? `Linked to story-world location ID: ${linkedLocation.id}`
+          : draft.location.locationId
+            ? `Linked to location ID: ${draft.location.locationId}`
+            : "This location is currently manual / unlinked."}
+      </p>
 
       <h3>Objects</h3>
       <div className="sheet-actions compact-actions">
@@ -187,6 +240,7 @@ function buildCurrentContextDraft(context) {
       currentObjective: source.scene?.currentObjective || ""
     },
     location: {
+      locationId: source.location?.locationId || source.location?.id || "",
       name: source.location?.name || "",
       description: source.location?.description || "",
       visibleExits: source.location?.visibleExits || "",
@@ -200,6 +254,31 @@ function buildCurrentContextDraft(context) {
       openQuestions: source.recentFacts?.openQuestions || ""
     }
   };
+}
+
+function resolveLocationByName(locations = [], name = "") {
+  const normalizedName = normalizeLocationText(name);
+  if (!normalizedName) return null;
+  return (locations || []).find((location) => normalizeLocationText(location?.name || "") === normalizedName) || null;
+}
+
+function buildAvailableLocationsText(selectedLocation, locations = []) {
+  const connectedIds = String(selectedLocation?.connectedTo || "")
+    .split(/[,\n]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const nearbyLocations = connectedIds.length
+    ? (locations || []).filter((location) => connectedIds.includes(location.id) || connectedIds.includes(location.name))
+    : (locations || []).filter((location) => location.id !== selectedLocation?.id);
+
+  return nearbyLocations
+    .map((location) => `${location.name}: ${location.summary || location.description || ""}`.trim())
+    .join("\n");
+}
+
+function normalizeLocationText(value = "") {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function ContextInput({ label, value = "", onChange }) {

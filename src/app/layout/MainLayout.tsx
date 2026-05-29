@@ -80,6 +80,7 @@ export default function MainLayout() {
       return (
         <WorldSheet
           world={app.selectedWorld}
+          worlds={app.worlds}
           storyMetas={app.storyMetas}
           activeStory={app.activeStory}
           onSave={app.saveWorldSheetEdits}
@@ -87,6 +88,8 @@ export default function MainLayout() {
           onDelete={app.deleteSelectedWorld}
           onExport={app.exportWorld}
           onImport={() => app.worldImportRef.current?.click()}
+          onBackHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
+          onBackToStory={() => { app.setActiveView("story"); app.setStoryDraft(null); }}
         />
       );
     }
@@ -228,6 +231,14 @@ export default function MainLayout() {
             onSaveTemporaryLore={app.saveTemporaryLore}
             onClearTemporaryLore={app.clearTemporaryLore}
             onRefreshActiveLore={app.refreshActiveLore}
+            onSaveStoryWorldPatch={app.updateStoryWorldPatch}
+            onAddStoryWorldLocation={app.addStoryWorldLocation}
+            onUpdateStoryWorldLocation={app.updateStoryWorldLocation}
+            onRemoveStoryWorldLocation={app.removeStoryWorldLocation}
+            onAddStoryWorldLoreEntry={app.addStoryWorldLoreEntry}
+            onUpdateStoryWorldLoreEntry={app.updateStoryWorldLoreEntry}
+            onRemoveStoryWorldLoreEntry={app.removeStoryWorldLoreEntry}
+            onResetStoryWorldOverlay={app.resetStoryWorldOverlay}
             currentContext={app.activeStory.currentContext}
             storyMemory={app.activeStory.storyMemory}
             castState={app.activeStory.castState}

@@ -68,6 +68,7 @@ export function createInitialCurrentContext(world: World | null, storyCharacters
       currentObjective: leadCharacter?.goals || ""
     },
     location: {
+      locationId: world?.locations?.[0]?.id || "",
       name: world?.locations?.[0]?.name || world?.name || "",
       description: world?.locations?.[0]?.description || world?.startingScenario || world?.description || "",
       visibleExits: world?.locations?.[0]?.visibleExits || "",
@@ -116,8 +117,19 @@ export function applyUpdatesToCurrentContext(context: CurrentContext, updates: a
     const details = String(update.details || "").trim();
     const summary = formatUpdateSummary(update);
     if (category === "location") {
-      if (to || target) next.location.name = to || target || next.location.name || "";
-      if (details) next.location.description = appendLine(next.location.description, details);
+      const nextLocationLabel = to || target || next.location.name || "";
+      const matchedLocation = resolveWorldLocationFromText(world, nextLocationLabel);
+      if (matchedLocation) {
+        next.location.locationId = matchedLocation.id || "";
+        next.location.name = matchedLocation.name || nextLocationLabel;
+        next.location.description = details ? appendLine(matchedLocation.description || "", details) : (matchedLocation.description || next.location.description);
+        next.location.visibleExits = matchedLocation.visibleExits || next.location.visibleExits;
+        next.location.hazards = matchedLocation.hazards || next.location.hazards;
+      } else if (nextLocationLabel) {
+        next.location.locationId = "";
+        next.location.name = nextLocationLabel;
+        if (details) next.location.description = appendLine(next.location.description, details);
+      }
       appendRecentFact(next, summary);
       continue;
     }
@@ -209,6 +221,26 @@ export function applyUpdatesToCastState(castState: CastState, updates: any[], ch
   return normalizeCastState(next, characters);
 }
 
+
+function resolveWorldLocationFromText(world: World | null = null, label: string = ""): any {
+  const normalizedLabel = normalizeMatchText(label);
+  if (!normalizedLabel || !Array.isArray(world?.locations)) return null;
+  return (world?.locations || []).find((location) => {
+    const locationId = normalizeMatchText(location?.id || "");
+    const locationName = normalizeMatchText(location?.name || "");
+    return (locationId && locationId === normalizedLabel) || (locationName && locationName === normalizedLabel);
+  }) || null;
+}
+
+function normalizeMatchText(text: string | undefined): string {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function appendRecentFact(context: CurrentContext, line: string): void {
   context.recentFacts.importantDiscoveries = appendLine(context.recentFacts.importantDiscoveries, line);
 }
@@ -295,11 +327,12 @@ export function loadInitialState() {
 
   for (const story of normalizedDefaultStories) {
     const existingMeta = storyMetas.find((meta) => meta.id === story.id);
-    const existingWorldAvailable = worlds.some((world) => world.id === story.worldId);
+    const existingWorldAvailable = worlds.some((world) => world.id === story.templateWorldId);
     const existingCharactersAvailable = story.characterIds.every((id) => characters.some((character) => character.id === id));
     const existingMetaHasCast = Boolean(existingMeta?.characterIds?.length);
+    const existingMetaHasTemplate = Boolean((existingMeta as any)?.templateWorldId);
 
-    if (!existingMeta || !existingWorldAvailable || !existingCharactersAvailable || !existingMetaHasCast) {
+    if (!existingMeta || !existingWorldAvailable || !existingCharactersAvailable || !existingMetaHasCast || !existingMetaHasTemplate) {
       repository.stories.saveStory(story);
       storyMetas = storyMetas.filter((meta) => meta.id !== story.id).concat(storyToMeta(story));
       didSeedStory = true;
@@ -331,7 +364,7 @@ export function loadInitialState() {
 export function loadChatForStory(story: Story, worlds: World[], characters: Character[]): ChatMessage[] {
   const saved = repository.chats.load(story?.id, null);
   if (Array.isArray(saved)) return saved.map(normalizeChatMessage);
-  const world = worlds.find((item) => item.id === story.worldId) || worlds[0];
+  const world = worlds.find((item) => item.id === story.templateWorldId) || worlds[0];
   const storyCharacters = getStoryCharactersFromLists(story, characters);
   const lead = chooseActiveCastLead(story, storyCharacters) || characters[0];
   if (!story || !world || !lead) return [];
@@ -459,8 +492,12 @@ export function validateStoryExportBundle(bundle: any) {
   if (!bundle.story) issues.push("Missing story data.");
   if (!bundle.world) issues.push("Missing world data.");
   if (!Array.isArray(bundle.characters) || bundle.characters.length === 0) issues.push("Missing character data.");
+  if (bundle.story && !String(bundle.story.templateWorldId || "").trim()) issues.push("Story templateWorldId is missing.");
+  if (bundle.story && !String(bundle.story.templateWorldKey || "").trim()) issues.push("Story templateWorldKey is missing.");
   if (bundle.story && !Array.isArray(bundle.story.storyLorebook)) issues.push("Story lorebook is missing or invalid.");
+  if (bundle.story && (!bundle.story.worldOverlay || typeof bundle.story.worldOverlay !== "object")) issues.push("Story worldOverlay is missing or invalid.");
   if (bundle.world && !Array.isArray(bundle.world.worldLorebook)) issues.push("World lorebook is missing or invalid.");
+  if (bundle.world && !String(bundle.world.templateKey || "").trim()) issues.push("World templateKey is missing.");
   if (Array.isArray(bundle.characters)) {
     for (const character of bundle.characters) {
       if (!Array.isArray(character.lorebook)) issues.push(`Character lorebook is missing or invalid for ${character.name || character.id}.`);
@@ -515,11 +552,11 @@ export function remapCastRows(rows: any[], idMap: Record<string, string>) {
 }
 
 export function buildStoryExportBundle(story: Story, getWorld: (id: string) => World | null, getStoryCharacters: (story: Story) => Character[], chatHistory: ChatMessage[]) {
-  const world = getWorld(story.worldId);
+  const world = getWorld(story.templateWorldId);
   const storyCharacters = getStoryCharacters(story);
   return {
     type: "roleplay-story-bundle",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     story: cloneJson(story),
     world: cloneJson(world),

@@ -1,4 +1,4 @@
-import { World, Character, Story, StoryJournal, DirectorNotes } from "../types/index";
+import { World, Character, Story, StoryJournal, DirectorNotes, StoryWorldOverlay } from "../types/index";
 
 export const STORAGE_KEYS = {
   storyMetas: "roleplay_story_metas",
@@ -65,80 +65,159 @@ export const MAX_ACTIVE_LORE = 5;
 export const LORE_SCAN_MESSAGES = 8;
 export const MAX_LORE_PROMPT_CHARS = 2048;
 
-export const defaultWorlds: any[] = [
+export function createEmptyStoryWorldOverlay(): StoryWorldOverlay {
+  return {
+    worldPatch: {},
+    modifiedLocations: {},
+    addedLocations: [],
+    removedLocationIds: [],
+    modifiedLoreEntries: {},
+    addedLoreEntries: [],
+    removedLoreEntryIds: []
+  };
+}
+
+export const defaultWorlds: World[] = [
   {
     id: "liminal-station",
+    templateKey: "liminal-station",
+    templateVersion: 1,
     name: "The Liminal Station",
+    overview: "A forgotten train station between impossible places where lost travelers arrive from destinations that should not exist.",
     shortDescription: "A forgotten train station between impossible places.",
     description:
-      "The Liminal Station is an old train station where lost travelers arrive from impossible destinations.",
-    rules: "Memory is unreliable here. Places, names, and records may change over time.",
-    worldLorebook: [
+      "The Liminal Station is an old train station suspended between impossible destinations. Travelers arrive with missing memories, contradictory tickets, and the feeling that the station itself is quietly rearranging reality around them.",
+    rules: "Memory is unreliable here. Places, names, and records may change over time. Trains may arrive from impossible destinations, but the station always behaves as if this is ordinary.",
+    locations: [
       {
-        name: "Elaren",
-        keywords: ["elaren", "vanished city", "lost city"],
-        content:
-          "Elaren was a city that vanished from maps, records, and memory after a failed ritual."
+        id: "loc_liminal_platform_9",
+        name: "Platform 9",
+        summary: "A dim platform lit by tired lamps and impossible timetables.",
+        description: "A long stone platform beneath weak yellow lamps. The rails hum softly even when no train is present, and destination signs flicker between real cities and places that no map admits exist.",
+        mood: "Quiet, uncanny, expectant.",
+        visibleExits: "Waiting Hall, Trackside stairs",
+        hazards: "Moving trains can arrive without warning; reality feels thin near the rails.",
+        connectedTo: "Waiting Hall, Records Office",
+        keywords: ["platform", "platform 9", "tracks", "train"]
       },
       {
+        id: "loc_liminal_waiting_hall",
+        name: "Waiting Hall",
+        summary: "A worn hall of benches, clocks, and stale tea.",
+        description: "Rows of old wooden benches face a wall of clocks that no longer agree with one another. Abandoned luggage sits untouched for years, yet still feels recently set down.",
+        mood: "Still, weary, suspended in time.",
+        visibleExits: "Platform 9, Records Office, Front doors",
+        hazards: "Disorientation; clocks and announcements may contradict one another.",
+        connectedTo: "Platform 9, Records Office",
+        keywords: ["waiting hall", "hall", "benches", "clocks"]
+      },
+      {
+        id: "loc_liminal_records_office",
+        name: "Records Office",
+        summary: "A cramped office of ledgers, tickets, and impossible archives.",
+        description: "Metal filing cabinets and leaning shelves hold ticket stubs, route maps, and ledgers whose entries shift when no one is watching. Ink stains cover the desk like the remains of unfinished truths.",
+        mood: "Claustrophobic, secretive, archival.",
+        visibleExits: "Waiting Hall, Platform 9",
+        hazards: "Records may rewrite themselves; some files trigger false memories.",
+        connectedTo: "Waiting Hall, Platform 9",
+        keywords: ["records office", "office", "ledgers", "archives"]
+      }
+    ],
+    worldLorebook: [
+      {
+        id: "world_elaren",
+        name: "Elaren",
+        keywords: ["elaren", "vanished city", "lost city"],
+        content: "Elaren was a city that vanished from maps, records, and memory after a failed ritual.",
+        enabled: true,
+        alwaysOn: false,
+        priority: 3
+      },
+      {
+        id: "world_liminal_station",
         name: "The Station",
         keywords: ["station", "platform", "train"],
-        content:
-          "The old train station connects to impossible destinations and forgotten places."
+        content: "The old train station connects to impossible destinations and forgotten places. It behaves as though impossible arrivals are routine.",
+        enabled: true,
+        alwaysOn: false,
+        priority: 2
       }
     ]
   },
-{
-    "id": "world_56cd9e77-2dde-4f21-a380-0f5b748f7831",
-    "name": "Aldmyr, City of Velvet Oaths",
-    "shortDescription": "A gothic fantasy city of contracts, masks, and dangerous romance.",
-    "description": "Aldmyr is a rain-dark city of old opera houses, black canals, red lanterns, masked nobles, oath-mages, and hidden salons where politics and desire are written into magical contracts. The elite speak of possession, patronage, and claims as if they are art forms, but true magic recognizes only chosen bonds.",
-    "rules": "Contract magic is powerful. Corrupt contracts can bind through lies, intoxication, threats, or hidden clauses, but these are illegal and villainous. True bonds require clear adult consent, magical transparency, and oath witnesses. Different fantasy peoples have their own customs around courtship, protection, patronage, and oath-signs.",
-    "startingScenario": "The user and Morwen enter the Velvet Chain Salon to negotiate dangerous romantic-political bonds.",
-    "greeting": "Crimson curtains part beneath the opera house, revealing a salon of masks, silver chains, and dangerous promises.",
-    "worldLorebook": [
-        {
-            "id": "world_oath_mirrors",
-            "name": "Oath Mirrors",
-            "keywords": [
-                "mirror",
-                "oath mirror",
-                "contract seal"
-            ],
-            "content": "Oath Mirrors reflect whether a contract is freely chosen. If a bond is coercive, the mirror clouds black.",
-            "enabled": true,
-            "alwaysOn": false,
-            "priority": 3
-        },
-        {
-            "id": "world_masked_patrons",
-            "name": "Masked Patrons",
-            "keywords": [
-                "masked patrons",
-                "nobles",
-                "masks"
-            ],
-            "content": "Masked patrons attend the Salon to hide their identities while negotiating alliances, servitude, companionship contracts, and political marriages. Some are honorable; others hunt for loopholes.",
-            "enabled": true,
-            "alwaysOn": false,
-            "priority": 2
-        },
-        {
-            "id": "world_revocation_rite",
-            "name": "Revocation Rite",
-            "keywords": [
-                "revoke",
-                "revocation",
-                "true name",
-                "break bond"
-            ],
-            "content": "Any corrupt bond can be revoked if the bonded person speaks their true name into the contract seal while holding a drop of their own blood or tears. The rite is secret because corrupt patrons hate it.",
-            "enabled": true,
-            "alwaysOn": false,
-            "priority": 4
-        }
+  {
+    id: "world_56cd9e77-2dde-4f21-a380-0f5b748f7831",
+    templateKey: "aldmyr",
+    templateVersion: 1,
+    name: "Aldmyr, City of Velvet Oaths",
+    overview: "A gothic fantasy city of contracts, masks, oath-magic, and dangerous romance hidden behind courtly elegance.",
+    shortDescription: "A gothic fantasy city of contracts, masks, and dangerous romance.",
+    description: "Aldmyr is a rain-dark city of old opera houses, black canals, red lanterns, masked nobles, oath-mages, and hidden salons where politics and desire are written into magical contracts. The elite speak of possession, patronage, and claims as if they are art forms, but true magic recognizes only chosen bonds.",
+    rules: "Contract magic is powerful. Corrupt contracts can bind through lies, intoxication, threats, or hidden clauses, but these are illegal and villainous. True bonds require clear adult consent, magical transparency, and oath witnesses. Different fantasy peoples have their own customs around courtship, protection, patronage, and oath-signs.",
+    locations: [
+      {
+        id: "loc_aldmyr_velvet_chain_salon",
+        name: "Velvet Chain Salon",
+        summary: "A hidden contract house beneath Aldmyr's old opera house.",
+        description: "Crimson curtains, black marble, mirrored alcoves, and silver symbols of devotion and patronage fill this subterranean salon. Every smile may conceal a clause, and every invitation may be a negotiation.",
+        mood: "Gothic, elegant, intimate, dangerous.",
+        visibleExits: "Opera house stair, private negotiation rooms, mirrored corridor",
+        hazards: "Hidden clauses, predatory nobles, coercive magic disguised as romance.",
+        connectedTo: "Black Canal Walk, Oath Mirror Chamber",
+        keywords: ["velvet chain salon", "salon", "opera house", "contract house"]
+      },
+      {
+        id: "loc_aldmyr_black_canal_walk",
+        name: "Black Canal Walk",
+        summary: "A lantern-lit promenade beside dark rain-fed canals.",
+        description: "Black water moves slowly beneath narrow bridges while red lanterns reflect across the surface. Couriers, masked patrons, and discreet bodyguards use the canal walk to come and go unseen.",
+        mood: "Rain-dark, secretive, watchful.",
+        visibleExits: "Velvet Chain Salon entrance, bridge to noble quarter, alley stairs",
+        hazards: "Surveillance, ambush, slippery stone, discreet assassins.",
+        connectedTo: "Velvet Chain Salon, Oath Mirror Chamber",
+        keywords: ["canal", "black canal", "canal walk", "lanterns"]
+      },
+      {
+        id: "loc_aldmyr_oath_mirror_chamber",
+        name: "Oath Mirror Chamber",
+        summary: "A private chamber where contracts are witnessed by truth-reflecting mirrors.",
+        description: "Tall mirrors framed in silver and obsidian stand around a circular floor of runic stone. Here, lies grow heavy in the air and false consent blackens the mirror glass.",
+        mood: "Ceremonial, tense, revelatory.",
+        visibleExits: "Mirrored corridor, sealed witness door",
+        hazards: "Truth magic can expose secrets; corrupt patrons fear this room for good reason.",
+        connectedTo: "Velvet Chain Salon, Black Canal Walk",
+        keywords: ["oath mirror chamber", "mirror chamber", "oath mirrors", "witness chamber"]
+      }
+    ],
+    worldLorebook: [
+      {
+        id: "world_oath_mirrors",
+        name: "Oath Mirrors",
+        keywords: ["mirror", "oath mirror", "contract seal"],
+        content: "Oath Mirrors reflect whether a contract is freely chosen. If a bond is coercive, the mirror clouds black.",
+        enabled: true,
+        alwaysOn: false,
+        priority: 3
+      },
+      {
+        id: "world_masked_patrons",
+        name: "Masked Patrons",
+        keywords: ["masked patrons", "nobles", "masks"],
+        content: "Masked patrons attend the Salon to hide their identities while negotiating alliances, servitude, companionship contracts, and political marriages. Some are honorable; others hunt for loopholes.",
+        enabled: true,
+        alwaysOn: false,
+        priority: 2
+      },
+      {
+        id: "world_revocation_rite",
+        name: "Revocation Rite",
+        keywords: ["revoke", "revocation", "true name", "break bond"],
+        content: "Any corrupt bond can be revoked if the bonded person speaks their true name into the contract seal while holding a drop of their own blood or tears. The rite is secret because corrupt patrons hate it.",
+        enabled: true,
+        alwaysOn: false,
+        priority: 4
+      }
     ]
-}
+  }
 ];
 
 export const defaultCharacters: any[] = [
@@ -312,7 +391,10 @@ export const defaultStories: any[] = [
   {
     id: "story_mira_station",
     title: "Mira at the Liminal Station",
-    worldId: "liminal-station",
+    templateWorldId: "liminal-station",
+    templateWorldKey: "liminal-station",
+    templateWorldVersion: 1,
+    worldOverlay: createEmptyStoryWorldOverlay(),
     characterIds: ["mira"],
     scenario: "The user meets Mira at an old train station at night.",
     greeting: 'Mira looks up from her notebook. "You came after all."',
@@ -329,7 +411,10 @@ export const defaultStories: any[] = [
 {
     "id": "story_8c66b4cd-2323-4897-b82f-c40a995fa513",
     "title": "Velvet Chains of Aldmyr",
-    "worldId": "world_56cd9e77-2dde-4f21-a380-0f5b748f7831",
+    "templateWorldId": "world_56cd9e77-2dde-4f21-a380-0f5b748f7831",
+    "templateWorldKey": "aldmyr",
+    "templateWorldVersion": 1,
+    "worldOverlay": createEmptyStoryWorldOverlay(),
     "characterIds": [
         "character_641a7085-48f7-4739-a248-dbef67f6243b",
         "character_13cbd0ba-2322-4ad2-a19a-f4dbc13f196f",

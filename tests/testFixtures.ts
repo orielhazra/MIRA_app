@@ -34,7 +34,7 @@ export function createAppFixtures() {
       {
         id: "story-1",
         title: "Story One",
-        worldId: "world-1",
+        templateWorldId: "world-1",
         characterIds: ["char-1"],
         greeting: "Opening one",
       },
@@ -45,7 +45,7 @@ export function createAppFixtures() {
       {
         id: "story-2",
         title: "Story Two",
-        worldId: "world-2",
+        templateWorldId: "world-2",
         characterIds: ["char-2"],
         greeting: "Opening two",
       },

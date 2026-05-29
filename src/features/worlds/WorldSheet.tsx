@@ -6,15 +6,22 @@ import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
 import { parseKeywords } from "../../utils/helpers";
 
-export default function WorldSheet({ world, storyMetas = [], activeStory, onSave, onUse, onDelete, onExport, onImport }) {
+export default function WorldSheet({ world, worlds = [], storyMetas = [], activeStory, onSave, onUse, onDelete, onExport, onImport, onBackHome, onBackToStory }) {
   const [draft, setDraft] = useState(world);
   const [status, setStatus] = useState("");
-  const canAssign = activeStory?.id && world?.id !== activeStory.worldId;
+  const canAssign = activeStory?.id && world?.id !== activeStory.templateWorldId;
+  const templateKey = String(world?.templateKey || world?.id || "");
+  const familyVersionIds = useMemo(
+    () => new Set((worlds || []).filter((item) => String(item.templateKey || item.id) === templateKey).map((item) => item.id)),
+    [worlds, templateKey]
+  );
   const storyUsage = useMemo(
-    () => storyMetas.filter((meta) => world?.id && meta.worldId === world.id),
-    [storyMetas, world?.id]
+    () => storyMetas.filter((meta) => familyVersionIds.has(meta.templateWorldId)),
+    [storyMetas, familyVersionIds]
   );
   const canDelete = storyUsage.length === 0;
+  const isActiveStoryTemplate = !!(activeStory?.id && world?.id === activeStory.templateWorldId);
+  const backLabel = isActiveStoryTemplate ? "Back To Story" : "Back To Home";
 
   useEffect(() => setDraft(world), [world]);
   if (!world || !draft) return null;
@@ -59,9 +66,18 @@ export default function WorldSheet({ world, storyMetas = [], activeStory, onSave
     }));
   }
 
+
+  function goBack() {
+    if (isActiveStoryTemplate) {
+      onBackToStory?.();
+      return;
+    }
+    onBackHome?.();
+  }
+
   function save() {
-    onSave(draft);
-    setStatus("World saved.");
+    const savedWorld = onSave(draft);
+    setStatus(savedWorld?.templateVersion ? `Saved as template version ${savedWorld.templateVersion}.` : "World saved.");
     setTimeout(() => setStatus(""), 1500);
   }
 
@@ -77,12 +93,14 @@ export default function WorldSheet({ world, storyMetas = [], activeStory, onSave
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>{world.name}</h2>
+        <p className="muted">Template family: {world.templateKey || world.id} • Version {world.templateVersion || 1}</p>
         <p className="sheet-subtitle">
           {world.shortDescription || "Reusable world template."} Worlds are stored separately; stories reference them by lightweight metadata.
         </p>
 
         <div className="sheet-actions">
-          <button onClick={save}>Save World</button>
+          <button onClick={save}>Save As New Template Version</button>
+          <button onClick={goBack}>{backLabel}</button>
           {canAssign && <button onClick={() => onUse(world.id)}>Use In Active Story</button>}
           <button onClick={() => onExport(world)}>Export World</button>
           <button onClick={onImport}>Import World</button>
@@ -91,7 +109,7 @@ export default function WorldSheet({ world, storyMetas = [], activeStory, onSave
         <p className="sheet-status">{status}</p>
         {storyUsage.length > 0 && (
           <p className="muted">
-            Used by {storyUsage.length} stor{storyUsage.length === 1 ? "y" : "ies"}: {storyUsage.map((story) => story.title).join(", ")}
+            Template family used by {storyUsage.length} stor{storyUsage.length === 1 ? "y" : "ies"}: {storyUsage.map((story) => story.title).join(", ")}
           </p>
         )}
 

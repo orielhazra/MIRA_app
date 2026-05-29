@@ -31,7 +31,7 @@ export default function Sidebar({
     );
   }
 
-  const currentWorld = activeWorld || (activeStory ? getWorld(activeStory.worldId) : null);
+  const currentWorld = activeWorld || (activeStory ? getWorld(activeStory.templateWorldId) : null);
   const locations = currentWorld?.locations || [];
 
   return (

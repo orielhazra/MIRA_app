@@ -3,6 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS worlds (
   id TEXT PRIMARY KEY,
+  templateKey TEXT,
+  templateVersion INTEGER DEFAULT 1,
   name TEXT NOT NULL,
   overview TEXT,
   description TEXT,
@@ -38,9 +40,11 @@ CREATE TABLE IF NOT EXISTS characters (
 CREATE TABLE IF NOT EXISTS stories (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
-  worldId TEXT,
+  templateWorldId TEXT,
+  templateWorldKey TEXT,
+  templateWorldVersion INTEGER DEFAULT 1,
+  worldOverlay TEXT,
   characterIds TEXT,
-  mainCharacterId TEXT,
   scenario TEXT,
   greeting TEXT,
   storyLorebook TEXT,
@@ -50,7 +54,8 @@ CREATE TABLE IF NOT EXISTS stories (
   castState TEXT,
   directorNotes TEXT,
   createdAt INTEGER,
-  FOREIGN KEY(worldId) REFERENCES worlds(id)
+  lastPlayedAt INTEGER,
+  FOREIGN KEY(templateWorldId) REFERENCES worlds(id)
 );
 
 CREATE TABLE IF NOT EXISTS chats (

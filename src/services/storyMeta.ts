@@ -6,7 +6,7 @@ export function storyToMeta(story: Story): StoryMeta {
   return {
     id: story.id,
     title: story.title || "Untitled Story",
-    worldId: story.worldId || "",
+    templateWorldId: story.templateWorldId || "",
     characterIds,
     characterCount: characterIds.length,
     createdAt: story.createdAt,

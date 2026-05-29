@@ -3,7 +3,7 @@ import { storyInitialState, storyReducer } from "../src/reducers/storyReducer";
 
 describe("storyReducer", () => {
   it("sets the active story directly", () => {
-    const story = { id: "story-2", title: "Story Two", worldId: "world-1", characterIds: [] } as any;
+    const story = { id: "story-2", title: "Story Two", templateWorldId: "world-1", characterIds: [] } as any;
     const next = storyReducer(
       {
         ...storyInitialState,
@@ -20,7 +20,7 @@ describe("storyReducer", () => {
     const next = storyReducer(
       {
         ...storyInitialState,
-        activeStory: { id: "story-1", title: "Story One", worldId: "world-1", characterIds: [] } as any,
+        activeStory: { id: "story-1", title: "Story One", templateWorldId: "world-1", characterIds: [] } as any,
         activeView: "story",
         storyDraft: { id: "draft" } as any,
       },

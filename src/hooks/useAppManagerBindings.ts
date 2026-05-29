@@ -391,6 +391,8 @@ export function createWorldBindings(ctx: any, worldActions: any) {
       worldDraft,
       worlds: ctx.worlds,
       saveWorldList: ctx.saveWorldList,
+      setSelectedWorldSheetId: ctx.setSelectedWorldSheetId,
+      setActiveView: ctx.setActiveView,
     }),
 
     deleteSelectedWorld: (worldId: string) => worldActions.deleteSelectedWorld({
@@ -487,6 +489,61 @@ export function createLoreBindings(ctx: any, loreActions: any) {
   };
 }
 
+
+export function createStoryWorldBindings(ctx: any, storyWorldActions: any) {
+  return {
+    updateStoryWorldPatch: (patch: any) => storyWorldActions.updateStoryWorldPatch({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      patch,
+    }),
+
+    addStoryWorldLocation: (location: any) => storyWorldActions.addStoryWorldLocation({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      location,
+    }),
+
+    updateStoryWorldLocation: (locationId: string, patch: any) => storyWorldActions.updateStoryWorldLocation({
+      activeStory: ctx.activeStory,
+      activeWorld: ctx.activeWorld,
+      saveActiveStory: ctx.saveActiveStory,
+      locationId,
+      patch,
+    }),
+
+    removeStoryWorldLocation: (locationId: string) => storyWorldActions.removeStoryWorldLocation({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      locationId,
+    }),
+
+    addStoryWorldLoreEntry: (loreEntry: any) => storyWorldActions.addStoryWorldLoreEntry({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      loreEntry,
+    }),
+
+    updateStoryWorldLoreEntry: (entryId: string, patch: any) => storyWorldActions.updateStoryWorldLoreEntry({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      entryId,
+      patch,
+    }),
+
+    removeStoryWorldLoreEntry: (entryId: string) => storyWorldActions.removeStoryWorldLoreEntry({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+      entryId,
+    }),
+
+    resetStoryWorldOverlay: () => storyWorldActions.resetStoryWorldOverlay({
+      activeStory: ctx.activeStory,
+      saveActiveStory: ctx.saveActiveStory,
+    }),
+  };
+}
+
 export function createImportExportBindings(ctx: any, importExport: any) {
   return {
     exportCharacter: (character?: any) => importExport.exportCharacter({
@@ -494,7 +551,7 @@ export function createImportExportBindings(ctx: any, importExport: any) {
     }),
 
     exportWorld: (world?: any) => importExport.exportWorld({
-      world: world || ctx.selectedWorld || ctx.activeWorld || undefined,
+      world: world || ctx.selectedWorld || undefined,
     }),
 
     exportActiveStory: () => importExport.exportActiveStory({

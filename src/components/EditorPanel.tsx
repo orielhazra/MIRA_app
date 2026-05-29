@@ -36,6 +36,14 @@ export default function EditorPanel({
   onSaveTemporaryLore,
   onClearTemporaryLore,
   onRefreshActiveLore,
+  onSaveStoryWorldPatch,
+  onAddStoryWorldLocation,
+  onUpdateStoryWorldLocation,
+  onRemoveStoryWorldLocation,
+  onAddStoryWorldLoreEntry,
+  onUpdateStoryWorldLoreEntry,
+  onRemoveStoryWorldLoreEntry,
+  onResetStoryWorldOverlay,
   currentContext,
   storyMemory,
   castState,
@@ -161,6 +169,7 @@ export default function EditorPanel({
               {activePanel === "context" && (
                 <CurrentContextPanel
                   context={currentContext}
+                  activeWorld={activeWorld}
                   directorNotes={activeStory.directorNotes}
                   status={contextStatus}
                   onSave={saveSceneControl}
@@ -189,6 +198,14 @@ export default function EditorPanel({
                   onSaveCharacterIdentity={onSaveCharacterIdentity}
                   onExportCharacterTemplate={onExportCharacterTemplate}
                   onImportCharacterTemplate={onImportCharacterTemplate}
+                  onSaveStoryWorldPatch={onSaveStoryWorldPatch}
+                  onAddStoryWorldLocation={onAddStoryWorldLocation}
+                  onUpdateStoryWorldLocation={onUpdateStoryWorldLocation}
+                  onRemoveStoryWorldLocation={onRemoveStoryWorldLocation}
+                  onAddStoryWorldLoreEntry={onAddStoryWorldLoreEntry}
+                  onUpdateStoryWorldLoreEntry={onUpdateStoryWorldLoreEntry}
+                  onRemoveStoryWorldLoreEntry={onRemoveStoryWorldLoreEntry}
+                  onResetStoryWorldOverlay={onResetStoryWorldOverlay}
                 />
               )}
 

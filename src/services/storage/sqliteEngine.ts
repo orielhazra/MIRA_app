@@ -274,6 +274,8 @@ export const sqliteEngine = {
       const rawWorlds = (await db.select("SELECT * FROM worlds")) as any[];
       cache.worlds = rawWorlds.map((row: any) => ({
         id: row.id,
+        templateKey: row.templateKey || row.id,
+        templateVersion: Number(row.templateVersion || 1),
         name: row.name,
         overview: row.overview || "",
         shortDescription: row.overview || "",
@@ -310,13 +312,13 @@ export const sqliteEngine = {
       }));
 
       // 3. Load Story Metadata only.
-      const rawStoryMetas = (await db.select("SELECT id, title, worldId, characterIds, createdAt, lastPlayedAt FROM stories")) as any[];
+      const rawStoryMetas = (await db.select("SELECT * FROM stories")) as any[];
       cache.storyMetas = rawStoryMetas.map((row: any) => {
         const characterIds = row.characterIds ? JSON.parse(row.characterIds) : [];
         return {
           id: row.id,
           title: row.title,
-          worldId: row.worldId,
+          templateWorldId: row.templateWorldId || row.worldId,
           characterIds,
           characterCount: characterIds.length,
           createdAt: row.createdAt,
@@ -372,6 +374,8 @@ export const sqliteEngine = {
               SQLITE_WORLD_INSERT_SQL,
               [
                 world.id,
+                world.templateKey || world.id,
+                Number(world.templateVersion || 1),
                 world.name,
                 world.overview || world.shortDescription || "",
                 world.description || "",
@@ -454,7 +458,10 @@ export const sqliteEngine = {
         return {
           id: row.id,
           title: row.title,
-          worldId: row.worldId,
+          templateWorldId: row.templateWorldId || row.worldId,
+          templateWorldKey: row.templateWorldKey || row.templateWorldId || row.worldId,
+          templateWorldVersion: Number(row.templateWorldVersion || 1),
+          worldOverlay: row.worldOverlay ? JSON.parse(row.worldOverlay) : { worldPatch: {}, modifiedLocations: {}, addedLocations: [], removedLocationIds: [], modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] },
           characterIds: row.characterIds ? JSON.parse(row.characterIds) : [],
           scenario: row.scenario || "",
           greeting: row.greeting || "",
@@ -488,12 +495,23 @@ export const sqliteEngine = {
             await db.execute(
               SQLITE_STORY_INSERT_SQL,
               [
-                story.id, story.title, story.worldId, JSON.stringify(story.characterIds || []),
-                story.scenario || "", story.greeting || "",
-                JSON.stringify(story.storyLorebook || []), JSON.stringify(story.temporaryLorebook || []),
-                JSON.stringify(story.storyMemory), JSON.stringify(story.currentContext),
-                JSON.stringify(story.castState), JSON.stringify(story.directorNotes || {}),
-                story.createdAt || Date.now(), story.lastPlayedAt || null
+                story.id,
+                story.title,
+                story.templateWorldId,
+                story.templateWorldKey || story.templateWorldId,
+                Number(story.templateWorldVersion || 1),
+                JSON.stringify(story.worldOverlay || {}),
+                JSON.stringify(story.characterIds || []),
+                story.scenario || "",
+                story.greeting || "",
+                JSON.stringify(story.storyLorebook || []),
+                JSON.stringify(story.temporaryLorebook || []),
+                JSON.stringify(story.storyMemory),
+                JSON.stringify(story.currentContext),
+                JSON.stringify(story.castState),
+                JSON.stringify(story.directorNotes || {}),
+                story.createdAt || Date.now(),
+                story.lastPlayedAt || null
               ]
             );
           }
@@ -517,12 +535,15 @@ export const sqliteEngine = {
       scheduleDbWrite(`story:${story.id}`, "Save story", async (db) => {
         await db.execute(
           `INSERT INTO stories (
-            id, title, worldId, characterIds, scenario, greeting,
+            id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, characterIds, scenario, greeting,
             storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt, lastPlayedAt
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
           ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
-            worldId = EXCLUDED.worldId,
+            templateWorldId = EXCLUDED.templateWorldId,
+            templateWorldKey = EXCLUDED.templateWorldKey,
+            templateWorldVersion = EXCLUDED.templateWorldVersion,
+            worldOverlay = EXCLUDED.worldOverlay,
             characterIds = EXCLUDED.characterIds,
             scenario = EXCLUDED.scenario,
             greeting = EXCLUDED.greeting,
@@ -535,12 +556,23 @@ export const sqliteEngine = {
             createdAt = EXCLUDED.createdAt,
             lastPlayedAt = EXCLUDED.lastPlayedAt`,
           [
-            story.id, story.title, story.worldId, JSON.stringify(story.characterIds || []),
-            story.scenario || "", story.greeting || "",
-            JSON.stringify(story.storyLorebook || []), JSON.stringify(story.temporaryLorebook || []),
-            JSON.stringify(story.storyMemory), JSON.stringify(story.currentContext),
-            JSON.stringify(story.castState), JSON.stringify(story.directorNotes || {}),
-            story.createdAt || Date.now(), story.lastPlayedAt || null
+            story.id,
+            story.title,
+            story.templateWorldId,
+            story.templateWorldKey || story.templateWorldId,
+            Number(story.templateWorldVersion || 1),
+            JSON.stringify(story.worldOverlay || {}),
+            JSON.stringify(story.characterIds || []),
+            story.scenario || "",
+            story.greeting || "",
+            JSON.stringify(story.storyLorebook || []),
+            JSON.stringify(story.temporaryLorebook || []),
+            JSON.stringify(story.storyMemory),
+            JSON.stringify(story.currentContext),
+            JSON.stringify(story.castState),
+            JSON.stringify(story.directorNotes || {}),
+            story.createdAt || Date.now(),
+            story.lastPlayedAt || null
           ]
         );
       });

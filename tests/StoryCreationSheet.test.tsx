@@ -16,7 +16,7 @@ describe("StoryCreationSheet", () => {
         characters={characters as any}
         initialDraft={{
           title: "Untitled Story",
-          worldId: worlds[0].id,
+          templateWorldId: worlds[0].id,
           characterIds: [characters[0].id],
           scenario: "",
           greeting: "",
@@ -38,11 +38,55 @@ describe("StoryCreationSheet", () => {
     expect(onStart).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Night Train",
-        worldId: worlds[0].id,
+        templateWorldId: worlds[0].id,
         characterIds: [characters[0].id, characters[1].id],
         scenario: "A tense arrival.",
         greeting: "Mira waits in silence.",
       })
     );
+  });
+
+  it("shows only the latest template versions in the world picker and updates template metadata", async () => {
+    const user = userEvent.setup();
+    const { characters } = createAppFixtures();
+    const worlds = [
+      { id: "world-old", templateKey: "station", templateVersion: 1, name: "Station", shortDescription: "Old" },
+      { id: "world-new", templateKey: "station", templateVersion: 2, name: "Station", shortDescription: "New" },
+      { id: "world-two", templateKey: "harbor", templateVersion: 1, name: "Harbor", shortDescription: "Only" },
+    ];
+    const onStart = vi.fn(() => ({ ok: true }));
+
+    render(
+      <StoryCreationSheet
+        worlds={worlds as any}
+        characters={characters as any}
+        initialDraft={{
+          title: "Untitled Story",
+          templateWorldId: "world-new",
+          templateWorldKey: "station",
+          templateWorldVersion: 2,
+          characterIds: [characters[0].id],
+          scenario: "",
+          greeting: "",
+          storyLorebook: [],
+        }}
+        onStart={onStart}
+        onCancel={vi.fn()}
+        onImportStory={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole("option", { name: /Station \(v1\)/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Station \(v2\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Harbor \(v1\)/i })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Story World/i), "world-two");
+    await user.click(screen.getByRole("button", { name: /Start Story/i }));
+
+    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({
+      templateWorldId: "world-two",
+      templateWorldKey: "harbor",
+      templateWorldVersion: 1,
+    }));
   });
 });

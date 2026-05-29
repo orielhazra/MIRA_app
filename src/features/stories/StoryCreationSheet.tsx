@@ -1,12 +1,14 @@
 // Story creation sheet — world/cast/scenario/greeting/lorebook form.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import { uniqueCompact } from "../../utils/appHelpers";
+import { getLatestTemplateWorlds } from "../../services/storyWorld";
 
 export default function StoryCreationSheet({ worlds = [], characters = [], initialDraft, onStart, onCancel, onImportStory }) {
   const [draft, setDraft] = useState(initialDraft);
   const [status, setStatus] = useState("");
+  const latestWorlds = useMemo(() => getLatestTemplateWorlds(worlds), [worlds]);
 
   useEffect(() => setDraft(initialDraft), [initialDraft]);
 
@@ -23,7 +25,18 @@ export default function StoryCreationSheet({ worlds = [], characters = [], initi
   }
 
   function update(field, value) {
-    setDraft((current) => ({ ...current, [field]: value }));
+    setDraft((current) => {
+      if (field === "templateWorldId") {
+        const selectedWorld = latestWorlds.find((world: any) => world.id === value) || worlds.find((world: any) => world.id === value);
+        return {
+          ...current,
+          templateWorldId: value,
+          templateWorldKey: selectedWorld?.templateKey || value || "",
+          templateWorldVersion: Number(selectedWorld?.templateVersion || 1),
+        };
+      }
+      return { ...current, [field]: value };
+    });
   }
 
   function toggleStoryCharacter(characterId) {
@@ -62,8 +75,8 @@ export default function StoryCreationSheet({ worlds = [], characters = [], initi
 
           <label>
             Story World
-            <select value={draft.worldId || ""} onChange={(event) => update("worldId", event.target.value)}>
-              {worlds.map((world) => <option key={world.id} value={world.id}>{world.name}</option>)}
+            <select value={draft.templateWorldId || ""} onChange={(event) => update("templateWorldId", event.target.value)}>
+              {latestWorlds.map((world: any) => <option key={world.id} value={world.id}>{world.name} (v{world.templateVersion || 1})</option>)}
             </select>
           </label>
 

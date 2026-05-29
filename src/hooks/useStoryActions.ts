@@ -18,6 +18,7 @@ import {
   normalizeStoredLorebook,
 } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
+import { createEmptyWorldOverlay, getLatestTemplateByKey, resolveEffectiveWorld } from "../services/storyWorld";
 import { createId } from "../utils/helpers";
 import {
   createInitialCastState,
@@ -97,9 +98,17 @@ export default function useStoryActions() {
       return;
     }
 
+    const activeTemplateKey = String(activeWorld?.templateKey || activeWorld?.id || "");
+    const templateWorld = getLatestTemplateByKey(activeTemplateKey, worlds)
+      || (activeWorld && worlds.find((world: World) => world.id === activeWorld.id))
+      || worlds[0]
+      || null;
     const draft = {
       title: "Untitled Story",
-      worldId: activeWorld?.id || worlds[0]?.id || "",
+      templateWorldId: templateWorld?.id || "",
+      templateWorldKey: templateWorld?.templateKey || templateWorld?.id || "",
+      templateWorldVersion: Number(templateWorld?.templateVersion || 1),
+      worldOverlay: createEmptyWorldOverlay(),
       characterIds: uniqueCompact([activeCharacter?.id || characters[0]?.id || ""]),
       scenario: "",
       greeting: "",
@@ -143,7 +152,7 @@ export default function useStoryActions() {
     const story = normalizeStory({ ...loadedStory, lastPlayedAt: Date.now() }, worlds, characters);
     const storyCharacters = getStoryCharactersFromLists(story, characters);
     const leadCharacter = chooseActiveCastLead(story, storyCharacters) || characters[0] || null;
-    const fallbackWorld = worlds.find((item: World) => item.id === story.worldId) || worlds[0] || null;
+    const fallbackWorld = resolveEffectiveWorld(story, worlds) || worlds.find((item: World) => item.id === story.templateWorldId) || worlds[0] || null;
 
     let nextChatHistory: any[] = [];
     try {
@@ -170,7 +179,7 @@ export default function useStoryActions() {
     setChatHistory?.(nextChatHistory);
     setActiveLoreMemory?.(nextLoreMemory);
     setSelectedCharacterSheetId?.(leadCharacter?.id || characters[0]?.id || "");
-    setSelectedWorldSheetId?.(story.worldId || worlds[0]?.id || "");
+    setSelectedWorldSheetId?.(story.templateWorldId || worlds[0]?.id || "");
     setStoryDraft?.(null);
     setActiveView?.("story");
   }
@@ -191,7 +200,7 @@ export default function useStoryActions() {
       setActiveView,
     } = deps;
 
-    const world = worlds.find((item: World) => item.id === draft.worldId);
+    const world = worlds.find((item: World) => item.id === draft.templateWorldId);
     const selectedCharacterIds = uniqueCompact(Array.isArray(draft.characterIds) ? draft.characterIds : []);
     const selectedCharacters = selectedCharacterIds
       .map((id) => characters.find((item: Character) => item.id === id))
@@ -201,11 +210,14 @@ export default function useStoryActions() {
     if (!world) return { error: "Please choose a valid world." };
     if (selectedCharacters.length === 0) return { error: "Please choose at least one story character." };
 
-    const newStory = normalizeStory(
+    const baseStory = normalizeStory(
       {
         id: createId("story"),
         title: draft.title?.trim() || "Untitled Story",
-        worldId: world.id,
+        templateWorldId: world.id,
+        templateWorldKey: String(draft.templateWorldKey || world.templateKey || world.id),
+        templateWorldVersion: Number(draft.templateWorldVersion || world.templateVersion || 1),
+        worldOverlay: createEmptyWorldOverlay(),
         characterIds: selectedCharacters.map((item: Character) => item.id),
         scenario: draft.scenario?.trim() || "",
         greeting: draft.greeting?.trim() || "The scene begins.",
@@ -220,11 +232,17 @@ export default function useStoryActions() {
       characters
     );
 
+    const effectiveWorld = resolveEffectiveWorld(baseStory, worlds) || world;
+    const newStory = normalizeStory({
+      ...baseStory,
+      currentContext: createInitialCurrentContext(effectiveWorld, selectedCharacters),
+    }, worlds, characters);
+
     setActiveStory?.(newStory);
     saveActiveStory?.(newStory);
     repository?.activeStory.set(newStory.id);
 
-    const opening = [{ role: "assistant", content: buildOpeningMessage(newStory, leadCharacter, world, selectedCharacters) }];
+    const opening = [{ role: "assistant", content: buildOpeningMessage(newStory, leadCharacter, effectiveWorld, selectedCharacters) }];
     setChatHistory?.(opening);
     repository?.chats.save(newStory.id, opening);
     setActiveLoreMemory?.([]);
@@ -266,7 +284,7 @@ export default function useStoryActions() {
       setActiveView,
     } = deps;
 
-    if (!activeStory || worldId === activeStory.worldId) return;
+    if (!activeStory || worldId === activeStory.templateWorldId) return;
     const world = getWorld?.(worldId);
     if (!world) return alert("World not found.");
     if (!confirm("Use this world in the active story? This will reset the story chat and rebuild Current Context for the new world.")) return;
@@ -275,7 +293,10 @@ export default function useStoryActions() {
     const rebuiltContext = createInitialCurrentContext(world, storyCharacters);
     const updatedStory = {
       ...activeStory,
-      worldId: world.id,
+      templateWorldId: world.id,
+      templateWorldKey: world.templateKey || world.id,
+      templateWorldVersion: Number(world.templateVersion || 1),
+      worldOverlay: createEmptyWorldOverlay(),
       currentContext: rebuiltContext,
       directorNotes: syncDirectorNotesFromContext(activeStory.directorNotes, rebuiltContext),
     };
