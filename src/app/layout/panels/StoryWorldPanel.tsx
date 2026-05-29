@@ -1,14 +1,20 @@
 import React, { useMemo, useState, useEffect } from "react";
 import LoreEditor from "../../../components/LoreEditor";
 import { parseKeywords } from "../../../utils/helpers";
+import { resolveEffectiveStoryCharacter } from "../../../services/storyCharacters";
 
 export default function StoryWorldPanel({
   activeStory,
   activeWorld,
   storyCharacters,
+  characters,
   onExportStory,
   onDeleteStory,
-  onSaveCharacterIdentity,
+  onUpdateStoryCharacterPatch,
+  onAddStoryCharacterLoreEntry,
+  onUpdateStoryCharacterLoreEntry,
+  onRemoveStoryCharacterLoreEntry,
+  onResetStoryCharacterOverlay,
   onExportCharacterTemplate,
   onImportCharacterTemplate,
   onSaveStoryWorldPatch,
@@ -169,15 +175,24 @@ export default function StoryWorldPanel({
       <h3>Story Cast Identity</h3>
       <p className="muted">Permanent identity for this story lives here. Cast State controls how each person is doing right now.</p>
       <div className="cast-summary-list">
-        {storyCharacters.map((character: any) => (
-          <StoryCastIdentityCard
-            key={character.id}
-            character={character}
-            presenceLabel={getPresenceLabel(activeStory, character.id)}
-            onSave={onSaveCharacterIdentity}
-            onExportTemplate={onExportCharacterTemplate}
-          />
-        ))}
+        {(activeStory.castMembers || []).map((castMember: any) => {
+          const effectiveCharacter = resolveEffectiveStoryCharacter(castMember, characters);
+          if (!effectiveCharacter) return null;
+          return (
+            <StoryCastIdentityCard
+              key={castMember.id}
+              castMember={castMember}
+              effectiveCharacter={effectiveCharacter}
+              presenceLabel={getPresenceLabel(activeStory, castMember.id)}
+              onUpdatePatch={onUpdateStoryCharacterPatch}
+              onAddLore={onAddStoryCharacterLoreEntry}
+              onUpdateLore={onUpdateStoryCharacterLoreEntry}
+              onRemoveLore={onRemoveStoryCharacterLoreEntry}
+              onResetOverlay={onResetStoryCharacterOverlay}
+              onExportTemplate={onExportCharacterTemplate}
+            />
+          );
+        })}
       </div>
       <div className="sheet-actions compact-actions">
         <button type="button" onClick={onImportCharacterTemplate}>Import Reusable Character Template</button>
@@ -282,29 +297,63 @@ export default function StoryWorldPanel({
   );
 }
 
-function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTemplate }: any) {
-  const [draft, setDraft] = useState(character);
+function StoryCastIdentityCard({ castMember, effectiveCharacter, presenceLabel, onUpdatePatch, onAddLore, onUpdateLore, onRemoveLore, onResetOverlay, onExportTemplate }: any) {
+  const [draft, setDraft] = useState(effectiveCharacter);
   const [status, setStatus] = useState("");
 
+  const addedLoreIds = useMemo(
+    () => new Set((castMember.overlay.addedLoreEntries || []).map((entry: any) => entry.id)),
+    [castMember.overlay.addedLoreEntries]
+  );
+  const modifiedLoreIds = useMemo(
+    () => new Set(Object.keys(castMember.overlay.modifiedLoreEntries || {})),
+    [castMember.overlay.modifiedLoreEntries]
+  );
+
   useEffect(() => {
-    setDraft(character);
+    setDraft(effectiveCharacter);
     setStatus("");
-  }, [character]);
+  }, [effectiveCharacter]);
 
   function update(field: string, value: any) {
     setDraft((current: any) => ({ ...current, [field]: value }));
   }
 
   function save() {
-    onSave?.(draft);
+    onUpdatePatch?.(castMember.id, {
+      name: draft.name,
+      shortDescription: draft.shortDescription,
+      race: draft.race,
+      role: draft.role,
+      aliases: draft.aliases,
+      promptKeywords: draft.promptKeywords,
+      profileSummary: draft.profileSummary,
+      defaultOutfit: draft.defaultOutfit,
+      description: draft.description,
+      personality: draft.personality,
+      appearance: draft.appearance,
+      backstory: draft.backstory,
+      speakingStyle: draft.speakingStyle,
+      relationshipToUser: draft.relationshipToUser,
+      goals: draft.goals,
+      characterRules: draft.characterRules,
+      promptPinned: draft.promptPinned,
+    });
     setStatus("Identity saved.");
+    setTimeout(() => setStatus(""), 1400);
+  }
+
+  function resetOverlay() {
+    if (!confirm(`Reset ${effectiveCharacter.name}'s story customization back to the base template?`)) return;
+    onResetOverlay?.(castMember.id);
+    setStatus("Identity reset.");
     setTimeout(() => setStatus(""), 1400);
   }
 
   return (
     <details className="character-profile-card identity-card">
       <summary>
-        <strong>{character.name}</strong>
+        <strong>{effectiveCharacter.name}</strong>
         <span>{presenceLabel}</span>
       </summary>
 
@@ -331,11 +380,35 @@ function StoryCastIdentityCard({ character, presenceLabel, onSave, onExportTempl
         </label>
       </div>
 
-      <label>Story Character Lorebook</label>
-      <LoreEditor lorebook={draft.lorebook || []} onChange={(lore) => update("lorebook", lore)} />
-
       <div className="sheet-actions compact-actions">
         <button type="button" onClick={save}>Save Identity</button>
+        <button type="button" className="danger" onClick={resetOverlay}>Reset Overlay</button>
+      </div>
+
+      <label>Story Character Lorebook</label>
+      <div className="sheet-actions compact-actions">
+        <button type="button" onClick={() => onAddLore?.(castMember.id, { name: "New Story Lore", keywords: [], content: "", enabled: true, alwaysOn: false })}>Add Story Lore</button>
+      </div>
+      {(effectiveCharacter.lorebook || []).length > 0 && (
+        <div className="context-card-list">
+          {effectiveCharacter.lorebook.map((entry: any) => (
+             <details key={entry.id} className="context-card">
+               <summary>
+                 <strong>{entry.name}</strong>
+                 <span>{getLoreBadge(entry.id, addedLoreIds, modifiedLoreIds)}</span>
+               </summary>
+               <ContextInput label="Lore Name" value={entry.name || ""} onChange={(value) => onUpdateLore?.(castMember.id, entry.id, { name: value })} />
+               <ContextInput label="Keywords" value={(entry.keywords || []).join(", ")} onChange={(value) => onUpdateLore?.(castMember.id, entry.id, { keywords: parseKeywords(value) })} />
+               <ContextTextarea label="Content" value={entry.content || ""} onChange={(value) => onUpdateLore?.(castMember.id, entry.id, { content: value })} />
+               <div className="sheet-actions compact-actions">
+                 <button type="button" className="danger small" onClick={() => onRemoveLore?.(castMember.id, entry.id)}>Remove Lore</button>
+               </div>
+             </details>
+          ))}
+        </div>
+      )}
+
+      <div className="sheet-actions compact-actions" style={{ marginTop: '1rem' }}>
         <button type="button" onClick={() => onExportTemplate?.(draft)}>Export As Reusable Template</button>
       </div>
       <p className="sheet-status">{status}</p>
@@ -373,8 +446,8 @@ function getLoreBadge(entryId: string, addedLoreIds: Set<string>, modifiedLoreId
   return "Template lore";
 }
 
-function getPresenceLabel(story: any, characterId: string) {
-  const row = (story?.castState?.activeCharacters || story?.currentContext?.activeCharacters || []).find((item: any) => item.characterId === characterId);
+function getPresenceLabel(story: any, castMemberId: string) {
+  const row = (story?.castState?.activeCharacters || []).find((item: any) => item.castMemberId === castMemberId);
   return formatPresenceLabel(getRowPresence(row));
 }
 

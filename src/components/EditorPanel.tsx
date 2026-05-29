@@ -19,6 +19,7 @@ export default function EditorPanel({
   activeWorld,
   activeCharacter,
   activeCharacters = [],
+  characters = [], // All characters for template resolution
   activeLoreMemory,
   loreStatusText,
   isCollapsed = false,
@@ -27,7 +28,11 @@ export default function EditorPanel({
   onSaveSceneControl,
   onExportStory,
   onDeleteStory,
-  onSaveCharacterIdentity,
+  onUpdateStoryCharacterPatch,
+  onAddStoryCharacterLoreEntry,
+  onUpdateStoryCharacterLoreEntry,
+  onRemoveStoryCharacterLoreEntry,
+  onResetStoryCharacterOverlay,
   onExportCharacterTemplate,
   onImportCharacterTemplate,
   onUpdateStoryLore,
@@ -193,9 +198,14 @@ export default function EditorPanel({
                   activeStory={activeStory}
                   activeWorld={activeWorld}
                   storyCharacters={storyCharacters}
+                  characters={characters}
                   onExportStory={onExportStory}
                   onDeleteStory={onDeleteStory}
-                  onSaveCharacterIdentity={onSaveCharacterIdentity}
+                  onUpdateStoryCharacterPatch={onUpdateStoryCharacterPatch}
+                  onAddStoryCharacterLoreEntry={onAddStoryCharacterLoreEntry}
+                  onUpdateStoryCharacterLoreEntry={onUpdateStoryCharacterLoreEntry}
+                  onRemoveStoryCharacterLoreEntry={onRemoveStoryCharacterLoreEntry}
+                  onResetStoryCharacterOverlay={onResetStoryCharacterOverlay}
                   onExportCharacterTemplate={onExportCharacterTemplate}
                   onImportCharacterTemplate={onImportCharacterTemplate}
                   onSaveStoryWorldPatch={onSaveStoryWorldPatch}
@@ -211,8 +221,8 @@ export default function EditorPanel({
 
               {activePanel === "character" && (
                 <CastStatePanel
-                  castState={castState}
-                  characters={storyCharacters}
+                  activeStory={activeStory}
+                  effectiveCharacters={storyCharacters}
                   status={castStatus}
                   onSave={saveCastState}
                 />

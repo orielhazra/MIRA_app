@@ -17,8 +17,7 @@ describe("Landing", () => {
           id: story.id,
           title: story.title,
           templateWorldId: story.templateWorldId,
-          characterIds: story.characterIds,
-          characterCount: story.characterIds.length,
+          castMemberCount: story.castMembers?.length || 0,
           createdAt: story.createdAt,
         }))}
         worlds={worlds}
@@ -50,8 +49,7 @@ describe("Landing", () => {
           id: story.id,
           title: story.title,
           templateWorldId: story.templateWorldId,
-          characterIds: story.characterIds,
-          characterCount: story.characterIds.length,
+          castMemberCount: story.castMembers?.length || 0,
           createdAt: story.createdAt,
         }))}
         worlds={worlds}
@@ -98,10 +96,9 @@ describe("Landing", () => {
           id: story.id,
           title: story.title,
           templateWorldId: story.templateWorldId,
-          characterIds: story.characterIds,
-          characterCount: story.characterIds.length,
+          castMemberCount: story.castMembers?.length || 0,
           createdAt: story.createdAt,
-        })).concat([{ id: "legacy-story", title: "Legacy Story", templateWorldId: "world-old", characterIds: [characters[0].id], characterCount: 1 } as any])}
+        })).concat([{ id: "legacy-story", title: "Legacy Story", templateWorldId: "world-old", castMemberCount: 1 } as any])}
         worlds={worlds as any}
         characters={characters}
         onNewStory={vi.fn()}

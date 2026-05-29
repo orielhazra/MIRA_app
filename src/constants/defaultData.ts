@@ -1,4 +1,4 @@
-import { World, Character, Story, StoryJournal, DirectorNotes, StoryWorldOverlay } from "../types/index";
+import { World, Character, Story, StoryJournal, DirectorNotes, StoryWorldOverlay, StoryCharacterOverlay, StoryCastMember } from "../types/index";
 
 export const STORAGE_KEYS = {
   storyMetas: "roleplay_story_metas",
@@ -71,6 +71,15 @@ export function createEmptyStoryWorldOverlay(): StoryWorldOverlay {
     modifiedLocations: {},
     addedLocations: [],
     removedLocationIds: [],
+    modifiedLoreEntries: {},
+    addedLoreEntries: [],
+    removedLoreEntryIds: []
+  };
+}
+
+export function createEmptyCharacterOverlay(): StoryCharacterOverlay {
+  return {
+    identityPatch: {},
     modifiedLoreEntries: {},
     addedLoreEntries: [],
     removedLoreEntryIds: []
@@ -220,9 +229,11 @@ export const defaultWorlds: World[] = [
   }
 ];
 
-export const defaultCharacters: any[] = [
+export const defaultCharacters: Character[] = [
   {
     id: "mira",
+    templateKey: "mira",
+    templateVersion: 1,
     name: "Mira",
     shortDescription: "Calm, mysterious traveler",
     description: "A calm but mysterious traveler.",
@@ -233,16 +244,20 @@ export const defaultCharacters: any[] = [
     relationshipToUser: "She has just met the user.",
     goals: "Recover lost memories and decide whether the user can be trusted.",
     characterRules: "Mira should be subtle, observant, and emotionally guarded.",
-    characterLorebook: [
+    lorebook: [
       {
         name: "Mira's Notebook",
         keywords: ["notebook", "journal"],
-        content: "Mira's notebook contains memory fragments that do not belong to her."
+        content: "Mira's notebook contains memory fragments that do not belong to her.",
+        enabled: true,
+        alwaysOn: false
       }
     ]
   },
 {
     "id": "character_641a7085-48f7-4739-a248-dbef67f6243b",
+    "templateKey": "morwen",
+    "templateVersion": 1,
     "name": "Morwen Nightbloom",
     "shortDescription": "User's possessive dark fae partner",
     "description": "Morwen is an adult dark fae noblewoman and the user's willing romantic partner. She is elegant, dangerous, and intensely loyal, with a possessive streak.",
@@ -272,6 +287,8 @@ export const defaultCharacters: any[] = [
 },
 {
     "id": "character_13cbd0ba-2322-4ad2-a19a-f4dbc13f196f",
+    "templateKey": "saelith",
+    "templateVersion": 1,
     "name": "Saelith Moonvein",
     "shortDescription": "Adult moon elf seer seeking protective patronage",
     "description": "Saelith is an adult moon elf seer whose visions have made her valuable to dangerous nobles. She enters the Salon seeking a protective contract that preserves her autonomy.",
@@ -301,6 +318,8 @@ export const defaultCharacters: any[] = [
 },
 {
     "id": "character_8191c007-f186-40cf-b1fd-a80ca9b56213",
+    "templateKey": "vexa",
+    "templateVersion": 1,
     "name": "Vexa Emberhorn",
     "shortDescription": "Adult horned fireblood performer with dangerous charm",
     "description": "Vexa is an adult horned fireblood dancer and illusionist who treats the Salon like a stage. She is flirtatious and bold, but far more strategic than she first appears.",
@@ -329,6 +348,8 @@ export const defaultCharacters: any[] = [
 },
 {
     "id": "character_18668f22-babe-4534-9b06-aeb96b5b202e",
+    "templateKey": "thalara",
+    "templateVersion": 1,
     "name": "Thalara Deepsong",
     "shortDescription": "Adult merfolk princess bound by court politics",
     "description": "Thalara is an adult merfolk princess from a drowned royalty, attending the Salon in human form to find someone who could save her family and help her stay hidden on the surface.",
@@ -358,6 +379,8 @@ export const defaultCharacters: any[] = [
 },
 {
     "id": "character_a1bb9c65-b0c0-428f-8a58-1b8dd869350f",
+    "templateKey": "kaela",
+    "templateVersion": 1,
     "name": "Kaela Ironrose",
     "shortDescription": "Adult orc-blooded trainee knight offering a service oath",
     "description": "Kaela is an adult orc-blooded trainee knight whose warband was betrayed by Aldmyr nobles. She enters the Salon to offer a service oath in exchange for evidence against the traitors.",
@@ -387,7 +410,7 @@ export const defaultCharacters: any[] = [
 }
 ];
 
-export const defaultStories: any[] = [
+export const defaultStories: Story[] = [
   {
     id: "story_mira_station",
     title: "Mira at the Liminal Station",
@@ -395,7 +418,15 @@ export const defaultStories: any[] = [
     templateWorldKey: "liminal-station",
     templateWorldVersion: 1,
     worldOverlay: createEmptyStoryWorldOverlay(),
-    characterIds: ["mira"],
+    castMembers: [
+      {
+        id: "cast_mira_station_mira",
+        templateCharacterId: "mira",
+        templateCharacterKey: "mira",
+        templateCharacterVersion: 1,
+        overlay: createEmptyCharacterOverlay(),
+      }
+    ],
     scenario: "The user meets Mira at an old train station at night.",
     greeting: 'Mira looks up from her notebook. "You came after all."',
     createdAt: Date.now(),
@@ -404,9 +435,27 @@ export const defaultStories: any[] = [
         name: "The User's Arrival",
         keywords: ["arrival", "came after all", "why am i here"],
         content:
-          "The user's arrival at the station was expected, though Mira does not fully understand why yet."
+          "The user's arrival at the station was expected, though Mira does not fully understand why yet.",
+        enabled: true,
+        alwaysOn: false
       }
-    ]
+    ],
+    storyMemory: {
+      summary: "",
+      generalJournal: [],
+      characterJournals: {},
+      tasks: []
+    },
+    currentContext: {
+      scene: {},
+      location: {},
+      objects: [],
+      recentFacts: {}
+    },
+    castState: {
+      activeCharacters: [],
+      relationships: []
+    }
   },
 {
     "id": "story_8c66b4cd-2323-4897-b82f-c40a995fa513",
@@ -415,12 +464,42 @@ export const defaultStories: any[] = [
     "templateWorldKey": "aldmyr",
     "templateWorldVersion": 1,
     "worldOverlay": createEmptyStoryWorldOverlay(),
-    "characterIds": [
-        "character_641a7085-48f7-4739-a248-dbef67f6243b",
-        "character_13cbd0ba-2322-4ad2-a19a-f4dbc13f196f",
-        "character_8191c007-f186-40cf-b1fd-a80ca9b56213",
-        "character_18668f22-babe-4534-9b06-aeb96b5b202e",
-        "character_a1bb9c65-b0c0-428f-8a58-1b8dd869350f"
+    "castMembers": [
+        {
+          id: "cast_aldmyr_morwen",
+          templateCharacterId: "character_641a7085-48f7-4739-a248-dbef67f6243b",
+          templateCharacterKey: "morwen",
+          templateCharacterVersion: 1,
+          overlay: createEmptyCharacterOverlay(),
+        },
+        {
+          id: "cast_aldmyr_saelith",
+          templateCharacterId: "character_13cbd0ba-2322-4ad2-a19a-f4dbc13f196f",
+          templateCharacterKey: "saelith",
+          templateCharacterVersion: 1,
+          overlay: createEmptyCharacterOverlay(),
+        },
+        {
+          id: "cast_aldmyr_vexa",
+          templateCharacterId: "character_8191c007-f186-40cf-b1fd-a80ca9b56213",
+          templateCharacterKey: "vexa",
+          templateCharacterVersion: 1,
+          overlay: createEmptyCharacterOverlay(),
+        },
+        {
+          id: "cast_aldmyr_thalara",
+          templateCharacterId: "character_18668f22-babe-4534-9b06-aeb96b5b202e",
+          templateCharacterKey: "thalara",
+          templateCharacterVersion: 1,
+          overlay: createEmptyCharacterOverlay(),
+        },
+        {
+          id: "cast_aldmyr_kaela",
+          templateCharacterId: "character_a1bb9c65-b0c0-428f-8a58-1b8dd869350f",
+          templateCharacterKey: "kaela",
+          templateCharacterVersion: 1,
+          overlay: createEmptyCharacterOverlay(),
+        }
     ],
     "scenario": "In the dark fantasy city of Aldmyr, nobles and mages gather at the Velvet Chain Salon, a forbidden contract house where adult companions negotiate magical service bonds, patronage pacts, protective oaths, and symbolic claim arrangements. The setting is gothic, sensual in tone, and morally dangerous, but legitimate bonds require clear adult consent and may be challenged if corrupt magic or deception is involved. The user arrives with Morwen Nightbloom, their adult partner, to navigate politics, loyalty, jealousy, temptation, and dangerous offers involving several adult women from different fantasy peoples.",
     "greeting": "The Velvet Chain Salon glows beneath Aldmyr’s old opera house, all crimson curtains, black marble, and candlelight reflected in polished silver collars that are more symbol than shackle. Morwen Nightbloom stands at your side, her gloved hand resting possessively—but gently—against your arm. \"Remember,\" she murmurs, violet eyes flicking toward the masked patrons, \"no true bond forms without consent. Anyone who forgets that will answer to me.\" Across the salon, an elven seer watches you through moon-pale lashes, a horned fireblood smiles like trouble, a merfolk diplomat adjusts her pearl-laced throat ribbon, and an orc-blooded knight studies the exits with disciplined calm.",
@@ -484,6 +563,22 @@ export const defaultStories: any[] = [
         "nextStoryBeat": "A masked contract broker invites the user and Morwen to speak with four adult prospective companions, each with her own motives.",
         "avoid": "Avoid minors, coercive sexual framing, and non-consensual bonds being treated as valid romance.",
         "customNotes": "The main romantic partner is Morwen. Other adult women may become allies, protégés, retainers, or consensual companions depending on player choices."
+    },
+    "storyMemory": {
+      "summary": "",
+      "generalJournal": [],
+      "characterJournals": {},
+      "tasks": []
+    },
+    "currentContext": {
+      "scene": {},
+      "location": {},
+      "objects": [],
+      "recentFacts": {}
+    },
+    "castState": {
+      "activeCharacters": [],
+      "relationships": []
     }
 }
 ];

@@ -13,6 +13,8 @@ export const SQLITE_EXPECTED_COLUMNS = {
   ],
   characters: [
     "id",
+    "templateKey",
+    "templateVersion",
     "name",
     "shortDescription",
     "race",
@@ -40,7 +42,7 @@ export const SQLITE_EXPECTED_COLUMNS = {
     "templateWorldKey",
     "templateWorldVersion",
     "worldOverlay",
-    "characterIds",
+    "castMembers",
     "scenario",
     "greeting",
     "storyLorebook",
@@ -61,9 +63,9 @@ export const SQLITE_CREATE_TABLE_STATEMENTS = {
   worlds:
     "CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, templateKey TEXT, templateVersion INTEGER DEFAULT 1, name TEXT NOT NULL, overview TEXT, description TEXT, rules TEXT, locations TEXT, worldLorebook TEXT, createdAt INTEGER);",
   characters:
-    "CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, name TEXT NOT NULL, shortDescription TEXT, race TEXT, role TEXT, aliases TEXT, promptKeywords TEXT, profileSummary TEXT, defaultOutfit TEXT, description TEXT, personality TEXT, appearance TEXT, backstory TEXT, speakingStyle TEXT, relationshipToUser TEXT, goals TEXT, characterRules TEXT, promptPinned INTEGER DEFAULT 0, lorebook TEXT, createdAt INTEGER);",
+    "CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, templateKey TEXT, templateVersion INTEGER DEFAULT 1, name TEXT NOT NULL, shortDescription TEXT, race TEXT, role TEXT, aliases TEXT, promptKeywords TEXT, profileSummary TEXT, defaultOutfit TEXT, description TEXT, personality TEXT, appearance TEXT, backstory TEXT, speakingStyle TEXT, relationshipToUser TEXT, goals TEXT, characterRules TEXT, promptPinned INTEGER DEFAULT 0, lorebook TEXT, createdAt INTEGER);",
   stories:
-    "CREATE TABLE IF NOT EXISTS stories (id TEXT PRIMARY KEY, title TEXT NOT NULL, templateWorldId TEXT, templateWorldKey TEXT, templateWorldVersion INTEGER DEFAULT 1, worldOverlay TEXT, characterIds TEXT, scenario TEXT, greeting TEXT, storyLorebook TEXT, temporaryLorebook TEXT, storyMemory TEXT, currentContext TEXT, castState TEXT, directorNotes TEXT, createdAt INTEGER, lastPlayedAt INTEGER, FOREIGN KEY(templateWorldId) REFERENCES worlds(id));",
+    "CREATE TABLE IF NOT EXISTS stories (id TEXT PRIMARY KEY, title TEXT NOT NULL, templateWorldId TEXT, templateWorldKey TEXT, templateWorldVersion INTEGER DEFAULT 1, worldOverlay TEXT, castMembers TEXT, scenario TEXT, greeting TEXT, storyLorebook TEXT, temporaryLorebook TEXT, storyMemory TEXT, currentContext TEXT, castState TEXT, directorNotes TEXT, createdAt INTEGER, lastPlayedAt INTEGER, FOREIGN KEY(templateWorldId) REFERENCES worlds(id));",
   chats:
     "CREATE TABLE IF NOT EXISTS chats (storyId TEXT PRIMARY KEY, messages TEXT NOT NULL, FOREIGN KEY(storyId) REFERENCES stories(id) ON DELETE CASCADE);",
   lore_memory:
@@ -74,44 +76,19 @@ export const SQLITE_CREATE_TABLE_STATEMENTS = {
 
 export const SQLITE_SCHEMA_PATCHES = [
   {
-    table: "worlds",
+    table: "characters",
     column: "templateKey",
-    sql: "ALTER TABLE worlds ADD COLUMN templateKey TEXT",
+    sql: "ALTER TABLE characters ADD COLUMN templateKey TEXT",
   },
   {
-    table: "worlds",
+    table: "characters",
     column: "templateVersion",
-    sql: "ALTER TABLE worlds ADD COLUMN templateVersion INTEGER DEFAULT 1",
-  },
-  {
-    table: "worlds",
-    column: "worldLorebook",
-    sql: "ALTER TABLE worlds ADD COLUMN worldLorebook TEXT",
+    sql: "ALTER TABLE characters ADD COLUMN templateVersion INTEGER DEFAULT 1",
   },
   {
     table: "stories",
-    column: "templateWorldId",
-    sql: "ALTER TABLE stories ADD COLUMN templateWorldId TEXT",
-  },
-  {
-    table: "stories",
-    column: "templateWorldKey",
-    sql: "ALTER TABLE stories ADD COLUMN templateWorldKey TEXT",
-  },
-  {
-    table: "stories",
-    column: "templateWorldVersion",
-    sql: "ALTER TABLE stories ADD COLUMN templateWorldVersion INTEGER DEFAULT 1",
-  },
-  {
-    table: "stories",
-    column: "worldOverlay",
-    sql: "ALTER TABLE stories ADD COLUMN worldOverlay TEXT",
-  },
-  {
-    table: "stories",
-    column: "lastPlayedAt",
-    sql: "ALTER TABLE stories ADD COLUMN lastPlayedAt INTEGER",
+    column: "castMembers",
+    sql: "ALTER TABLE stories ADD COLUMN castMembers TEXT",
   },
 ] as const;
 
@@ -119,14 +96,14 @@ export const SQLITE_WORLD_INSERT_SQL = `INSERT INTO worlds (id, templateKey, tem
  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
 
 export const SQLITE_CHARACTER_INSERT_SQL = `INSERT INTO characters (
-  id, name, shortDescription, race, role, aliases, promptKeywords,
+  id, templateKey, templateVersion, name, shortDescription, race, role, aliases, promptKeywords,
   profileSummary, defaultOutfit, description, personality, appearance,
   backstory, speakingStyle, relationshipToUser, goals, characterRules,
   promptPinned, lorebook, createdAt
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`;
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`;
 
 export const SQLITE_STORY_INSERT_SQL = `INSERT INTO stories (
-  id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, characterIds, scenario, greeting,
+  id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, castMembers, scenario, greeting,
   storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt, lastPlayedAt
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`;
 

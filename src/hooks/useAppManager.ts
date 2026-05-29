@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useReducer, useState } from "react";
-import { ChatMessage } from "../types";
-import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories } from "../constants/defaultData";
+import { ChatMessage, StoryCastMember } from "../types";
+import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
 import { repository, isTauri } from "../services/repository";
@@ -26,6 +26,7 @@ import useStoryWorldActions from "./useStoryWorldActions";
 import useLoreActions from "./useLoreActions";
 import useStateUpdates from "./useStateUpdates";
 import useImportExport from "./useImportExport";
+import useStoryCharacterActions from "./useStoryCharacterActions";
 import {
   createStoryBindings,
   createChatBindings,
@@ -36,7 +37,9 @@ import {
   createStoryWorldBindings,
   createImportExportBindings,
   createMaintenanceBindings,
+  createStoryCharacterBindings,
 } from "./useAppManagerBindings";
+import { createId } from "../utils/helpers";
 
 export default function useAppManager() {
   const initial = useMemo(loadInitialState, []);
@@ -176,6 +179,7 @@ export default function useAppManager() {
   const loreActions = useLoreActions();
   const stateUpdates = useStateUpdates();
   const importExport = useImportExport();
+  const storyCharacterActions = useStoryCharacterActions();
 
   const setStoryDraft = (draft: any) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft });
   const setActiveView = (view: string) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view });
@@ -212,8 +216,8 @@ export default function useAppManager() {
     repository.worlds.saveAll(normalizedWorlds);
   };
 
-  const saveCharacterList = (nextCharacters: any[], sourceWorlds: any[] = worlds) => {
-    const normalizedCharacters = nextCharacters.map((character) => normalizeCharacter(character, sourceWorlds));
+  const saveCharacterList = (nextCharacters: any[]) => {
+    const normalizedCharacters = nextCharacters.map((character) => normalizeCharacter(character));
     dispatchStory({ type: "SAVE_CHARACTERS", payload: normalizedCharacters });
     repository.characters.saveAll(normalizedCharacters);
   };
@@ -313,17 +317,12 @@ export default function useAppManager() {
       const meta = storyMetas.find((storyMeta) => storyMeta.id === storyId);
       if (meta) {
         const world = worlds.find((item) => item.id === meta.templateWorldId) || worlds[0] || null;
-        const storyCharacters = (meta.characterIds || [])
-          .map((id) => characters.find((character) => character.id === id))
-          .filter(Boolean);
         loadedStory = normalizeStory({
           id: meta.id,
           title: meta.title,
           templateWorldId: meta.templateWorldId || world?.id || "",
-          characterIds: storyCharacters.map((character: any) => character.id),
+          castMembers: [],
           greeting: "The scene begins.",
-          currentContext: createInitialCurrentContext(world, storyCharacters as any),
-          castState: createInitialCastState(storyCharacters as any),
           createdAt: meta.createdAt || Date.now(),
           lastPlayedAt: meta.lastPlayedAt,
         }, worlds, characters);
@@ -345,22 +344,22 @@ export default function useAppManager() {
     if (!storyDraft.templateWorldId || !worlds.some((world) => world.id === storyDraft.templateWorldId)) {
       return { error: "Please choose a valid world." };
     }
-    const selectedCharacterIds = Array.isArray(storyDraft.characterIds) ? storyDraft.characterIds.filter(Boolean) : [];
-    if (!selectedCharacterIds.length) return { error: "Please choose at least one story character." };
+    const castMembers = Array.isArray(storyDraft.castMembers) ? storyDraft.castMembers : [];
+    if (!castMembers.length) return { error: "Please choose at least one story character." };
 
-    const selectedCharacters = selectedCharacterIds
-      .map((id) => characters.find((character) => character.id === id))
-      .filter(Boolean);
-    if (!selectedCharacters.length) return { error: "Please choose at least one valid story character." };
-
-    const selectedIdSet = new Set(selectedCharacters.map((character: any) => character.id));
+    const selectedIdSet = new Set(castMembers.map((m: StoryCastMember) => m.id));
     const prunedDraft = {
       ...storyDraft,
-      characterIds: selectedCharacters.map((character: any) => character.id),
       castState: {
-        activeCharacters: (storyDraft.castState?.activeCharacters || []).filter((row: any) => selectedIdSet.has(row.characterId)),
-        relationships: (storyDraft.castState?.relationships || []).filter((row: any) => selectedIdSet.has(row.characterId)),
+        activeCharacters: (storyDraft.castState?.activeCharacters || []).filter((row: any) => selectedIdSet.has(row.castMemberId)),
+        relationships: (storyDraft.castState?.relationships || []).filter((row: any) => selectedIdSet.has(row.castMemberId)),
       },
+      storyMemory: {
+        ...storyDraft.storyMemory,
+        characterJournals: Object.fromEntries(
+          Object.entries(storyDraft.storyMemory?.characterJournals || {}).filter(([id]) => selectedIdSet.has(id))
+        )
+      }
     };
     const normalizedStory = normalizeStory(prunedDraft, worlds, characters);
     repository.stories.saveStory(normalizedStory);
@@ -502,6 +501,7 @@ export default function useAppManager() {
   const loreBindings = createLoreBindings(managerContext, loreActions);
   const importExportBindings = createImportExportBindings(managerContext, importExport);
   const maintenanceBindings = createMaintenanceBindings(managerContext);
+  const storyCharacterBindings = createStoryCharacterBindings(managerContext, storyCharacterActions);
 
   return {
     abortControllerRef: generation.abortControllerRef,
@@ -569,5 +569,6 @@ export default function useAppManager() {
     ...loreBindings,
     ...importExportBindings,
     ...maintenanceBindings,
+    ...storyCharacterBindings,
   };
 }

@@ -1,14 +1,13 @@
 import { Story, StoryMeta } from "../types";
 
 export function storyToMeta(story: Story): StoryMeta {
-  const characterIds = Array.isArray(story.characterIds) ? story.characterIds.filter(Boolean) : [];
+  const castMembers = Array.isArray(story.castMembers) ? story.castMembers : [];
 
   return {
     id: story.id,
     title: story.title || "Untitled Story",
     templateWorldId: story.templateWorldId || "",
-    characterIds,
-    characterCount: characterIds.length,
+    castMemberCount: castMembers.length,
     createdAt: story.createdAt,
     lastPlayedAt: story.lastPlayedAt,
   };

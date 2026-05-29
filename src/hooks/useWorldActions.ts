@@ -104,15 +104,13 @@ export default function useWorldActions() {
 
 
 function isBlankStarterWorld(world: World): boolean {
-  const normalized = normalizeWorld(world);
   return (
-    Number(normalized.templateVersion || 1) === 1
-    && normalized.name === "New World"
-    && normalized.shortDescription === "Blank world template"
-    && !String(normalized.overview || "").trim()
-    && !String(normalized.description || "").trim()
-    && !String(normalized.rules || "").trim()
-    && !(normalized.locations || []).length
-    && !(normalized.worldLorebook || []).length
+    Number(world.templateVersion || 1) === 1
+    && world.name === "New World"
+    && world.shortDescription === "Blank world template"
+    && !String(world.description || "").trim()
+    && !String(world.rules || "").trim()
+    && !(world.locations || []).length
+    && !(world.worldLorebook || []).length
   );
 }

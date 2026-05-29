@@ -62,6 +62,7 @@ export default function MainLayout() {
       return (
         <CharacterSheet
           character={app.selectedCharacter}
+          characters={app.characters}
           storyMetas={app.storyMetas}
           activeStory={app.activeStory}
           onSave={app.saveCharacterSheetEdits}
@@ -72,6 +73,8 @@ export default function MainLayout() {
           onDelete={app.deleteSelectedCharacter}
           onExport={app.exportCharacter}
           onImport={() => app.characterImportRef.current?.click()}
+          onBackHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
+          onBackToStory={() => { app.setActiveView("story"); app.setStoryDraft(null); }}
         />
       );
     }
@@ -124,6 +127,7 @@ export default function MainLayout() {
           isGenerating={app.isGenerating}
           onStartEdit={app.startEditingMessage}
           onCancelEdit={app.cancelMessageEdit}
+          onToggleSelection={app.selectAssistantOption}
           onSaveEdit={app.saveMessageEdit}
           onDeleteFromHere={app.deleteMessagesFromIndex}
           onRegenerateFromHere={app.regenerateFromMessage}
@@ -214,6 +218,7 @@ export default function MainLayout() {
             activeWorld={app.activeWorld}
             activeCharacter={app.activeCharacter}
             activeCharacters={app.activeStoryCharacters}
+            characters={app.characters}
             activeLoreMemory={app.activeLoreMemory}
             loreStatusText={app.loreStatusText}
             isCollapsed={app.editorCollapsed}
@@ -239,6 +244,11 @@ export default function MainLayout() {
             onUpdateStoryWorldLoreEntry={app.updateStoryWorldLoreEntry}
             onRemoveStoryWorldLoreEntry={app.removeStoryWorldLoreEntry}
             onResetStoryWorldOverlay={app.resetStoryWorldOverlay}
+            onUpdateStoryCharacterPatch={app.updateStoryCharacterPatch}
+            onAddStoryCharacterLoreEntry={app.addStoryCharacterLoreEntry}
+            onUpdateStoryCharacterLoreEntry={app.updateStoryCharacterLoreEntry}
+            onRemoveStoryCharacterLoreEntry={app.removeStoryCharacterLoreEntry}
+            onResetStoryCharacterOverlay={app.resetStoryCharacterOverlay}
             currentContext={app.activeStory.currentContext}
             storyMemory={app.activeStory.storyMemory}
             castState={app.activeStory.castState}

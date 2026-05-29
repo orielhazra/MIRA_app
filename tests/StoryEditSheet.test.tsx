@@ -10,11 +10,17 @@ describe("StoryEditSheet", () => {
     const { worlds, characters, stories } = createAppFixtures();
     const onSave = vi.fn(() => ({ ok: true }));
 
+    // Ensure the draft has characterIds for the legacy-compatible UI in the sheet
+    const draft = {
+      ...stories[0],
+      characterIds: stories[0].castMembers.map(m => m.templateCharacterId)
+    };
+
     render(
       <StoryEditSheet
         worlds={worlds as any}
         characters={characters as any}
-        initialDraft={stories[0] as any}
+        initialDraft={draft as any}
         onSave={onSave}
         onCancel={vi.fn()}
         onOpenStory={vi.fn()}
@@ -47,7 +53,7 @@ describe("StoryEditSheet", () => {
       <StoryEditSheet
         worlds={worlds as any}
         characters={[] as any}
-        initialDraft={{ id: "story-1", title: "Story", templateWorldId: "world-old", characterIds: [] }}
+        initialDraft={{ id: "story-1", title: "Story", templateWorldId: "world-old", characterIds: [], castMembers: [] }}
         onSave={vi.fn()}
         onCancel={vi.fn()}
         onOpenStory={vi.fn()}

@@ -9,6 +9,7 @@ const { mockRepository } = vi.hoisted(() => {
     },
     loreMemory: {
       load: vi.fn(),
+      save: vi.fn(),
     },
     activeStory: {
       set: vi.fn(),
@@ -82,6 +83,8 @@ describe("useStoryActions", () => {
     expect(setActiveLoreMemory).toHaveBeenCalledWith([
       { id: "l1", name: "Lore", keywords: [], content: "x", enabled: true, alwaysOn: false },
     ]);
+    
+    // selected character ID should be the template ID
     expect(setSelectedCharacterSheetId).toHaveBeenCalledWith("char-2");
     expect(setSelectedWorldSheetId).toHaveBeenCalledWith("world-2");
     expect(setStoryDraft).toHaveBeenCalledWith(null);

@@ -3,9 +3,10 @@
 
 import { 
   Story, World, Character, ChatMessage, CurrentContext, CastState, 
-  DirectorNotes, StoryJournal, CastMemberState, RelationshipState, ObjectContext
+  DirectorNotes, StoryJournal, CastMemberState, RelationshipState, ObjectContext,
+  StoryCastMember
 } from "../types/index";
-import { defaultWorlds, defaultCharacters, defaultStories, DEFAULT_DIRECTOR_NOTES, DEFAULT_STORY_MEMORY } from "../constants/defaultData";
+import { defaultWorlds, defaultCharacters, defaultStories, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { 
   normalizeCastState, normalizeCharacter, normalizeStory, normalizeWorld, 
   normalizeDirectorNotes, normalizeCurrentContext, normalizeStoryMemory, normalizeChatMessage 
@@ -15,6 +16,7 @@ import { repository } from "../services/repository";
 import { storyToMeta } from "../services/storyMeta";
 import { cloneJson, createId } from "./helpers";
 import { getMessageDisplayText, isAssistantMessageWithOptions } from "./chatMessageUtils";
+import { resolveEffectiveStoryCharacters } from "../services/storyCharacters";
 
 export function normalizeCastPresence(value: any): "active" | "nearby" | "inactive" {
   const raw = String(value || "").trim().toLowerCase();
@@ -57,8 +59,8 @@ export function syncCurrentContextFromDirectorNotes(context: CurrentContext, not
   });
 }
 
-export function createInitialCurrentContext(world: World | null, storyCharacters: Character[] = []): CurrentContext {
-  const leadCharacter = storyCharacters[0] || null;
+export function createInitialCurrentContext(world: World | null, effectiveCharacters: Character[] = []): CurrentContext {
+  const leadCharacter = effectiveCharacters[0] || null;
 
   return normalizeCurrentContext({
     scene: {
@@ -84,27 +86,37 @@ export function createInitialCurrentContext(world: World | null, storyCharacters
   });
 }
 
-export function createInitialCastState(characters: Character[] = []): CastState {
-  return normalizeCastState({
-    activeCharacters: (characters || []).map((character) => ({
-      characterId: character.id,
+export function createInitialCastState(castMembers: StoryCastMember[], characters: Character[]): CastState {
+  const castStates: CastMemberState[] = castMembers.map(member => {
+    const template = characters.find(c => c.id === member.templateCharacterId);
+    return {
+      castMemberId: member.id,
       presence: "active",
       present: true,
-      outfit: character.defaultOutfit || "",
+      outfit: template?.defaultOutfit || "",
       mood: "",
       condition: "",
-      currentGoal: character.goals || "",
+      currentGoal: template?.goals || "",
       knowledge: "",
       temporarySecret: "",
       sceneInstruction: ""
-    })),
-    relationships: (characters || []).map((character) => ({
-      characterId: character.id,
-      relationshipToUser: character.relationshipToUser || "",
+    };
+  });
+
+  const relationshipStates: RelationshipState[] = castMembers.map(member => {
+    const template = characters.find(c => c.id === member.templateCharacterId);
+    return {
+      castMemberId: member.id,
+      relationshipToUser: template?.relationshipToUser || "",
       trustTensionNotes: "",
       promisesConflicts: ""
-    }))
-  }, characters);
+    };
+  });
+
+  return {
+    activeCharacters: castStates,
+    relationships: relationshipStates
+  };
 }
 
 export function applyUpdatesToCurrentContext(context: CurrentContext, updates: any[], world: World | null = null): CurrentContext {
@@ -158,8 +170,10 @@ export function applyUpdatesToCurrentContext(context: CurrentContext, updates: a
   return normalizeCurrentContext(next);
 }
 
-export function applyUpdatesToStoryMemory(storyMemory: StoryJournal, updates: any[] = []): StoryJournal {
+export function applyUpdatesToStoryMemory(storyMemory: StoryJournal, updates: any[] = [], story: Story | null = null, effectiveCharacters: Character[] = []): StoryJournal {
   const next = normalizeStoryMemory(storyMemory);
+  const characterByName = new Map<string, Character>(effectiveCharacters.map(c => [c.name.toLowerCase(), c]));
+  
   for (const update of updates || []) {
     const category = String(update.category || "other").toLowerCase();
     const summary = formatUpdateSummary(update);
@@ -169,15 +183,19 @@ export function applyUpdatesToStoryMemory(storyMemory: StoryJournal, updates: an
         { id: `general-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`, content: summary, active: true, createdAt: Date.now() }
       ];
     }
-    if (category === "relationship" || category === "character") {
+    if ((category === "relationship" || category === "character") && story) {
       const target = String(update.target || "").trim();
       const titleText = `${update.title || ""} ${update.details || ""}`.toLowerCase();
       if (target) {
-        const charId = target.toLowerCase().replace(/\s+/g, "-");
-        if (!next.characterJournals[charId]) next.characterJournals[charId] = [];
+        const char = findCharacterFromText(target, characterByName, effectiveCharacters);
+        // Map character back to castMemberId
+        const castMember = story.castMembers.find(m => m.templateCharacterId === char?.id || m.id === target);
+        const castMemberId = castMember?.id || target.toLowerCase().replace(/\s+/g, "-");
+        
+        if (!next.characterJournals[castMemberId]) next.characterJournals[castMemberId] = [];
         if (titleText.includes("learn") || titleText.includes("know") || titleText.includes("remember") || titleText.includes("trust") || titleText.includes("suspect")) {
-          next.characterJournals[charId].push({
-            id: `${charId}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          next.characterJournals[castMemberId].push({
+            id: `${castMemberId}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
             content: summary, active: true, createdAt: Date.now()
           });
         }
@@ -187,18 +205,23 @@ export function applyUpdatesToStoryMemory(storyMemory: StoryJournal, updates: an
   return normalizeStoryMemory(next);
 }
 
-export function applyUpdatesToCastState(castState: CastState, updates: any[], characters: Character[] = []): CastState {
-  const next = normalizeCastState(castState, characters);
-  const characterByName = new Map<string, Character>((characters || []).map((character) => [character.name.toLowerCase(), character]));
+export function applyUpdatesToCastState(castState: CastState, updates: any[], castMembers: StoryCastMember[], effectiveCharacters: Character[] = []): CastState {
+  const next = normalizeCastState(castState, castMembers, effectiveCharacters);
+  const characterByName = new Map<string, Character>(effectiveCharacters.map(c => [c.name.toLowerCase(), c]));
+  
   for (const update of updates || []) {
     const category = String(update.category || "other").toLowerCase();
     const target = String(update.target || "").trim();
     const to = String(update.to || "").trim();
     const title = String(update.title || "Suggested update").trim();
     const details = String(update.details || "").trim();
+    
     if (category === "character" || category === "outfit") {
-      const character = findCharacterFromText(target || title, characterByName, characters);
-      const row = ensureCharacterState(next, character?.id || target || "unknown_character");
+      const character = findCharacterFromText(target || title, characterByName, effectiveCharacters);
+      const castMember = castMembers.find(m => m.templateCharacterId === character?.id || m.id === target);
+      const castMemberId = castMember?.id || target || "unknown_cast_member";
+      
+      const row = ensureCharacterState(next, castMemberId);
       if (category === "outfit") {
         row.outfit = to || details || row.outfit;
       } else {
@@ -213,12 +236,15 @@ export function applyUpdatesToCastState(castState: CastState, updates: any[], ch
       continue;
     }
     if (category === "relationship") {
-      const character = findCharacterFromText(target || title, characterByName, characters);
-      const row = ensureRelationshipState(next, character?.id || target || "unknown_character");
+      const character = findCharacterFromText(target || title, characterByName, effectiveCharacters);
+      const castMember = castMembers.find(m => m.templateCharacterId === character?.id || m.id === target);
+      const castMemberId = castMember?.id || target || "unknown_cast_member";
+      
+      const row = ensureRelationshipState(next, castMemberId);
       row.trustTensionNotes = appendLine(row.trustTensionNotes, to || details || title);
     }
   }
-  return normalizeCastState(next, characters);
+  return normalizeCastState(next, castMembers, effectiveCharacters);
 }
 
 
@@ -273,37 +299,45 @@ export function findCharacterFromText(text: string, characterByName: Map<string,
   return characters.find((character) => lower.includes(String(character.id).toLowerCase())) || null;
 }
 
-export function ensureCharacterState(castState: CastState, characterId: string): CastMemberState {
-  let row = castState.activeCharacters.find((item) => item.characterId === characterId);
+export function ensureCharacterState(castState: CastState, castMemberId: string): CastMemberState {
+  let row = castState.activeCharacters.find((item) => item.castMemberId === castMemberId);
   if (!row) {
-    row = { characterId, presence: "active", present: true, outfit: "", mood: "", condition: "", currentGoal: "", knowledge: "", temporarySecret: "", sceneInstruction: "" };
+    row = { castMemberId, presence: "active", present: true, outfit: "", mood: "", condition: "", currentGoal: "", knowledge: "", temporarySecret: "", sceneInstruction: "" };
     castState.activeCharacters.push(row);
   }
   return row;
 }
 
-export function ensureRelationshipState(castState: CastState, characterId: string): RelationshipState {
-  let row = castState.relationships.find((item) => item.characterId === characterId);
+export function ensureRelationshipState(castState: CastState, castMemberId: string): RelationshipState {
+  let row = castState.relationships.find((item) => item.castMemberId === castMemberId);
   if (!row) {
-    row = { characterId, relationshipToUser: "", trustTensionNotes: "", promisesConflicts: "" };
+    row = { castMemberId, relationshipToUser: "", trustTensionNotes: "", promisesConflicts: "" };
     castState.relationships.push(row);
   }
   return row;
 }
 
-export function chooseActiveCastLead(story: Story | null, storyCharacters: Character[] = []): Character | null {
-  if (!story || !storyCharacters.length) return storyCharacters[0] || null;
+export function chooseActiveCastLead(story: Story | null, effectiveCharacters: Character[] = []): Character | null {
+  if (!story || !effectiveCharacters.length) return effectiveCharacters[0] || null;
   const contextRows = Array.isArray(story.castState?.activeCharacters) ? story.castState.activeCharacters : [];
   const activeIds = contextRows
     .filter((row) => {
       const presence = normalizeCastPresence(row.presence || (row.present === false ? "inactive" : "active"));
       return presence === "active";
     })
-    .map((row) => row.characterId)
+    .map((row) => row.castMemberId)
     .filter(Boolean);
-  return activeIds.map((id) => storyCharacters.find((character) => character.id === id)).find(Boolean)
-    || storyCharacters[0]
-    || null;
+  
+  // Need to map castMemberId back to effective character
+  for (const castMemberId of activeIds) {
+    const member = story.castMembers.find(m => m.id === castMemberId);
+    if (member) {
+      const char = effectiveCharacters.find(c => c.id === member.templateCharacterId || c.id === member.id);
+      if (char) return char;
+    }
+  }
+
+  return effectiveCharacters[0] || null;
 }
 
 export function loadInitialState() {
@@ -314,8 +348,8 @@ export function loadInitialState() {
   const worlds = [...worldById.values()];
   repository.worlds.saveAll(worlds);
 
-  const storedCharacters = repository.characters.list([]).map((character) => normalizeCharacter(character, worlds));
-  const defaultCharacterList = defaultCharacters.map((character) => normalizeCharacter(character, worlds));
+  const storedCharacters = repository.characters.list([]).map((character) => normalizeCharacter(character));
+  const defaultCharacterList = defaultCharacters.map((character) => normalizeCharacter(character));
   const characterById = new Map<string, Character>();
   for (const character of [...storedCharacters, ...defaultCharacterList]) characterById.set(character.id, character);
   const characters = [...characterById.values()];
@@ -328,11 +362,9 @@ export function loadInitialState() {
   for (const story of normalizedDefaultStories) {
     const existingMeta = storyMetas.find((meta) => meta.id === story.id);
     const existingWorldAvailable = worlds.some((world) => world.id === story.templateWorldId);
-    const existingCharactersAvailable = story.characterIds.every((id) => characters.some((character) => character.id === id));
-    const existingMetaHasCast = Boolean(existingMeta?.characterIds?.length);
-    const existingMetaHasTemplate = Boolean((existingMeta as any)?.templateWorldId);
-
-    if (!existingMeta || !existingWorldAvailable || !existingCharactersAvailable || !existingMetaHasCast || !existingMetaHasTemplate) {
+    const existingCharactersAvailable = story.castMembers.every((m) => characters.some((character) => character.id === m.templateCharacterId));
+    
+    if (!existingMeta || !existingWorldAvailable || !existingCharactersAvailable) {
       repository.stories.saveStory(story);
       storyMetas = storyMetas.filter((meta) => meta.id !== story.id).concat(storyToMeta(story));
       didSeedStory = true;
@@ -344,8 +376,6 @@ export function loadInitialState() {
     storyMetas = normalizedDefaultStories.map(storyToMeta);
   }
 
-  // Blank-slate metadata architecture: startup loads only lightweight story metadata.
-  // A full story is loaded on demand when the user selects one from Landing.
   repository.activeStory.clear();
 
   return {
@@ -373,10 +403,7 @@ export function loadChatForStory(story: Story, worlds: World[], characters: Char
 
 export function getStoryCharactersFromLists(story: Story | null, characters: Character[]): Character[] {
   if (!story) return [];
-  const ids = Array.isArray(story?.characterIds) ? [...story.characterIds] : [];
-  return uniqueCompact(ids)
-    .map((id) => characters.find((character) => character.id === id))
-    .filter((c): c is Character => !!c);
+  return resolveEffectiveStoryCharacters(story, characters);
 }
 
 export function uniqueCompact(values: any[]): string[] {
@@ -546,8 +573,8 @@ export function remapCastRows(rows: any[], idMap: Record<string, string>) {
   if (!Array.isArray(rows)) return rows;
   return rows.map((row) => {
     if (!row || typeof row !== "object") return row;
-    const oldId = row.characterId || row.id;
-    return { ...row, characterId: idMap[oldId] || oldId };
+    const oldId = row.castMemberId || row.characterId || row.id;
+    return { ...row, castMemberId: idMap[oldId] || oldId };
   });
 }
 

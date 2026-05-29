@@ -51,7 +51,7 @@ describe("useImportExport", () => {
       result.current.exportActiveStory({
         activeStory: stories[0] as any,
         getWorld: (id: string) => worlds.find((world) => world.id === id) as any,
-        getStoryCharacters: (story: any) => characters.filter((character) => story.characterIds.includes(character.id)) as any,
+        getStoryCharacters: (story: any) => characters.filter((character) => (story.castMembers || []).some((m: any) => m.templateCharacterId === character.id)) as any,
         chatHistory: [{ role: "assistant", content: "Saved chat one" }] as any,
       });
     });
@@ -319,8 +319,11 @@ describe("useImportExport", () => {
     expect(importedStory.templateWorldKey).toBe("aldmyr");
     expect(importedStory.templateWorldVersion).toBe(7);
     expect(importedStory.worldOverlay).toMatchObject({ worldPatch: { shortDescription: "Imported overlay summary" } });
-    expect(importedStory.characterIds).toEqual([importedCharacter.id]);
-    expect(importedStory.castState.activeCharacters[0].characterId).toBe(importedCharacter.id);
+    
+    // Check cast member mapping
+    expect(importedStory.castMembers[0].templateCharacterId).toBe(importedCharacter.id);
+    expect(importedStory.castState.activeCharacters[0].castMemberId).toBe(importedStory.castMembers[0].id);
+    
     expect(setActiveStory).toHaveBeenCalledWith(importedStory);
     expect(repository.activeStory.set).toHaveBeenCalledWith(importedStory.id);
     expect(setChatHistory).toHaveBeenCalledWith([{ role: "assistant", content: "Imported chat" }]);

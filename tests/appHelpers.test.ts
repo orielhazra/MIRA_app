@@ -14,7 +14,8 @@ describe("appHelpers", () => {
 
     const storyCharacters = getStoryCharactersFromLists(stories[1], characters);
 
-    expect(storyCharacters.map((character) => character.id)).toEqual(["char-2"]);
+    // Effective character IDs are now cast member IDs
+    expect(storyCharacters.map((character) => character.id)).toEqual(["cast-2"]);
   });
 
   it("chooses the active cast lead from cast state", () => {
@@ -23,15 +24,19 @@ describe("appHelpers", () => {
     const story = {
       ...stories[0],
       castState: {
-        activeCharacters: [{ characterId: "char-2", presence: "active", present: true }],
+        activeCharacters: [{ castMemberId: "cast-2", presence: "active", present: true }],
         relationships: [],
       },
-      characterIds: ["char-1", "char-2"],
+      castMembers: [
+        { id: "cast-1", templateCharacterId: "char-1" },
+        { id: "cast-2", templateCharacterId: "char-2" }
+      ]
     };
 
     const lead = chooseActiveCastLead(story as any, characters);
 
-    expect(lead?.id).toBe("char-2");
+    // lead character from resolveEffectiveStoryCharacters should have the name/details of char-2 but id of cast-2
+    expect(lead?.name).toBe("Ari");
   });
 
   it("parses suggested updates from fenced JSON", () => {

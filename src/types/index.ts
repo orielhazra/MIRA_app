@@ -73,7 +73,10 @@ export interface StoryWorldOverlay {
 }
 
 export interface Character {
-  id: string;
+  id: string;                  // exact template version record id
+  templateKey?: string;        // stable family key
+  templateVersion?: number;    // version number within that family
+
   name: string;
   shortDescription?: string;
   race?: string;
@@ -92,12 +95,48 @@ export interface Character {
   characterRules?: string;
   promptPinned?: boolean;
   lorebook?: LoreEntry[];
-  characterLorebook?: any;
+  characterLorebook?: any; // legacy field if needed
   createdAt?: number;
 }
 
+export interface StoryCharacterOverlay {
+  identityPatch: {
+    name?: string;
+    shortDescription?: string;
+    race?: string;
+    role?: string;
+    aliases?: string[];
+    promptKeywords?: string[];
+    profileSummary?: string;
+    defaultOutfit?: string;
+    description?: string;
+    personality?: string;
+    appearance?: string;
+    backstory?: string;
+    speakingStyle?: string;
+    relationshipToUser?: string;
+    goals?: string;
+    characterRules?: string;
+    promptPinned?: boolean;
+  };
+
+  modifiedLoreEntries: Record<string, Partial<LoreEntry>>;
+  addedLoreEntries: LoreEntry[];
+  removedLoreEntryIds: string[];
+}
+
+export interface StoryCastMember {
+  id: string; // stable story-local cast member id
+
+  templateCharacterId: string;
+  templateCharacterKey?: string;
+  templateCharacterVersion?: number;
+
+  overlay: StoryCharacterOverlay;
+}
+
 export interface CastMemberState {
-  characterId: string;
+  castMemberId: string; // changed from characterId
   presence: "active" | "nearby" | "inactive";
   present?: boolean;
   outfit?: string;
@@ -110,7 +149,7 @@ export interface CastMemberState {
 }
 
 export interface RelationshipState {
-  characterId: string;
+  castMemberId: string; // changed from characterId
   relationshipToUser?: string;
   trustTensionNotes?: string;
   promisesConflicts?: string;
@@ -139,7 +178,7 @@ export interface TaskItem {
 export interface StoryJournal {
   summary: string;
   generalJournal: JournalEntry[];
-  characterJournals: Record<string, JournalEntry[]>;
+  characterJournals: Record<string, JournalEntry[]>; // keyed by castMemberId
   tasks: TaskItem[];
 }
 
@@ -200,8 +239,7 @@ export interface StoryMeta {
   id: string;
   title: string;
   templateWorldId: string;
-  characterIds: string[];
-  characterCount: number;
+  castMemberCount: number; // changed from characterCount
   createdAt?: number;
   lastPlayedAt?: number;
 }
@@ -210,11 +248,14 @@ export interface StoryMeta {
 export interface Story {
   id: string;
   title: string;
+
   templateWorldId: string;
   templateWorldKey?: string;
   templateWorldVersion?: number;
   worldOverlay: StoryWorldOverlay;
-  characterIds: string[];
+
+  castMembers: StoryCastMember[]; // replaced characterIds: string[]
+
   scenario?: string;
   greeting?: string;
   storyLorebook?: LoreEntry[];

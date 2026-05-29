@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS worlds (
 
 CREATE TABLE IF NOT EXISTS characters (
   id TEXT PRIMARY KEY,
+  templateKey TEXT,
+  templateVersion INTEGER DEFAULT 1,
   name TEXT NOT NULL,
   shortDescription TEXT,
   race TEXT,
@@ -44,7 +46,7 @@ CREATE TABLE IF NOT EXISTS stories (
   templateWorldKey TEXT,
   templateWorldVersion INTEGER DEFAULT 1,
   worldOverlay TEXT,
-  characterIds TEXT,
+  castMembers TEXT,
   scenario TEXT,
   greeting TEXT,
   storyLorebook TEXT,

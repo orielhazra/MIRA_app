@@ -8,6 +8,7 @@ import {
   StoryJournal,
   CurrentContext,
   CastState,
+  StoryCastMember,
 } from "../types/index";
 import {
   normalizeCastState,
@@ -30,6 +31,8 @@ import {
   syncDirectorNotesFromContext,
   syncCurrentContextFromDirectorNotes,
 } from "../utils/appHelpers";
+import { createEmptyCharacterOverlay } from "../constants/defaultData";
+import { resolveEffectiveStoryCharacters } from "../services/storyCharacters";
 
 interface ActiveStorySaveDeps {
   activeStory: Story | null;
@@ -46,6 +49,7 @@ interface SaveMemoryDeps extends ActiveStorySaveDeps {
 }
 
 interface SaveCastDeps extends ActiveStorySaveDeps {
+  castMembers: StoryCastMember[];
   activeStoryCharacters: Character[];
   nextCastState: CastState;
 }
@@ -74,9 +78,9 @@ export default function useStoryActions() {
     saveActiveStory({ ...activeStory, storyMemory: normalizeStoryMemory(nextMemory) });
   }
 
-  function saveCastState({ activeStory, saveActiveStory, activeStoryCharacters, nextCastState }: SaveCastDeps) {
+  function saveCastState({ activeStory, saveActiveStory, castMembers, activeStoryCharacters, nextCastState }: SaveCastDeps) {
     if (!activeStory || !saveActiveStory) return;
-    saveActiveStory({ ...activeStory, castState: normalizeCastState(nextCastState, activeStoryCharacters) });
+    saveActiveStory({ ...activeStory, castState: normalizeCastState(nextCastState, castMembers, activeStoryCharacters) });
   }
 
   function saveDirectorNotes({ activeStory, saveActiveStory, notes }: SaveNotesDeps) {
@@ -103,13 +107,15 @@ export default function useStoryActions() {
       || (activeWorld && worlds.find((world: World) => world.id === activeWorld.id))
       || worlds[0]
       || null;
+    
+    // We'll keep characterIds in the draft for UI convenience, then convert to castMembers on start.
     const draft = {
       title: "Untitled Story",
       templateWorldId: templateWorld?.id || "",
       templateWorldKey: templateWorld?.templateKey || templateWorld?.id || "",
       templateWorldVersion: Number(templateWorld?.templateVersion || 1),
       worldOverlay: createEmptyWorldOverlay(),
-      characterIds: uniqueCompact([activeCharacter?.id || characters[0]?.id || ""]),
+      characterIds: uniqueCompact([activeCharacter?.templateCharacterId || activeCharacter?.id || characters[0]?.id || ""]),
       scenario: "",
       greeting: "",
       storyLorebook: [],
@@ -150,8 +156,8 @@ export default function useStoryActions() {
     }
 
     const story = normalizeStory({ ...loadedStory, lastPlayedAt: Date.now() }, worlds, characters);
-    const storyCharacters = getStoryCharactersFromLists(story, characters);
-    const leadCharacter = chooseActiveCastLead(story, storyCharacters) || characters[0] || null;
+    const storyCharacters = resolveEffectiveStoryCharacters(story, characters);
+    const leadCharacter = chooseActiveCastLead(story, storyCharacters) || storyCharacters[0] || characters[0] || null;
     const fallbackWorld = resolveEffectiveWorld(story, worlds) || worlds.find((item: World) => item.id === story.templateWorldId) || worlds[0] || null;
 
     let nextChatHistory: any[] = [];
@@ -178,7 +184,11 @@ export default function useStoryActions() {
     repository?.activeStory.set(story.id);
     setChatHistory?.(nextChatHistory);
     setActiveLoreMemory?.(nextLoreMemory);
-    setSelectedCharacterSheetId?.(leadCharacter?.id || characters[0]?.id || "");
+    
+    // Map lead character back to template ID for the library view
+    const leadCastMember = story.castMembers.find(m => m.id === leadCharacter?.id);
+    setSelectedCharacterSheetId?.(leadCastMember?.templateCharacterId || characters[0]?.id || "");
+    
     setSelectedWorldSheetId?.(story.templateWorldId || worlds[0]?.id || "");
     setStoryDraft?.(null);
     setActiveView?.("story");
@@ -210,6 +220,14 @@ export default function useStoryActions() {
     if (!world) return { error: "Please choose a valid world." };
     if (selectedCharacters.length === 0) return { error: "Please choose at least one story character." };
 
+    const castMembers: StoryCastMember[] = selectedCharacters.map(char => ({
+      id: createId("cast"),
+      templateCharacterId: char.id,
+      templateCharacterKey: char.templateKey || char.id,
+      templateCharacterVersion: char.templateVersion || 1,
+      overlay: createEmptyCharacterOverlay()
+    }));
+
     const baseStory = normalizeStory(
       {
         id: createId("story"),
@@ -218,13 +236,13 @@ export default function useStoryActions() {
         templateWorldKey: String(draft.templateWorldKey || world.templateKey || world.id),
         templateWorldVersion: Number(draft.templateWorldVersion || world.templateVersion || 1),
         worldOverlay: createEmptyWorldOverlay(),
-        characterIds: selectedCharacters.map((item: Character) => item.id),
+        castMembers,
         scenario: draft.scenario?.trim() || "",
         greeting: draft.greeting?.trim() || "The scene begins.",
         storyLorebook: normalizeStoredLorebook(draft.storyLorebook || []),
         storyMemory: normalizeStoryMemory({}),
         currentContext: createInitialCurrentContext(world, selectedCharacters),
-        castState: createInitialCastState(selectedCharacters),
+        castState: createInitialCastState(castMembers, characters),
         createdAt: Date.now(),
         lastPlayedAt: Date.now(),
       },
@@ -289,8 +307,8 @@ export default function useStoryActions() {
     if (!world) return alert("World not found.");
     if (!confirm("Use this world in the active story? This will reset the story chat and rebuild Current Context for the new world.")) return;
 
-    const storyCharacters = getStoryCharactersFromLists(activeStory, characters);
-    const rebuiltContext = createInitialCurrentContext(world, storyCharacters);
+    const effectiveCharacters = resolveEffectiveStoryCharacters(activeStory, characters);
+    const rebuiltContext = createInitialCurrentContext(world, effectiveCharacters);
     const updatedStory = {
       ...activeStory,
       templateWorldId: world.id,
@@ -302,7 +320,7 @@ export default function useStoryActions() {
     };
 
     saveActiveStory?.(updatedStory);
-    resetCurrentStoryState?.(activeStory.id, updatedStory, world, storyCharacters);
+    resetCurrentStoryState?.(activeStory.id, updatedStory, world, effectiveCharacters);
     setSelectedWorldSheetId?.(world.id);
     setActiveView?.("story");
   }

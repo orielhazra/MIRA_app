@@ -1,4 +1,5 @@
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../src/services/normalizers";
+import { createEmptyCharacterOverlay } from "../src/constants/defaultData";
 
 export function createAppFixtures() {
   const worlds = [
@@ -14,8 +15,7 @@ export function createAppFixtures() {
         shortDescription: "Lead one",
         relationshipToUser: "Curious about the user",
         goals: "Find answers",
-      },
-      worlds
+      }
     ),
     normalizeCharacter(
       {
@@ -24,8 +24,7 @@ export function createAppFixtures() {
         shortDescription: "Lead two",
         relationshipToUser: "Wary of the user",
         goals: "Protect the station",
-      },
-      worlds
+      }
     ),
   ];
 
@@ -35,7 +34,15 @@ export function createAppFixtures() {
         id: "story-1",
         title: "Story One",
         templateWorldId: "world-1",
-        characterIds: ["char-1"],
+        castMembers: [
+          {
+            id: "cast-1",
+            templateCharacterId: "char-1",
+            templateCharacterKey: "char-1",
+            templateCharacterVersion: 1,
+            overlay: createEmptyCharacterOverlay()
+          }
+        ],
         greeting: "Opening one",
       },
       worlds,
@@ -46,7 +53,15 @@ export function createAppFixtures() {
         id: "story-2",
         title: "Story Two",
         templateWorldId: "world-2",
-        characterIds: ["char-2"],
+        castMembers: [
+          {
+            id: "cast-2",
+            templateCharacterId: "char-2",
+            templateCharacterKey: "char-2",
+            templateCharacterVersion: 1,
+            overlay: createEmptyCharacterOverlay()
+          }
+        ],
         greeting: "Opening two",
       },
       worlds,

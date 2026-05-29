@@ -185,8 +185,11 @@ export function buildSmartPromptContext({ story, world, character, characters = 
   const allCharacters = normalizePromptCharacters(characters, character);
   const context = story?.currentContext || ({} as CurrentContext);
   const castState = story?.castState || ({} as CastState);
-  const characterStateById = new Map<string, any>((castState.activeCharacters || []).map((row: any) => [row.characterId, row]));
-  const relationshipById = new Map<string, any>((castState.relationships || []).map((row: any) => [row.characterId, row]));
+  
+  // characterStateById and relationshipById should now use castMemberId
+  const characterStateById = new Map<string, any>((castState.activeCharacters || []).map((row: any) => [row.castMemberId || row.characterId, row]));
+  const relationshipById = new Map<string, any>((castState.relationships || []).map((row: any) => [row.castMemberId || row.characterId, row]));
+  
   const triggerText = normalizeMatchText([
     story?.title,
     story?.scenario,
@@ -211,9 +214,10 @@ export function buildSmartPromptContext({ story, world, character, characters = 
   const nearbyIds = new Set<string>();
   for (const row of castState.activeCharacters || []) {
     const presence = normalizePresence(row);
-    if (!row?.characterId) continue;
-    if (presence === "active") activeIds.add(row.characterId);
-    if (presence === "nearby") nearbyIds.add(row.characterId);
+    const id = row?.castMemberId || row?.characterId;
+    if (!id) continue;
+    if (presence === "active") activeIds.add(id);
+    if (presence === "nearby") nearbyIds.add(id);
   }
   if (activeIds.size === 0 && allCharacters[0]?.id) activeIds.add(allCharacters[0].id);
 

@@ -18,7 +18,7 @@ describe("sqliteSchema", () => {
     );
 
     expect(missingWorldColumns).toEqual(["templateKey", "templateVersion", "worldLorebook"]);
-    expect(missingStoryColumns).toEqual(["templateWorldId", "templateWorldKey", "templateWorldVersion", "worldOverlay", "lastPlayedAt"]);
+    expect(missingStoryColumns).toEqual(["templateWorldId", "templateWorldKey", "templateWorldVersion", "worldOverlay", "castMembers", "lastPlayedAt"]);
   });
 
   it("defines create statements for every core table", () => {
@@ -39,25 +39,29 @@ describe("sqliteSchema", () => {
     expect(SQLITE_CREATE_TABLE_STATEMENTS.stories).toContain("templateWorldVersion INTEGER");
     expect(SQLITE_CREATE_TABLE_STATEMENTS.stories).toContain("worldOverlay TEXT");
     expect(SQLITE_CREATE_TABLE_STATEMENTS.stories).toContain("storyLorebook TEXT");
+    expect(SQLITE_CREATE_TABLE_STATEMENTS.stories).toContain("castMembers TEXT");
+    
+    expect(SQLITE_CREATE_TABLE_STATEMENTS.characters).toContain("templateKey TEXT");
+    expect(SQLITE_CREATE_TABLE_STATEMENTS.characters).toContain("templateVersion INTEGER");
   });
 
   it("declares compatibility patches for drifted schemas", () => {
     expect(SQLITE_SCHEMA_PATCHES).toContainEqual(
       expect.objectContaining({
-        table: "worlds",
+        table: "characters",
         column: "templateKey",
       })
     );
     expect(SQLITE_SCHEMA_PATCHES).toContainEqual(
       expect.objectContaining({
-        table: "stories",
-        column: "templateWorldId",
+        table: "characters",
+        column: "templateVersion",
       })
     );
     expect(SQLITE_SCHEMA_PATCHES).toContainEqual(
       expect.objectContaining({
         table: "stories",
-        column: "worldOverlay",
+        column: "castMembers",
       })
     );
   });

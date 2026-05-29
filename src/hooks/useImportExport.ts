@@ -1,6 +1,6 @@
 // Import/Export hook — JSON file handling for stories, characters, and worlds.
 
-import { Character, World, Story, ChatMessage } from "../types/index";
+import { Character, World, Story, ChatMessage, StoryCastMember } from "../types/index";
 import { normalizeCharacter, normalizeChatMessage, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { createEmptyWorldOverlay, getTemplateWorldByKeyAndVersion, resolveEffectiveWorld } from "../services/storyWorld";
 import { buildOpeningMessage } from "../services/prompt";
@@ -15,6 +15,7 @@ import {
   remapImportedCastStateIds,
   buildStoryExportBundle,
 } from "../utils/appHelpers";
+import { createEmptyCharacterOverlay } from "../constants/defaultData";
 
 interface ExportDeps {
   character?: Character;
@@ -29,7 +30,7 @@ interface CharacterImportDeps {
   parsed: any;
   worlds: World[];
   characters: Character[];
-  saveCharacterList: (characters: Character[], sourceWorlds?: World[]) => void;
+  saveCharacterList: (characters: Character[]) => void;
   setSelectedCharacterSheetId: (id: string) => void;
   setActiveView: (view: string) => void;
 }
@@ -47,7 +48,7 @@ interface StoryImportDeps {
   worlds: World[];
   characters: Character[];
   saveWorldList: (worlds: World[]) => void;
-  saveCharacterList: (characters: Character[], sourceWorlds?: World[]) => void;
+  saveCharacterList: (characters: Character[]) => void;
   saveActiveStory: (story: Story) => void;
   setActiveStory: (story: Story) => void;
   repository: any;
@@ -107,7 +108,6 @@ export default function useImportExport() {
 
   function importCharacterBundle({
     parsed,
-    worlds,
     characters,
     saveCharacterList,
     setSelectedCharacterSheetId,
@@ -127,11 +127,10 @@ export default function useImportExport() {
         name: imported.name || "Imported Character",
         shortDescription: imported.shortDescription || "Imported character",
         lorebook: Array.isArray(imported.lorebook) ? imported.lorebook : imported.characterLorebook || [],
-      },
-      worlds
+      }
     );
 
-    saveCharacterList([...characters, newCharacter], worlds);
+    saveCharacterList([...characters, newCharacter]);
     setSelectedCharacterSheetId(newCharacter.id);
     setActiveView("character");
   }
@@ -199,6 +198,8 @@ export default function useImportExport() {
     hydrateBundleLore(bundle, importedStorySource, importedWorldSource, importedCharacterSources);
 
     const oldToNewCharacterIds: Record<string, string> = {};
+    const oldToNewCastMemberIds: Record<string, string> = {};
+
     const importedTemplateKey = importedStorySource.templateWorldKey || importedWorldSource.templateKey || importedWorldSource.id || createId("world_template");
     const importedTemplateVersion = Number(importedStorySource.templateWorldVersion || importedWorldSource.templateVersion || 1);
     const reusedWorld = getTemplateWorldByKeyAndVersion(importedTemplateKey, importedTemplateVersion, worlds);
@@ -222,29 +223,38 @@ export default function useImportExport() {
           lorebook: Array.isArray(characterSource.lorebook)
             ? characterSource.lorebook
             : characterSource.characterLorebook || [],
-        },
-        [newWorld]
+        }
       );
     });
 
-    const mappedCharacterIds = Array.isArray(importedStorySource.characterIds)
-      ? importedStorySource.characterIds.map((oldId: string) => oldToNewCharacterIds[oldId]).filter(Boolean)
-      : [];
-
-    const fallbackCharacterId =
-      mappedCharacterIds[0] ||
-      newCharacters[0]?.id ||
-      "";
-
-    if (!fallbackCharacterId) {
-      alert("Could not import story because no valid character was found.");
-      return;
+    // Handle cast member remapping
+    let castMembers: StoryCastMember[] = [];
+    if (Array.isArray(importedStorySource.castMembers)) {
+      castMembers = importedStorySource.castMembers.map((m: any) => {
+        const newCastMemberId = createId("cast");
+        oldToNewCastMemberIds[m.id] = newCastMemberId;
+        return {
+          ...m,
+          id: newCastMemberId,
+          templateCharacterId: oldToNewCharacterIds[m.templateCharacterId] || m.templateCharacterId
+        };
+      });
+    } else if (Array.isArray(importedStorySource.characterIds)) {
+      castMembers = importedStorySource.characterIds.map((oldId: string) => {
+        const newCastMemberId = createId("cast");
+        oldToNewCastMemberIds[oldId] = newCastMemberId;
+        return {
+          id: newCastMemberId,
+          templateCharacterId: oldToNewCharacterIds[oldId] || oldId,
+          templateCharacterKey: "",
+          templateCharacterVersion: 1,
+          overlay: createEmptyCharacterOverlay()
+        };
+      });
     }
 
-    const remappedCharacterIds = mappedCharacterIds.length ? mappedCharacterIds : [fallbackCharacterId];
-
-    const remappedCurrentContext = remapImportedContextCastIds(importedStorySource.currentContext, oldToNewCharacterIds);
-    const remappedCastState = remapImportedCastStateIds(importedStorySource.castState, oldToNewCharacterIds);
+    const remappedCurrentContext = remapImportedContextCastIds(importedStorySource.currentContext, oldToNewCastMemberIds);
+    const remappedCastState = remapImportedCastStateIds(importedStorySource.castState, oldToNewCastMemberIds);
 
     const newStory = normalizeStory(
       {
@@ -255,7 +265,7 @@ export default function useImportExport() {
         templateWorldKey: importedStorySource.templateWorldKey || newWorld.templateKey,
         templateWorldVersion: Number(importedStorySource.templateWorldVersion || newWorld.templateVersion || 1),
         worldOverlay: importedStorySource.worldOverlay || createEmptyWorldOverlay(),
-        characterIds: remappedCharacterIds,
+        castMembers,
         currentContext: remappedCurrentContext,
         castState: remappedCastState,
         storyLorebook: Array.isArray(importedStorySource.storyLorebook) ? importedStorySource.storyLorebook : [],
@@ -265,17 +275,21 @@ export default function useImportExport() {
       newCharacters
     );
 
-    const nextWorlds = reusedWorld ? [...worlds] : [...worlds, newWorld];
-    const nextCharacters = [...characters, ...newCharacters];
+    if (!reusedWorld) {
+      saveWorldList([...worlds, newWorld]);
+    }
 
-    saveWorldList(nextWorlds);
-    saveCharacterList(nextCharacters, nextWorlds);
+    if (newCharacters.length > 0) {
+      saveCharacterList([...characters, ...newCharacters]);
+    }
+
     setActiveStory(newStory);
     saveActiveStory(newStory);
 
     repository?.activeStory.set(newStory.id);
 
     const effectiveWorld = resolveEffectiveWorld(newStory, [newWorld]) || newWorld;
+    const fallbackCharacter = newCharacters[0];
     const importedChat = Array.isArray(bundle.chatHistory)
       ? bundle.chatHistory.map(normalizeChatMessage)
       : [
@@ -283,7 +297,7 @@ export default function useImportExport() {
             role: "assistant",
             content: buildOpeningMessage(
               newStory,
-              newCharacters.find((item) => item.id === fallbackCharacterId) || newCharacters[0],
+              fallbackCharacter,
               effectiveWorld,
               newCharacters
             ),
@@ -294,7 +308,7 @@ export default function useImportExport() {
     repository?.chats.save(newStory.id, importedChat);
     setActiveLoreMemory([]);
     repository?.loreMemory.save(newStory.id, []);
-    setSelectedCharacterSheetId(fallbackCharacterId);
+    setSelectedCharacterSheetId(fallbackCharacter?.id || "");
     setSelectedWorldSheetId(newWorld.id);
     setStoryDraft(null);
     setActiveView("story");

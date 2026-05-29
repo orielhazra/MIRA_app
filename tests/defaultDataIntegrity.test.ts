@@ -17,8 +17,8 @@ describe("default data integrity", () => {
     for (const story of defaultStories as any[]) {
       const world = worldById.get(story.templateWorldId);
       expect(Boolean(world), `${story.title} has missing world ${story.templateWorldId}`).toBe(true);
-      expect(Array.isArray(story.characterIds), `${story.title} should have characterIds`).toBe(true);
-      expect(story.characterIds.length, `${story.title} should have a non-empty cast`).toBeGreaterThan(0);
+      expect(Array.isArray(story.castMembers), `${story.title} should have castMembers`).toBe(true);
+      expect(story.castMembers.length, `${story.title} should have a non-empty cast`).toBeGreaterThan(0);
       expect(story.templateWorldKey, `${story.title} should declare templateWorldKey`).toBe(world?.templateKey);
       expect(story.templateWorldVersion, `${story.title} should declare templateWorldVersion`).toBe(world?.templateVersion);
       expect(story.worldOverlay, `${story.title} should declare worldOverlay`).toBeTruthy();
@@ -32,15 +32,15 @@ describe("default data integrity", () => {
         removedLoreEntryIds: [],
       });
 
-      for (const characterId of story.characterIds) {
-        expect(characterIds.has(characterId), `${story.title} has missing character ${characterId}`).toBe(true);
+      for (const member of story.castMembers) {
+        expect(characterIds.has(member.templateCharacterId), `${story.title} has missing character ${member.templateCharacterId}`).toBe(true);
       }
     }
   });
 
   it("normalization assigns stable ids to default world and character lore", () => {
     const normalizedWorlds = defaultWorlds.map((world: any) => normalizeWorld(world));
-    const normalizedCharacters = defaultCharacters.map((character: any) => normalizeCharacter(character, normalizedWorlds));
+    const normalizedCharacters = defaultCharacters.map((character: any) => normalizeCharacter(character));
 
     for (const world of normalizedWorlds) {
       for (const entry of world.worldLorebook || []) {

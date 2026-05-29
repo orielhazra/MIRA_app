@@ -1,9 +1,9 @@
 import { 
   DirectorNotes, StoryJournal, CurrentContext, CastState, 
   LoreEntry, World, WorldLocation, StoryWorldOverlay, Character, Story, ChatMessage,
-  CastMemberState, RelationshipState, ObjectContext
+  CastMemberState, RelationshipState, ObjectContext, StoryCharacterOverlay, StoryCastMember
 } from "../types/index";
-import { defaultWorlds } from "../constants/defaultData";
+import { defaultWorlds, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { clampNumber, createId, parseKeywords } from "../utils/helpers";
 
 // Safe fallback defaults for normalization
@@ -57,10 +57,10 @@ export function normalizeStoryMemory(memory: any): StoryJournal {
   
   const characterJournals: Record<string, any[]> = {};
   if (source.characterJournals && typeof source.characterJournals === "object") {
-    for (const [charId, entries] of Object.entries(source.characterJournals)) {
+    for (const [castMemberId, entries] of Object.entries(source.characterJournals)) {
       if (Array.isArray(entries)) {
-        characterJournals[charId] = entries.map((entry: any, index: number) => ({
-          id: String(entry.id || `${charId}-${index}`),
+        characterJournals[castMemberId] = entries.map((entry: any, index: number) => ({
+          id: String(entry.id || `${castMemberId}-${index}`),
           content: String(entry.content || ""),
           active: entry.active !== false,
           createdAt: Number(entry.createdAt || Date.now())
@@ -154,28 +154,33 @@ export function normalizeCurrentContext(context: any = {}): CurrentContext {
   };
 }
 
-export function normalizeCastState(castState: any = {}, characters: Character[] = [], legacyContext: any = {}): CastState {
+export function normalizeCastState(castState: any = {}, castMembers: StoryCastMember[] = [], characters: Character[] = [], legacyContext: any = {}): CastState {
   const source = castState && typeof castState === "object" ? castState : {};
   const legacy = legacyContext && typeof legacyContext === "object" ? legacyContext : {};
   const rawCharacterStates = Array.isArray(source.activeCharacters)
     ? source.activeCharacters
     : (Array.isArray(legacy.activeCharacters) ? legacy.activeCharacters : []);
+  
+  // existingStateById should now handle castMemberId primary, or legacy characterId
   const existingStateById = new Map<string, any>(rawCharacterStates
     .map((item: any) => item && typeof item === "object" ? item : {})
-    .map((row: any) => [String(row.characterId || row.id || ""), row])
+    .map((row: any) => [String(row.castMemberId || row.characterId || row.id || ""), row])
     .filter(([id]) => id));
 
-  const orderedCharacterIds = uniqueCompact([
-    ...(characters || []).map((character) => character?.id),
+  const orderedCastMemberIds = uniqueCompact([
+    ...(castMembers || []).map((m) => m.id),
     ...existingStateById.keys()
   ]);
 
-  const activeCharacters: CastMemberState[] = orderedCharacterIds.map((characterId) => {
-    const row = existingStateById.get(characterId) || {};
-    const character: Partial<Character> = (characters || []).find((item) => item?.id === characterId) || {};
+  const activeCharacters: CastMemberState[] = orderedCastMemberIds.map((castMemberId) => {
+    const row = existingStateById.get(castMemberId) || {};
+    const castMember = (castMembers || []).find((m) => m.id === castMemberId);
+    const templateId = castMember?.templateCharacterId || castMemberId;
+    const character: Partial<Character> = (characters || []).find((item) => item?.id === templateId) || {};
+    
     const presence = normalizePresence(row.presence, row.present);
     return {
-      characterId,
+      castMemberId,
       presence,
       present: presence !== "inactive",
       outfit: String(row.outfit || character.defaultOutfit || ""),
@@ -186,26 +191,29 @@ export function normalizeCastState(castState: any = {}, characters: Character[] 
       temporarySecret: String(row.temporarySecret || row.secret || ""),
       sceneInstruction: String(row.sceneInstruction || row.instruction || row.note || "")
     };
-  }).filter((item) => item.characterId);
+  }).filter((item) => item.castMemberId);
 
   const rawRelationships = Array.isArray(source.relationships)
     ? source.relationships
     : (Array.isArray(legacy.relationships) ? legacy.relationships : []);
   const existingRelationshipById = new Map<string, any>(rawRelationships
     .map((item: any) => item && typeof item === "object" ? item : {})
-    .map((row: any) => [String(row.characterId || row.id || ""), row])
+    .map((row: any) => [String(row.castMemberId || row.characterId || row.id || ""), row])
     .filter(([id]) => id));
 
-  const relationships: RelationshipState[] = orderedCharacterIds.map((characterId) => {
-    const row = existingRelationshipById.get(characterId) || {};
-    const character: Partial<Character> = (characters || []).find((item) => item?.id === characterId) || {};
+  const relationships: RelationshipState[] = orderedCastMemberIds.map((castMemberId) => {
+    const row = existingRelationshipById.get(castMemberId) || {};
+    const castMember = (castMembers || []).find((m) => m.id === castMemberId);
+    const templateId = castMember?.templateCharacterId || castMemberId;
+    const character: Partial<Character> = (characters || []).find((item) => item?.id === templateId) || {};
+    
     return {
-      characterId,
+      castMemberId,
       relationshipToUser: String(row.relationshipToUser || row.relationship || character.relationshipToUser || ""),
       trustTensionNotes: String(row.trustTensionNotes || row.trust || row.tension || ""),
       promisesConflicts: String(row.promisesConflicts || row.promises || row.conflicts || "")
     };
-  }).filter((item) => item.characterId || item.relationshipToUser.trim() || item.trustTensionNotes.trim());
+  }).filter((item) => item.castMemberId || item.relationshipToUser.trim() || item.trustTensionNotes.trim());
 
   return {
     activeCharacters,
@@ -280,9 +288,12 @@ export function normalizeWorldLocations(locations: any): WorldLocation[] {
     .filter((location) => location.name.trim() || location.description.trim());
 }
 
-export function normalizeCharacter(character: any = {}, worlds: World[] = []): Character {
+export function normalizeCharacter(character: any = {}): Character {
+  const id = String(character.id || createId("character"));
   return {
-    id: String(character.id || createId("character")),
+    id,
+    templateKey: String(character.templateKey || id),
+    templateVersion: Number(character.templateVersion || 1),
     name: String(character.name || "Unnamed Character"),
     shortDescription: String(character.shortDescription || "Roleplay character"),
     race: String(character.race || character.species || character.type || ""),
@@ -300,20 +311,33 @@ export function normalizeCharacter(character: any = {}, worlds: World[] = []): C
     relationshipToUser: String(character.relationshipToUser || ""),
     goals: String(character.goals || ""),
     characterRules: String(character.characterRules || ""),
-    lorebook: normalizeStoredLorebook(character.lorebook || character.characterLorebook)
+    lorebook: normalizeStoredLorebook(character.lorebook || character.characterLorebook),
+    createdAt: Number.isFinite(Number(character.createdAt)) ? Number(character.createdAt) : undefined,
   };
 }
 
 export function normalizeStory(story: any = {}, worlds: World[] = [], characters: Character[] = []): Story {
   const fallbackWorld = normalizeWorld(worlds?.[0] || defaultWorlds[0]);
-  const fallbackCharacter = characters?.[0];
-  const rawCharacterIds = Array.isArray(story.characterIds)
-    ? story.characterIds.map(String).filter(Boolean)
-    : [];
-  const characterIds = uniqueCompact(rawCharacterIds.length ? rawCharacterIds : [fallbackCharacter?.id || ""]);
-  const storyCharacters = (characters || []).filter((character) => characterIds.includes(character.id));
+  
   const templateWorldId = String(story.templateWorldId || fallbackWorld?.id || "liminal-station");
   const templateWorld = normalizeWorld((worlds || []).find((world) => world.id === templateWorldId) || fallbackWorld);
+
+  // Handle conversion from legacy characterIds to castMembers
+  let castMembers: StoryCastMember[] = [];
+  if (Array.isArray(story.castMembers)) {
+    castMembers = story.castMembers.map(normalizeStoryCastMember);
+  } else if (Array.isArray(story.characterIds)) {
+    castMembers = story.characterIds.map((charId: string) => {
+      const template = characters.find(c => c.id === charId);
+      return {
+        id: createId("cast"),
+        templateCharacterId: charId,
+        templateCharacterKey: template?.templateKey || charId,
+        templateCharacterVersion: template?.templateVersion || 1,
+        overlay: createEmptyCharacterOverlay()
+      };
+    });
+  }
 
   return {
     id: String(story.id || createId("story")),
@@ -322,7 +346,7 @@ export function normalizeStory(story: any = {}, worlds: World[] = [], characters
     templateWorldKey: String(story.templateWorldKey || templateWorld.templateKey || templateWorldId),
     templateWorldVersion: Number(story.templateWorldVersion || templateWorld.templateVersion || 1),
     worldOverlay: normalizeStoryWorldOverlay(story.worldOverlay),
-    characterIds,
+    castMembers,
     scenario: String(story.scenario || ""),
     greeting: String(story.greeting || "The scene begins."),
     createdAt: Number(story.createdAt || Date.now()),
@@ -332,7 +356,7 @@ export function normalizeStory(story: any = {}, worlds: World[] = [], characters
     storyMemory: normalizeStoryMemory(story.storyMemory || story.memory || {}),
     directorNotes: normalizeDirectorNotes(story.directorNotes),
     currentContext: normalizeCurrentContext(story.currentContext),
-    castState: normalizeCastState(story.castState, storyCharacters, story.currentContext)
+    castState: normalizeCastState(story.castState, castMembers, characters, story.currentContext)
   };
 }
 
@@ -353,11 +377,40 @@ export function normalizeStoryWorldOverlay(overlay: any = {}): StoryWorldOverlay
   };
 }
 
+export function normalizeStoryCharacterOverlay(overlay: any = {}): StoryCharacterOverlay {
+  const source = overlay && typeof overlay === "object" ? overlay : {};
+  const identityFields = [
+    "name", "shortDescription", "race", "role", "aliases", "promptKeywords", 
+    "profileSummary", "defaultOutfit", "description", "personality", 
+    "appearance", "backstory", "speakingStyle", "relationshipToUser", 
+    "goals", "characterRules", "promptPinned"
+  ];
+  return {
+    identityPatch: normalizePartialRecord(source.identityPatch, identityFields),
+    modifiedLoreEntries: source.modifiedLoreEntries && typeof source.modifiedLoreEntries === "object"
+      ? Object.fromEntries(Object.entries(source.modifiedLoreEntries).map(([id, patch]) => [String(id), normalizePartialRecord(patch)]))
+      : {},
+    addedLoreEntries: normalizeStoredLorebook(source.addedLoreEntries || []),
+    removedLoreEntryIds: Array.isArray(source.removedLoreEntryIds) ? source.removedLoreEntryIds.map(String).filter(Boolean) : [],
+  };
+}
+
+export function normalizeStoryCastMember(castMember: any = {}): StoryCastMember {
+  const source = castMember && typeof castMember === "object" ? castMember : {};
+  return {
+    id: String(source.id || createId("cast")),
+    templateCharacterId: String(source.templateCharacterId || ""),
+    templateCharacterKey: String(source.templateCharacterKey || ""),
+    templateCharacterVersion: Number(source.templateCharacterVersion || 1),
+    overlay: normalizeStoryCharacterOverlay(source.overlay)
+  };
+}
+
 function normalizePartialRecord(value: any, allowedFields?: string[]): Record<string, any> {
   if (!value || typeof value !== "object") return {};
   const entries = Object.entries(value)
     .filter(([key]) => !allowedFields || allowedFields.includes(key))
-    .map(([key, fieldValue]) => [key, typeof fieldValue === "string" ? String(fieldValue) : fieldValue])
+    .map(([key, fieldValue]) => [key, Array.isArray(fieldValue) ? fieldValue.map(String) : (typeof fieldValue === "string" ? String(fieldValue) : fieldValue)])
     .filter(([, fieldValue]) => fieldValue !== undefined);
   return Object.fromEntries(entries);
 }

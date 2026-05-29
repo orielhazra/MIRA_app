@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 
-export default function CastStatePanel({ castState, characters, status, onSave }) {
-  const characterById = new Map<string, any>((characters || []).map((character) => [character.id, character]));
-  const [draft, setDraft] = useState(() => buildCastStateDraft(castState, characters));
+export default function CastStatePanel({ activeStory, effectiveCharacters, status, onSave }) {
+  const [draft, setDraft] = useState(() => buildCastStateDraft(activeStory?.castState, activeStory?.castMembers, effectiveCharacters));
   const [dirty, setDirty] = useState(false);
-  const contextResetKey = `${(characters || []).map((character) => character.id).join("|")}::${JSON.stringify(castState || {})}`;
+  const contextResetKey = `${(activeStory?.castMembers || []).map((m) => m.id).join("|")}::${JSON.stringify(activeStory?.castState || {})}`;
 
   useEffect(() => {
-    setDraft(buildCastStateDraft(castState, characters));
+    setDraft(buildCastStateDraft(activeStory?.castState, activeStory?.castMembers, effectiveCharacters));
     setDirty(false);
   }, [contextResetKey]);
 
@@ -49,14 +48,15 @@ export default function CastStatePanel({ castState, characters, status, onSave }
 
       <div className="context-card-list">
         {draft.activeCharacters.map((row, index) => {
-          const character = characterById.get(row.characterId);
-          const relationship: any = draft.relationships.find((item) => item.characterId === row.characterId) || {};
-          const relationshipIndex = draft.relationships.findIndex((item) => item.characterId === row.characterId);
+          const castMember = activeStory?.castMembers.find(m => m.id === row.castMemberId);
+          const character = effectiveCharacters.find(c => c.id === castMember?.templateCharacterId || c.id === row.castMemberId);
+          const relationship: any = draft.relationships.find((item) => item.castMemberId === row.castMemberId) || {};
+          const relationshipIndex = draft.relationships.findIndex((item) => item.castMemberId === row.castMemberId);
           const presence = getRowPresence(row);
           return (
-            <details key={`${row.characterId}-${index}`} className="context-card">
+            <details key={`${row.castMemberId}-${index}`} className="context-card">
               <summary>
-                <strong>{character?.name || row.characterId || "Character"}</strong>
+                <strong>{character?.name || row.castMemberId || "Character"}</strong>
                 <span>{formatPresenceLabel(presence)}</span>
               </summary>
 
@@ -105,13 +105,14 @@ function formatPresenceLabel(presence) {
   return "Active";
 }
 
-function buildCastStateDraft(castState, characters = []) {
+function buildCastStateDraft(castState, castMembers = [], effectiveCharacters = []) {
   const source = castState && typeof castState === "object" ? castState : {};
-  const activeCharacters = (characters || []).map((character) => {
-    const existing = (source.activeCharacters || []).find((row) => row.characterId === character.id) || {};
+  const activeCharacters = castMembers.map((member) => {
+    const existing = (source.activeCharacters || []).find((row) => row.castMemberId === member.id || row.characterId === member.templateCharacterId) || {};
+    const character = effectiveCharacters.find(c => c.id === member.templateCharacterId) || {};
     const presence = getRowPresence(existing);
     return {
-      characterId: character.id,
+      castMemberId: member.id,
       presence,
       present: presence !== "inactive",
       outfit: existing.outfit || character.defaultOutfit || "",
@@ -124,10 +125,11 @@ function buildCastStateDraft(castState, characters = []) {
     };
   });
 
-  const relationships = (characters || []).map((character) => {
-    const existing = (source.relationships || []).find((row) => row.characterId === character.id) || {};
+  const relationships = castMembers.map((member) => {
+    const existing = (source.relationships || []).find((row) => row.castMemberId === member.id || row.characterId === member.templateCharacterId) || {};
+    const character = effectiveCharacters.find(c => c.id === member.templateCharacterId) || {};
     return {
-      characterId: character.id,
+      castMemberId: member.id,
       relationshipToUser: existing.relationshipToUser || character.relationshipToUser || "",
       trustTensionNotes: existing.trustTensionNotes || "",
       promisesConflicts: existing.promisesConflicts || ""

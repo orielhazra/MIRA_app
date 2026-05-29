@@ -290,6 +290,8 @@ export const sqliteEngine = {
       const rawCharacters = (await db.select("SELECT * FROM characters")) as any[];
       cache.characters = rawCharacters.map((row: any) => ({
         id: row.id,
+        templateKey: row.templateKey || row.id,
+        templateVersion: Number(row.templateVersion || 1),
         name: row.name,
         shortDescription: row.shortDescription || "",
         race: row.race || "",
@@ -314,13 +316,13 @@ export const sqliteEngine = {
       // 3. Load Story Metadata only.
       const rawStoryMetas = (await db.select("SELECT * FROM stories")) as any[];
       cache.storyMetas = rawStoryMetas.map((row: any) => {
+        const castMembers = row.castMembers ? JSON.parse(row.castMembers) : [];
         const characterIds = row.characterIds ? JSON.parse(row.characterIds) : [];
         return {
           id: row.id,
           title: row.title,
           templateWorldId: row.templateWorldId || row.worldId,
-          characterIds,
-          characterCount: characterIds.length,
+          castMemberCount: castMembers.length || characterIds.length,
           createdAt: row.createdAt,
           lastPlayedAt: row.lastPlayedAt || undefined,
         };
@@ -413,7 +415,8 @@ export const sqliteEngine = {
             await db.execute(
               SQLITE_CHARACTER_INSERT_SQL,
               [
-                char.id, char.name, char.shortDescription || "", char.race || "", char.role || "",
+                char.id, char.templateKey || char.id, Number(char.templateVersion || 1),
+                char.name, char.shortDescription || "", char.race || "", char.role || "",
                 JSON.stringify(char.aliases || []), JSON.stringify(char.promptKeywords || []),
                 char.profileSummary || "", char.defaultOutfit || "", char.description || "",
                 char.personality || "", char.appearance || "", char.backstory || "", char.speakingStyle || "",
@@ -462,7 +465,7 @@ export const sqliteEngine = {
           templateWorldKey: row.templateWorldKey || row.templateWorldId || row.worldId,
           templateWorldVersion: Number(row.templateWorldVersion || 1),
           worldOverlay: row.worldOverlay ? JSON.parse(row.worldOverlay) : { worldPatch: {}, modifiedLocations: {}, addedLocations: [], removedLocationIds: [], modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] },
-          characterIds: row.characterIds ? JSON.parse(row.characterIds) : [],
+          castMembers: row.castMembers ? JSON.parse(row.castMembers) : [],
           scenario: row.scenario || "",
           greeting: row.greeting || "",
           storyLorebook: row.storyLorebook ? JSON.parse(row.storyLorebook) : [],
@@ -501,7 +504,7 @@ export const sqliteEngine = {
                 story.templateWorldKey || story.templateWorldId,
                 Number(story.templateWorldVersion || 1),
                 JSON.stringify(story.worldOverlay || {}),
-                JSON.stringify(story.characterIds || []),
+                JSON.stringify(story.castMembers || []),
                 story.scenario || "",
                 story.greeting || "",
                 JSON.stringify(story.storyLorebook || []),
@@ -535,7 +538,7 @@ export const sqliteEngine = {
       scheduleDbWrite(`story:${story.id}`, "Save story", async (db) => {
         await db.execute(
           `INSERT INTO stories (
-            id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, characterIds, scenario, greeting,
+            id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, castMembers, scenario, greeting,
             storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt, lastPlayedAt
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
           ON CONFLICT(id) DO UPDATE SET
@@ -544,7 +547,7 @@ export const sqliteEngine = {
             templateWorldKey = EXCLUDED.templateWorldKey,
             templateWorldVersion = EXCLUDED.templateWorldVersion,
             worldOverlay = EXCLUDED.worldOverlay,
-            characterIds = EXCLUDED.characterIds,
+            castMembers = EXCLUDED.castMembers,
             scenario = EXCLUDED.scenario,
             greeting = EXCLUDED.greeting,
             storyLorebook = EXCLUDED.storyLorebook,
@@ -562,7 +565,7 @@ export const sqliteEngine = {
             story.templateWorldKey || story.templateWorldId,
             Number(story.templateWorldVersion || 1),
             JSON.stringify(story.worldOverlay || {}),
-            JSON.stringify(story.characterIds || []),
+            JSON.stringify(story.castMembers || []),
             story.scenario || "",
             story.greeting || "",
             JSON.stringify(story.storyLorebook || []),

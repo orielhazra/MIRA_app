@@ -8,6 +8,7 @@ import { parseKeywords } from "../../utils/helpers";
 
 export default function CharacterSheet({
   character,
+  characters = [],
   storyMetas = [],
   activeStory,
   onSave,
@@ -17,20 +18,34 @@ export default function CharacterSheet({
   onSetInactive,
   onDelete,
   onExport,
-  onImport
+  onImport,
+  onBackHome,
+  onBackToStory
 }) {
   const [draft, setDraft] = useState(character);
   const [status, setStatus] = useState("");
-  const isInActiveStory = Boolean(activeStory?.id && character?.id && (activeStory.characterIds || []).includes(character.id));
-  const contextRow = (activeStory?.castState?.activeCharacters || []).find((row) => row.characterId === character?.id);
+  
+  const templateKey = String(character?.templateKey || character?.id || "");
+  const familyVersionIds = useMemo(
+    () => new Set((characters || []).filter((item) => String(item.templateKey || item.id) === templateKey).map((item) => item.id)),
+    [characters, templateKey]
+  );
+
+  const isInActiveStory = Boolean(activeStory?.id && character?.id && (activeStory.castMembers || []).some(m => familyVersionIds.has(m.templateCharacterId)));
+  const castMember = activeStory?.castMembers.find(m => familyVersionIds.has(m.templateCharacterId));
+  const contextRow = (activeStory?.castState?.activeCharacters || []).find((row) => row.castMemberId === castMember?.id);
+  
   const isActiveInScene = isInActiveStory && contextRow?.present !== false;
   const canAddToStory = activeStory?.id && !isInActiveStory;
-  const canRemoveFromStory = activeStory?.id && isInActiveStory && (activeStory.characterIds || []).length > 1;
+  const canRemoveFromStory = activeStory?.id && isInActiveStory && (activeStory.castMembers || []).length > 1;
+  
   const storyUsage = useMemo(
-    () => storyMetas.filter((meta) => character?.id && (meta.characterIds || []).includes(character.id)),
-    [storyMetas, character?.id]
+    () => storyMetas.filter((meta) => (meta as any).castMembers?.some((m: any) => familyVersionIds.has(m.templateCharacterId)) || (meta as any).characterIds?.some((id: any) => familyVersionIds.has(id))),
+    [storyMetas, familyVersionIds]
   );
   const canDelete = storyUsage.length === 0;
+
+  const backLabel = isInActiveStory ? "Back To Story" : "Back To Home";
 
   useEffect(() => setDraft(character), [character]);
   if (!character || !draft) return null;
@@ -39,9 +54,17 @@ export default function CharacterSheet({
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
+  function goBack() {
+    if (isInActiveStory) {
+      onBackToStory?.();
+      return;
+    }
+    onBackHome?.();
+  }
+
   function save() {
     onSave(draft);
-    setStatus("Character saved.");
+    setStatus("Character template saved as new version.");
     setTimeout(() => setStatus(""), 1500);
   }
 
@@ -57,16 +80,18 @@ export default function CharacterSheet({
     <section id="messages" className="messages sheet-view">
       <div className="sheet">
         <h2>{character.name}</h2>
+        <p className="muted">Template family: {character.templateKey || character.id} • Version {character.templateVersion || 1}</p>
         <p className="sheet-subtitle">
           Reusable character template. Characters are linked to stories through story cast metadata, not directly to worlds.
         </p>
 
         <div className="sheet-actions">
-          <button onClick={save}>Save Template</button>
+          <button onClick={save}>Save As New Template Version</button>
+          <button onClick={goBack}>{backLabel}</button>
           {canAddToStory && <button onClick={() => onAddToStory(character.id)}>Add To Active Story</button>}
-          {isInActiveStory && isActiveInScene && <button onClick={() => onSetInactive(character.id)}>Mark Inactive</button>}
-          {isInActiveStory && !isActiveInScene && <button onClick={() => onSetActive(character.id)}>Mark Active</button>}
-          {canRemoveFromStory && <button onClick={() => onRemoveFromStory(character.id)}>Remove From Active Story</button>}
+          {isInActiveStory && isActiveInScene && <button onClick={() => onSetInactive(castMember?.id || character.id)}>Mark Inactive</button>}
+          {isInActiveStory && !isActiveInScene && <button onClick={() => onSetActive(castMember?.id || character.id)}>Mark Active</button>}
+          {canRemoveFromStory && <button onClick={() => onRemoveFromStory(castMember?.id || character.id)}>Remove From Active Story</button>}
           {isInActiveStory && <button disabled>{isActiveInScene ? "Active in scene" : "Inactive / off-scene"}</button>}
           <button onClick={() => onExport(character)}>Export Template</button>
           <button onClick={onImport}>Import Template</button>

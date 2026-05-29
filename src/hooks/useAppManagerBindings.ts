@@ -91,6 +91,7 @@ export function createStoryBindings(ctx: any, storyActions: any) {
     saveCastState: (nextCastState: any) => storyActions.saveCastState({
       activeStory: ctx.activeStory,
       saveActiveStory: ctx.saveActiveStory,
+      castMembers: ctx.activeStory?.castMembers || [],
       activeStoryCharacters: ctx.activeStoryCharacters,
       nextCastState,
     }),
@@ -328,14 +329,6 @@ export function createCharacterBindings(ctx: any, characterActions: any) {
       saveCharacterList: ctx.saveCharacterList,
     }),
 
-    saveStoryCastIdentity: (characterDraft: any) => characterActions.saveStoryCastIdentity({
-      characterDraft,
-      characters: ctx.characters,
-      worlds: ctx.worlds,
-      saveCharacterList: ctx.saveCharacterList,
-      setSelectedCharacterSheetId: ctx.setSelectedCharacterSheetId,
-    }),
-
     deleteSelectedCharacter: (characterId: string) => characterActions.deleteSelectedCharacter({
       characters: ctx.characters,
       storyMetas: ctx.storyMetas,
@@ -360,6 +353,7 @@ export function createCharacterBindings(ctx: any, characterActions: any) {
 
     addCharacterToActiveStory: (characterId: string) => characterActions.addCharacterToActiveStory({
       activeStory: ctx.activeStory,
+      characters: ctx.characters,
       characterId,
       getCharacter: ctx.getCharacter,
       saveActiveStory: ctx.saveActiveStory,
@@ -368,11 +362,27 @@ export function createCharacterBindings(ctx: any, characterActions: any) {
 
     removeCharacterFromActiveStory: (characterId: string) => characterActions.removeCharacterFromActiveStory({
       activeStory: ctx.activeStory,
+      characters: ctx.characters,
       characterId,
       getCharacter: ctx.getCharacter,
       saveActiveStory: ctx.saveActiveStory,
       setSelectedCharacterSheetId: ctx.setSelectedCharacterSheetId,
     }),
+  };
+}
+
+export function createStoryCharacterBindings(ctx: any, storyCharacterActions: any) {
+  const deps = {
+    activeStory: ctx.activeStory,
+    characters: ctx.characters,
+    saveActiveStory: ctx.saveActiveStory,
+  };
+  return {
+    updateStoryCharacterPatch: (castMemberId: string, patch: any) => storyCharacterActions.updateStoryCharacterPatch(castMemberId, patch, deps),
+    addStoryCharacterLoreEntry: (castMemberId: string, entry: any) => storyCharacterActions.addStoryCharacterLoreEntry(castMemberId, entry, deps),
+    updateStoryCharacterLoreEntry: (castMemberId: string, entryId: string, patch: any) => storyCharacterActions.updateStoryCharacterLoreEntry(castMemberId, entryId, patch, deps),
+    removeStoryCharacterLoreEntry: (castMemberId: string, entryId: string) => storyCharacterActions.removeStoryCharacterLoreEntry(castMemberId, entryId, deps),
+    resetStoryCharacterOverlay: (castMemberId: string) => storyCharacterActions.resetStoryCharacterOverlay(castMemberId, deps),
   };
 }
 
@@ -612,7 +622,7 @@ export function createMaintenanceBindings(ctx: any) {
       ctx.repository.maintenance.clearKnownData([], ctx.characters);
 
       const nextWorlds = defaultWorlds.map(normalizeWorld);
-      const nextCharacters = defaultCharacters.map((character) => normalizeCharacter(character, nextWorlds));
+      const nextCharacters = defaultCharacters.map((character) => normalizeCharacter(character));
       const nextStories = defaultStories.map((story) => normalizeStory(story, nextWorlds, nextCharacters));
       const nextStoryMetas = nextStories.map(storyToMeta);
 
