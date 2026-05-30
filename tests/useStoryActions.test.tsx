@@ -84,8 +84,8 @@ describe("useStoryActions", () => {
       { id: "l1", name: "Lore", keywords: [], content: "x", enabled: true, alwaysOn: false },
     ]);
     
-    // selected character ID should be the template ID
-    expect(setSelectedCharacterSheetId).toHaveBeenCalledWith("char-2");
+    // selected character ID should now be the castMemberId ("cast-2" in fixtures)
+    expect(setSelectedCharacterSheetId).toHaveBeenCalledWith("cast-2");
     expect(setSelectedWorldSheetId).toHaveBeenCalledWith("world-2");
     expect(setStoryDraft).toHaveBeenCalledWith(null);
     expect(setActiveView).toHaveBeenCalledWith("story");

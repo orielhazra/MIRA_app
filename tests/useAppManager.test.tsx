@@ -14,8 +14,21 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       { id: "char-2", name: "Ari", shortDescription: "Lead two", goals: "Protect the station", relationshipToUser: "Wary" },
     ],
     stories: [
-      { id: "story-1", title: "Story One", templateWorldId: "world-1", characterIds: ["char-1"], greeting: "Opening one" },
-      { id: "story-2", title: "Story Two", templateWorldId: "world-2", characterIds: ["char-2"], greeting: "Opening two", worldOverlay: { worldPatch: { shortDescription: "Overlay world two" }, modifiedLocations: {}, addedLocations: [], removedLocationIds: [], modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] } },
+      { 
+        id: "story-1", 
+        title: "Story One", 
+        templateWorldId: "world-1", 
+        castMembers: [{ id: "cast-1", templateCharacterId: "char-1", overlay: { identityPatch: {}, modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] } }], 
+        greeting: "Opening one" 
+      },
+      { 
+        id: "story-2", 
+        title: "Story Two", 
+        templateWorldId: "world-2", 
+        castMembers: [{ id: "cast-2", templateCharacterId: "char-2", overlay: { identityPatch: {}, modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] } }], 
+        greeting: "Opening two", 
+        worldOverlay: { worldPatch: { shortDescription: "Overlay world two" }, modifiedLocations: {}, addedLocations: [], removedLocationIds: [], modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] } 
+      },
     ],
     chats: {
       "story-1": [{ role: "assistant", content: "Saved chat one" }],
@@ -56,8 +69,7 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
             id: story.id,
             title: story.title,
             templateWorldId: story.templateWorldId,
-            characterIds: story.characterIds || [],
-            characterCount: (story.characterIds || []).length,
+            castMemberCount: (story.castMembers || []).length,
             createdAt: story.createdAt,
             lastPlayedAt: story.lastPlayedAt,
           }))
@@ -148,7 +160,9 @@ describe("useAppManager", () => {
     expect(result.current.chatHistory[0]?.content).toBe("Saved chat two");
     expect(result.current.activeLoreMemory[0]?.name).toBe("Lore Two");
     expect(result.current.selectedWorldSheetId).toBe("world-2");
-    expect(result.current.selectedCharacterSheetId).toBe("char-2");
+    
+    // In story-character mode, the selected ID should be the castMemberId ("cast-2" in fixtures)
+    expect(result.current.selectedCharacterSheetId).toBe("cast-2");
     expect(mockRepository.activeStory.set).toHaveBeenCalledWith("story-2");
   });
 

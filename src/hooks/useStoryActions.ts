@@ -182,9 +182,9 @@ export default function useStoryActions() {
     setChatHistory?.(nextChatHistory);
     setActiveLoreMemory?.(nextLoreMemory);
     
-    // Select first character by template ID for the library view
+    // Select the first cast member instance by ID
     const firstMember = story.castMembers[0];
-    setSelectedCharacterSheetId?.(firstMember?.templateCharacterId || characters[0]?.id || "");
+    setSelectedCharacterSheetId?.(firstMember?.id || "");
     
     setSelectedWorldSheetId?.(story.templateWorldId || worlds[0]?.id || "");
     setStoryDraft?.(null);
@@ -261,7 +261,10 @@ export default function useStoryActions() {
     repository?.chats.save(newStory.id, opening);
     setActiveLoreMemory?.([]);
     repository?.loreMemory.save(newStory.id, []);
-    setSelectedCharacterSheetId?.(selectedCharacters[0]?.id || "");
+    
+    // Select the first cast member instance
+    setSelectedCharacterSheetId?.(newStory.castMembers[0]?.id || "");
+    
     setSelectedWorldSheetId?.(world.id);
     setStoryDraft?.(null);
     setActiveView?.("story");

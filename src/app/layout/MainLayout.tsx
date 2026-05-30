@@ -10,6 +10,7 @@ import Landing from "../../features/stories/Landing";
 import StoryCreationSheet from "../../features/stories/StoryCreationSheet";
 import StoryEditSheet from "../../features/stories/StoryEditSheet";
 import CharacterSheet from "../../features/characters/CharacterSheet";
+import StoryCharacterSheet from "../../features/characters/StoryCharacterSheet";
 import WorldSheet from "../../features/worlds/WorldSheet";
 
 export default function MainLayout() {
@@ -61,6 +62,7 @@ export default function MainLayout() {
     if (app.activeView === "character") {
       return (
         <CharacterSheet
+          key={app.selectedCharacterSheetId}
           character={app.selectedCharacter}
           characters={app.characters}
           storyMetas={app.storyMetas}
@@ -79,9 +81,49 @@ export default function MainLayout() {
       );
     }
 
+    if (app.activeView === "story-character") {
+      const castMember = app.activeStory?.castMembers.find(m => m.id === app.selectedCharacterSheetId);
+      const effectiveCharacter = app.activeStoryCharacters.find(c => c.id === app.selectedCharacterSheetId);
+      const castStateRow = app.activeStory?.castState.activeCharacters.find(r => r.castMemberId === app.selectedCharacterSheetId);
+      const relationshipRow = app.activeStory?.castState.relationships.find(r => r.castMemberId === app.selectedCharacterSheetId);
+      const journalEntries = app.activeStory?.storyMemory.characterJournals[app.selectedCharacterSheetId] || [];
+
+      if (!castMember || !effectiveCharacter) {
+         app.setActiveView("story");
+         return null;
+      }
+
+      return (
+        <StoryCharacterSheet
+          key={app.selectedCharacterSheetId}
+          castMember={castMember}
+          effectiveCharacter={effectiveCharacter}
+          castStateRow={castStateRow}
+          relationshipRow={relationshipRow}
+          journalEntries={journalEntries}
+          onUpdatePatch={app.updateStoryCharacterPatch}
+          onUpdateState={(id, patch) => app.saveCastState({ 
+            ...app.activeStory.castState, 
+            activeCharacters: app.activeStory.castState.activeCharacters.map(r => r.castMemberId === id ? { ...r, ...patch } : r)
+          })}
+          onUpdateRelationship={(id, patch) => app.saveCastState({
+            ...app.activeStory.castState,
+            relationships: app.activeStory.castState.relationships.map(r => r.castMemberId === id ? { ...r, ...patch } : r)
+          })}
+          onAddLore={app.addStoryCharacterLoreEntry}
+          onUpdateLore={app.updateStoryCharacterLoreEntry}
+          onRemoveLore={app.removeStoryCharacterLoreEntry}
+          onResetOverlay={app.resetStoryCharacterOverlay}
+          onBackToStory={() => app.setActiveView("story")}
+          onExportTemplate={app.exportCharacter}
+        />
+      );
+    }
+
     if (app.activeView === "world") {
       return (
         <WorldSheet
+          key={app.selectedWorldSheetId}
           world={app.selectedWorld}
           worlds={app.worlds}
           storyMetas={app.storyMetas}
@@ -177,7 +219,11 @@ export default function MainLayout() {
             isCollapsed={app.sidebarCollapsed}
             onToggleCollapse={app.toggleSidebarCollapsed}
             onNewCharacter={app.createBlankCharacter}
-            onSelectCharacter={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("character"); app.setStoryDraft(null); }}
+            onSelectCharacter={(id) => { 
+              app.setSelectedCharacterSheetId(id); 
+              app.setActiveView(app.activeStory ? "story-character" : "character"); 
+              app.setStoryDraft(null); 
+            }}
             onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
             onEditStory={app.openStoryEditSheet}
           />
@@ -226,7 +272,12 @@ export default function MainLayout() {
             onSaveSceneControl={app.saveSceneControl}
             onExportStory={app.exportActiveStory}
             onDeleteStory={app.deleteActiveStory}
-            onSaveCharacterIdentity={app.saveStoryCastIdentity}
+            onUpdateStoryCharacterPatch={app.updateStoryCharacterPatch}
+            onAddStoryCharacterLoreEntry={app.addStoryCharacterLoreEntry}
+            onUpdateStoryCharacterLoreEntry={app.updateStoryCharacterLoreEntry}
+            onRemoveStoryCharacterLoreEntry={app.removeStoryCharacterLoreEntry}
+            onResetStoryCharacterOverlay={app.resetStoryCharacterOverlay}
+            onUpgradeStoryCastMemberTemplate={app.upgradeStoryCastMemberTemplate}
             onExportCharacterTemplate={app.exportCharacter}
             onImportCharacterTemplate={() => app.characterImportRef.current?.click()}
             onUpdateStoryLore={app.updateStoryLore}
@@ -244,12 +295,6 @@ export default function MainLayout() {
             onRemoveStoryWorldLoreEntry={app.removeStoryWorldLoreEntry}
             onResetStoryWorldOverlay={app.resetStoryWorldOverlay}
             onUpgradeStoryWorldTemplate={app.upgradeStoryWorldTemplate}
-            onUpdateStoryCharacterPatch={app.updateStoryCharacterPatch}
-            onAddStoryCharacterLoreEntry={app.addStoryCharacterLoreEntry}
-            onUpdateStoryCharacterLoreEntry={app.updateStoryCharacterLoreEntry}
-            onRemoveStoryCharacterLoreEntry={app.removeStoryCharacterLoreEntry}
-            onResetStoryCharacterOverlay={app.resetStoryCharacterOverlay}
-            onUpgradeStoryCastMemberTemplate={app.upgradeStoryCastMemberTemplate}
             currentContext={app.activeStory.currentContext}
             storyMemory={app.activeStory.storyMemory}
             castState={app.activeStory.castState}
