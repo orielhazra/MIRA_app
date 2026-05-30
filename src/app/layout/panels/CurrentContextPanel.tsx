@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useMemo } from "react";
 
-export default function CurrentContextPanel({ context, activeWorld, directorNotes, status, onSave, onClearDirectorNotes, onExtractUpdates, isExtractingUpdates }) {
+export default function CurrentContextPanel({ 
+  context, 
+  activeWorld, 
+  directorNotes, 
+  status, 
+  onSave, 
+  onClearDirectorNotes, 
+  onExtractUpdates, 
+  isExtractingUpdates 
+}) {
   const [draft, setDraft] = useState(() => buildCurrentContextDraft(context));
   const [directorDraft, setDirectorDraft] = useState(() => buildDirectorGuidanceDraft(directorNotes));
   const [dirty, setDirty] = useState(false);
+  
   const contextResetKey = `${JSON.stringify(context || {})}::${JSON.stringify(directorNotes || {})}`;
   const worldLocations = useMemo(() => Array.isArray(activeWorld?.locations) ? activeWorld.locations : [], [activeWorld?.locations]);
-  const linkedLocation = worldLocations.find((location) => location.id === draft.location.locationId) || null;
 
   useEffect(() => {
     setDraft(buildCurrentContextDraft(context));
@@ -24,11 +33,6 @@ export default function CurrentContextPanel({ context, activeWorld, directorNote
     setDirectorDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function clearDirectorGuidance() {
-    setDirty(true);
-    setDirectorDraft(buildDirectorGuidanceDraft({}));
-  }
-
   function setSceneField(field, value) {
     updateDraft((current) => ({
       ...current,
@@ -36,86 +40,23 @@ export default function CurrentContextPanel({ context, activeWorld, directorNote
     }));
   }
 
-  function setLocationField(field, value) {
-    updateDraft((current) => {
-      const nextLocation = { ...current.location, [field]: value };
-      if (field === "name") {
-        const matchedLocation = resolveLocationByName(worldLocations, value);
-        nextLocation.locationId = matchedLocation?.id || "";
-      }
-      return {
-        ...current,
-        location: nextLocation
-      };
-    });
-  }
-
   function selectLocation(locationId) {
     updateDraft((current) => {
-      const selectedLocation = worldLocations.find((location) => location.id === locationId) || null;
-      if (!selectedLocation) {
-        return {
-          ...current,
-          location: {
-            ...current.location,
-            locationId: "",
-          }
-        };
-      }
+      const selectedLocation = worldLocations.find((location) => location.id === locationId);
+      if (!selectedLocation) return { ...current, location: { ...current.location, locationId: "" } };
 
       return {
         ...current,
         location: {
           ...current.location,
-          locationId: selectedLocation.id || "",
-          name: selectedLocation.name || current.location.name || "",
-          description: selectedLocation.description || current.location.description || "",
-          visibleExits: selectedLocation.visibleExits || current.location.visibleExits || "",
-          availableLocations: buildAvailableLocationsText(selectedLocation, worldLocations),
-          hazards: selectedLocation.hazards || current.location.hazards || ""
+          locationId: selectedLocation.id,
+          name: selectedLocation.name,
+          description: selectedLocation.description || "",
+          visibleExits: selectedLocation.visibleExits || "",
+          hazards: selectedLocation.hazards || ""
         }
       };
     });
-  }
-
-  function setRecentFactField(field, value) {
-    updateDraft((current) => ({
-      ...current,
-      recentFacts: { ...current.recentFacts, [field]: value }
-    }));
-  }
-
-  function updateObject(index, field, value) {
-    updateDraft((current) => ({
-      ...current,
-      objects: current.objects.map((row, rowIndex) => (
-        rowIndex === index ? { ...row, [field]: value } : row
-      ))
-    }));
-  }
-
-  function addObject() {
-    updateDraft((current) => ({
-      ...current,
-      objects: [
-        ...current.objects,
-        {
-          id: `object_${Date.now()}`,
-          name: "New Object",
-          locationOrHolder: current.location.name || "Current scene",
-          visibleState: "",
-          hiddenDetail: "",
-          status: "active"
-        }
-      ]
-    }));
-  }
-
-  function removeObject(index) {
-    updateDraft((current) => ({
-      ...current,
-      objects: current.objects.filter((_, rowIndex) => rowIndex !== index)
-    }));
   }
 
   function save() {
@@ -125,113 +66,109 @@ export default function CurrentContextPanel({ context, activeWorld, directorNote
 
   return (
     <div className="info-panel active current-context-panel scene-control-panel">
-      <h3>Scene Control</h3>
-      <p className="muted">Scene facts plus director guidance. Character mood, goals, knowledge, and relationships stay in Cast State.</p>
+      <h3>Scene State</h3>
+      <p className="muted">Fundamental facts about the current moment.</p>
 
       <div className="sheet-actions compact-actions">
-        <button type="button" onClick={save}>Save Scene Control</button>
+        <button type="button" onClick={save}>Save Changes</button>
         <button type="button" onClick={onExtractUpdates} disabled={isExtractingUpdates}>
-          {isExtractingUpdates ? "Extracting..." : "Extract Updates"}
+          {isExtractingUpdates ? "Extracting..." : "Auto-Update from Chat"}
         </button>
       </div>
-      <p className="sheet-status">{dirty ? "Unsaved scene control changes" : status || "Scene control saved"}</p>
+      <p className="sheet-status">{dirty ? "Unsaved changes" : status || "All synced"}</p>
 
-      <h3>Scene Facts</h3>
       <div className="context-grid">
-        <ContextInput label="Time of Day" value={draft.scene.timeOfDay} onChange={(value) => setSceneField("timeOfDay", value)} />
-        <ContextInput label="Atmosphere" value={draft.scene.atmosphere} onChange={(value) => setSceneField("atmosphere", value)} />
-        <ContextTextarea label="Current Conflict" value={draft.scene.currentConflict} onChange={(value) => setSceneField("currentConflict", value)} />
-        <ContextTextarea label="Current Objective" value={draft.scene.currentObjective} onChange={(value) => setSceneField("currentObjective", value)} />
-      </div>
-
-      <h3>Location</h3>
-      <div className="context-grid">
+        <ContextInput label="Time of Day" value={draft.scene.timeOfDay} onChange={(v) => setSceneField("timeOfDay", v)} />
+        <ContextInput label="Atmosphere" value={draft.scene.atmosphere} onChange={(v) => setSceneField("atmosphere", v)} />
+        
         <label>
-          Story World Location
-          <select value={draft.location.locationId || ""} onChange={(event) => selectLocation(event.target.value)}>
-            <option value="">Manual / Unlinked</option>
-            {worldLocations.map((location) => (
-              <option key={location.id} value={location.id}>{location.name}</option>
+          World Location
+          <select value={draft.location.locationId || ""} onChange={(e) => selectLocation(e.target.value)}>
+            <option value="">Custom / Manual</option>
+            {worldLocations.map((loc) => (
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
             ))}
           </select>
         </label>
-        <ContextInput label="Current Location" value={draft.location.name} onChange={(value) => setLocationField("name", value)} />
-        <ContextTextarea label="Location Description" value={draft.location.description} onChange={(value) => setLocationField("description", value)} />
-        <ContextTextarea label="Visible Exits" value={draft.location.visibleExits} onChange={(value) => setLocationField("visibleExits", value)} />
-        <ContextTextarea label="Available / Nearby Locations" value={draft.location.availableLocations} onChange={(value) => setLocationField("availableLocations", value)} />
-        <ContextTextarea label="Hazards" value={draft.location.hazards} onChange={(value) => setLocationField("hazards", value)} />
+        
+        <ContextTextarea label="Current Conflict" value={draft.scene.currentConflict} onChange={(v) => setSceneField("currentConflict", v)} />
       </div>
-      <p className="muted">
-        {linkedLocation
-          ? `Linked to story-world location ID: ${linkedLocation.id}`
-          : draft.location.locationId
-            ? `Linked to location ID: ${draft.location.locationId}`
-            : "This location is currently manual / unlinked."}
-      </p>
 
-      <h3>Objects</h3>
+      <details className="dossier-section-details">
+        <summary>Advanced Scene Facts (Objects & Secrets)</summary>
+        <div className="context-grid" style={{ marginTop: '10px' }}>
+           <ContextTextarea label="Discoveries & Facts" value={draft.recentFacts.importantDiscoveries} onChange={(v) => updateDraft(c => ({...c, recentFacts: {...c.recentFacts, importantDiscoveries: v}}))} />
+        </div>
+        <ObjectsEditor draft={draft} updateDraft={updateDraft} />
+      </details>
+
+      <h3 style={{ marginTop: '20px' }}>Director Guidance</h3>
+      <p className="muted">Private steering for the AI's next response.</p>
+      <div className="context-grid">
+        <ContextTextarea label="Next Story Beat / Objective" value={directorDraft.nextStoryBeat} onChange={(v) => setDirectorField("nextStoryBeat", v)} />
+        <ContextTextarea label="Character Goals / Motivation" value={directorDraft.characterMotivation} onChange={(v) => setDirectorField("characterMotivation", v)} />
+        <ContextTextarea label="Avoid / Do Not Mention" value={directorDraft.avoid} onChange={(v) => setDirectorField("avoid", v)} />
+        <ContextTextarea label="Custom Note" value={directorDraft.customNotes} onChange={(v) => setDirectorField("customNotes", v)} />
+      </div>
+      
       <div className="sheet-actions compact-actions">
-        <button type="button" onClick={addObject}>Add Object</button>
+        <button type="button" className="danger" onClick={onClearDirectorNotes}>Clear Guidance</button>
+      </div>
+    </div>
+  );
+}
+
+function ObjectsEditor({ draft, updateDraft }) {
+  const addObject = () => updateDraft(c => ({
+    ...c,
+    objects: [...c.objects, { id: `obj_${Date.now()}`, name: "New Object", locationOrHolder: "", status: "active" }]
+  }));
+
+  const removeObject = (idx) => updateDraft(c => ({
+    ...c, 
+    objects: c.objects.filter((_, i) => i !== idx)
+  }));
+
+  const updateObject = (idx, field, val) => updateDraft(c => {
+    return {
+      ...c,
+      objects: c.objects.map((o, i) => i === idx ? { ...o, [field]: val } : o)
+    };
+  });
+
+  return (
+    <div className="objects-editor">
+      <div className="section-header-actions">
+        <strong>Relevant Objects</strong>
+        <button type="button" className="small" onClick={addObject}>+ Add</button>
       </div>
       <div className="context-card-list">
-        {draft.objects.map((object, index) => (
-          <details key={object.id || index} className="context-card">
-            <summary>
-              <strong>{object.name || "Unnamed Object"}</strong>
-              <span>{object.status || "object"}</span>
-            </summary>
-            <ContextInput label="Name" value={object.name} onChange={(value) => updateObject(index, "name", value)} />
-            <ContextInput label="Location / Holder" value={object.locationOrHolder} onChange={(value) => updateObject(index, "locationOrHolder", value)} />
-            <ContextTextarea label="Visible State" value={object.visibleState} onChange={(value) => updateObject(index, "visibleState", value)} />
-            <ContextTextarea label="Hidden Detail" value={object.hiddenDetail} onChange={(value) => updateObject(index, "hiddenDetail", value)} />
-            <ContextInput label="Status" value={object.status} onChange={(value) => updateObject(index, "status", value)} />
-            <button type="button" className="danger file-delete small" onClick={() => removeObject(index)}>Remove Object</button>
-          </details>
+        {draft.objects.map((obj, i) => (
+          <div key={obj.id} className="context-card compact">
+             <div className="card-row">
+                <input placeholder="Object name" value={obj.name} style={{ flex: 1, padding: '4px 8px', borderRadius: '6px' }} onChange={(e) => updateObject(i, "name", e.target.value)} />
+                <button type="button" className="danger small" onClick={() => removeObject(i)}>×</button>
+             </div>
+          </div>
         ))}
-        {draft.objects.length === 0 && <p className="muted">No objects saved yet.</p>}
-      </div>
-
-      <h3>Recent Facts</h3>
-      <div className="context-grid">
-        <ContextTextarea label="Important Discoveries" value={draft.recentFacts.importantDiscoveries} onChange={(value) => setRecentFactField("importantDiscoveries", value)} />
-        <ContextTextarea label="Secrets Revealed" value={draft.recentFacts.secretsRevealed} onChange={(value) => setRecentFactField("secretsRevealed", value)} />
-        <ContextTextarea label="Open Questions" value={draft.recentFacts.openQuestions} onChange={(value) => setRecentFactField("openQuestions", value)} />
-      </div>
-
-      <h3>Director Guidance</h3>
-      <p className="muted">Temporary/private steering for upcoming replies. Keep factual state above; use this only for how the next response should behave.</p>
-      <div className="context-grid">
-        <ContextTextarea label="Character Motivation" value={directorDraft.characterMotivation} onChange={(value) => setDirectorField("characterMotivation", value)} />
-        <ContextTextarea label="User's Plan" value={directorDraft.userPlan} onChange={(value) => setDirectorField("userPlan", value)} />
-        <ContextTextarea label="Next Story Beat" value={directorDraft.nextStoryBeat} onChange={(value) => setDirectorField("nextStoryBeat", value)} />
-        <ContextTextarea label="Avoid / Do Not Reveal Yet" value={directorDraft.avoid} onChange={(value) => setDirectorField("avoid", value)} />
-        <ContextTextarea label="Custom Director Note" value={directorDraft.customNotes} onChange={(value) => setDirectorField("customNotes", value)} />
-      </div>
-      <div className="sheet-actions compact-actions">
-        <button type="button" onClick={clearDirectorGuidance}>Clear Director Guidance Draft</button>
-        <button type="button" onClick={onClearDirectorNotes}>Clear Saved Director Guidance</button>
       </div>
     </div>
   );
 }
 
 function buildDirectorGuidanceDraft(notes) {
-  const source = notes && typeof notes === "object" ? notes : {};
+  const source = notes || {};
   return {
-    timeOfDay: "",
-    currentLocation: "",
-    sceneMood: "",
-    currentConflict: "",
-    characterMotivation: source.characterMotivation || "",
-    userPlan: source.userPlan || "",
     nextStoryBeat: source.nextStoryBeat || "",
+    characterMotivation: source.characterMotivation || "",
     avoid: source.avoid || "",
-    customNotes: source.customNotes || ""
+    customNotes: source.customNotes || "",
+    userPlan: source.userPlan || ""
   };
 }
 
 function buildCurrentContextDraft(context) {
-  const source = context && typeof context === "object" ? context : {};
+  const source = context || {};
   return {
     scene: {
       timeOfDay: source.scene?.timeOfDay || "",
@@ -240,45 +177,19 @@ function buildCurrentContextDraft(context) {
       currentObjective: source.scene?.currentObjective || ""
     },
     location: {
-      locationId: source.location?.locationId || source.location?.id || "",
+      locationId: source.location?.locationId || "",
       name: source.location?.name || "",
       description: source.location?.description || "",
       visibleExits: source.location?.visibleExits || "",
-      availableLocations: source.location?.availableLocations || "",
       hazards: source.location?.hazards || ""
     },
-    objects: Array.isArray(source.objects) ? source.objects.map((object) => ({ ...object })) : [],
+    objects: Array.isArray(source.objects) ? source.objects.map(o => ({ ...o })) : [],
     recentFacts: {
       importantDiscoveries: source.recentFacts?.importantDiscoveries || "",
       secretsRevealed: source.recentFacts?.secretsRevealed || "",
       openQuestions: source.recentFacts?.openQuestions || ""
     }
   };
-}
-
-function resolveLocationByName(locations = [], name = "") {
-  const normalizedName = normalizeLocationText(name);
-  if (!normalizedName) return null;
-  return (locations || []).find((location) => normalizeLocationText(location?.name || "") === normalizedName) || null;
-}
-
-function buildAvailableLocationsText(selectedLocation, locations = []) {
-  const connectedIds = String(selectedLocation?.connectedTo || "")
-    .split(/[,\n]/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  const nearbyLocations = connectedIds.length
-    ? (locations || []).filter((location) => connectedIds.includes(location.id) || connectedIds.includes(location.name))
-    : (locations || []).filter((location) => location.id !== selectedLocation?.id);
-
-  return nearbyLocations
-    .map((location) => `${location.name}: ${location.summary || location.description || ""}`.trim())
-    .join("\n");
-}
-
-function normalizeLocationText(value = "") {
-  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function ContextInput({ label, value = "", onChange }) {

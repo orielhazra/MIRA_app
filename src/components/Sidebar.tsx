@@ -32,7 +32,6 @@ export default function Sidebar({
   }
 
   const currentWorld = activeWorld || (activeStory ? getWorld(activeStory.templateWorldId) : null);
-  const locations = currentWorld?.locations || [];
 
   return (
     <aside className="sidebar">
@@ -70,18 +69,21 @@ export default function Sidebar({
       <h2>Cast</h2>
       <div id="characterList">
         {activeStoryCharacters.length > 0 ? (
-          activeStoryCharacters.map((character) => (
-            <button
-              type="button"
-              key={character.id}
-              className={`character ${selectedCharacterSheetId === character.id ? "active" : ""}`}
-              disabled={isGenerating}
-              onClick={() => onSelectCharacter(character.id)}
-            >
-              <strong>{character.name}</strong>
-              <span>{character.shortDescription}</span>
-            </button>
-          ))
+          activeStoryCharacters.map((character) => {
+            const isSelected = selectedCharacterSheetId === character.id;
+            return (
+              <button
+                type="button"
+                key={character.id}
+                className={`character ${isSelected ? "active" : ""}`}
+                disabled={isGenerating}
+                onClick={() => onSelectCharacter(character.id)}
+              >
+                <strong>{character.name}</strong>
+                <span>{character.shortDescription}</span>
+              </button>
+            );
+          })
         ) : (
           <div style={{ color: "#888", padding: "8px 0" }}>No characters in this story</div>
         )}
@@ -97,7 +99,7 @@ export default function Sidebar({
 
       <hr />
 
-      {/* Current World + Locations */}
+      {/* Current World (No locations list per request) */}
       <h2>World</h2>
       {currentWorld ? (
         <>
@@ -110,17 +112,6 @@ export default function Sidebar({
             <strong>{currentWorld.name}</strong>
             <span>{currentWorld.shortDescription}</span>
           </button>
-
-          {locations.length > 0 && (
-            <div style={{ marginLeft: "12px", marginTop: "8px" }}>
-              <div style={{ fontSize: "13px", color: "#888", marginBottom: "4px" }}>Locations</div>
-              {locations.map((loc, index) => (
-                <div key={index} style={{ fontSize: "13px", padding: "2px 0", color: "#ccc" }}>
-                  • {loc.name}
-                </div>
-              ))}
-            </div>
-          )}
         </>
       ) : (
         <div style={{ color: "#888", padding: "8px 0" }}>No world assigned</div>

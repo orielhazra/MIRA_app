@@ -12,6 +12,7 @@ import StoryEditSheet from "../../features/stories/StoryEditSheet";
 import CharacterSheet from "../../features/characters/CharacterSheet";
 import StoryCharacterSheet from "../../features/characters/StoryCharacterSheet";
 import WorldSheet from "../../features/worlds/WorldSheet";
+import StoryWorldSheet from "../../features/worlds/StoryWorldSheet";
 
 export default function MainLayout() {
   const app = useApp();
@@ -98,6 +99,7 @@ export default function MainLayout() {
           key={app.selectedCharacterSheetId}
           castMember={castMember}
           effectiveCharacter={effectiveCharacter}
+          characters={app.characters}
           castStateRow={castStateRow}
           relationshipRow={relationshipRow}
           journalEntries={journalEntries}
@@ -114,8 +116,43 @@ export default function MainLayout() {
           onUpdateLore={app.updateStoryCharacterLoreEntry}
           onRemoveLore={app.removeStoryCharacterLoreEntry}
           onResetOverlay={app.resetStoryCharacterOverlay}
+          onUpgradeTemplate={app.upgradeStoryCastMemberTemplate}
+          onUpdateJournal={(nextEntries) => app.saveStoryMemory({
+            ...app.activeStory.storyMemory,
+            characterJournals: {
+              ...app.activeStory.storyMemory.characterJournals,
+              [app.selectedCharacterSheetId]: nextEntries
+            }
+          })}
           onBackToStory={() => app.setActiveView("story")}
           onExportTemplate={app.exportCharacter}
+        />
+      );
+    }
+
+    if (app.activeView === "story-world") {
+      if (!app.activeStory || !app.activeWorld) {
+         app.setActiveView("story");
+         return null;
+      }
+
+      return (
+        <StoryWorldSheet
+          key={app.activeStory.id}
+          activeStory={app.activeStory}
+          activeWorld={app.activeWorld}
+          worlds={app.worlds}
+          onUpdateWorldPatch={app.updateStoryWorldPatch}
+          onAddLocation={app.addStoryWorldLocation}
+          onUpdateLocation={app.updateStoryWorldLocation}
+          onRemoveLocation={app.removeStoryWorldLocation}
+          onAddLore={app.addStoryWorldLoreEntry}
+          onUpdateLore={app.updateStoryWorldLoreEntry}
+          onRemoveLore={app.removeStoryWorldLoreEntry}
+          onResetOverlay={app.resetStoryWorldOverlay}
+          onUpgradeTemplate={app.upgradeStoryWorldTemplate}
+          onBackToStory={() => app.setActiveView("story")}
+          onExportTemplate={app.exportWorld}
         />
       );
     }
@@ -224,7 +261,11 @@ export default function MainLayout() {
               app.setActiveView(app.activeStory ? "story-character" : "character"); 
               app.setStoryDraft(null); 
             }}
-            onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
+            onSelectWorld={(id) => { 
+              app.setSelectedWorldSheetId(id); 
+              app.setActiveView(app.activeStory ? "story-world" : "world"); 
+              app.setStoryDraft(null); 
+            }}
             onEditStory={app.openStoryEditSheet}
           />
         )}

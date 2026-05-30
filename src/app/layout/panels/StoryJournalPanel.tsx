@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-export default function StoryJournalPanel({ journal, characters = [], status, onSave }) {
+export default function StoryJournalPanel({ journal, status, onSave }) {
   const [draft, setDraft] = useState(() => buildStoryJournalDraft(journal));
   const [dirty, setDirty] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
@@ -45,44 +45,6 @@ export default function StoryJournalPanel({ journal, characters = [], status, on
     }));
   }
 
-  function addCharacterEntry(characterId) {
-    setDirty(true);
-    setDraft((current) => ({
-      ...current,
-      characterJournals: {
-        ...current.characterJournals,
-        [characterId]: [
-          ...(current.characterJournals[characterId] || []),
-          { id: `${characterId}-${Date.now()}`, content: "", active: true, createdAt: Date.now() }
-        ]
-      }
-    }));
-  }
-
-  function updateCharacterEntry(characterId, index, field, value) {
-    setDirty(true);
-    setDraft((current) => ({
-      ...current,
-      characterJournals: {
-        ...current.characterJournals,
-        [characterId]: current.characterJournals[characterId].map((entry, i) =>
-          i === index ? { ...entry, [field]: value } : entry
-        )
-      }
-    }));
-  }
-
-  function removeCharacterEntry(characterId, index) {
-    setDirty(true);
-    setDraft((current) => ({
-      ...current,
-      characterJournals: {
-        ...current.characterJournals,
-        [characterId]: current.characterJournals[characterId].filter((_, i) => i !== index)
-      }
-    }));
-  }
-
   function addTask() {
     setDirty(true);
     setDraft((current) => ({
@@ -115,7 +77,7 @@ export default function StoryJournalPanel({ journal, characters = [], status, on
   return (
     <div className="info-panel active current-context-panel story-journal-panel">
       <h3>Story Journal</h3>
-      <p className="muted">Long-term story continuity with character-wise journals, general entries, summary, and tasks. Toggle individual entries to control what appears in the prompt.</p>
+      <p className="muted">Global story continuity: summary, general entries, and task tracking. For character-specific memories, use their dossiers in the Left Sidebar.</p>
 
       <div className="sheet-actions compact-actions">
         <button type="button" onClick={() => { onSave(draft); setDirty(false); }}>Save Story Journal</button>
@@ -133,13 +95,7 @@ export default function StoryJournalPanel({ journal, characters = [], status, on
           className={activeTab === "general" ? "active" : ""}
           onClick={() => setActiveTab("general")}
         >
-          General Journal
-        </button>
-        <button
-          className={activeTab === "characters" ? "active" : ""}
-          onClick={() => setActiveTab("characters")}
-        >
-          Character Journals
+          General Entries
         </button>
         <button
           className={activeTab === "tasks" ? "active" : ""}
@@ -153,8 +109,8 @@ export default function StoryJournalPanel({ journal, characters = [], status, on
         <div className="journal-tab-content">
           <label className="journal-section">
             <span className="journal-section-header">
-              <strong>Story Summary</strong>
-              <small>Overall story overview and key events</small>
+              <strong>Core Summary</strong>
+              <small>Overall plot overview and current arc status.</small>
             </span>
             <textarea
               value={draft.summary}
@@ -183,37 +139,6 @@ export default function StoryJournalPanel({ journal, characters = [], status, on
         </div>
       )}
 
-      {activeTab === "characters" && (
-        <div className="journal-tab-content">
-          {characters.length === 0 ? (
-            <p className="muted">No characters in this story.</p>
-          ) : (
-            characters.map((character) => (
-              <div key={character.id} className="character-journal-section">
-                <h4>{character.name}</h4>
-                <div className="journal-entries">
-                  {(draft.characterJournals[character.id] || []).map((entry, index) => (
-                    <JournalEntry
-                      key={entry.id}
-                      entry={entry}
-                      onUpdate={(field, value) => updateCharacterEntry(character.id, index, field, value)}
-                      onRemove={() => removeCharacterEntry(character.id, index)}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="add-entry-btn"
-                  onClick={() => addCharacterEntry(character.id)}
-                >
-                  + Add Entry for {character.name}
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
       {activeTab === "tasks" && (
         <div className="journal-tab-content">
           <div className="journal-entries">
@@ -227,7 +152,7 @@ export default function StoryJournalPanel({ journal, characters = [], status, on
             ))}
           </div>
           <button type="button" className="add-entry-btn" onClick={addTask}>
-            + Add Task
+            + Add Task / Objective
           </button>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useReducer, useState } from "react";
-import { ChatMessage, StoryCastMember, Character } from "../types";
+import { ChatMessage, StoryCastMember, Character, World } from "../types";
 import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
@@ -7,6 +7,7 @@ import { repository, isTauri } from "../services/repository";
 import { resolveEffectiveWorld } from "../services/storyWorld";
 import { storyToMeta } from "../services/storyMeta";
 import {
+  chooseActiveCastLead,
   loadInitialState,
   getStoryCharactersFromLists,
   createInitialCastState,
@@ -124,6 +125,10 @@ export default function useAppManager() {
   const activeStoryCharacters = useMemo(
     () => (activeStory ? getStoryCharactersFromLists(activeStory, characters) : characters[0] ? [characters[0]] : []),
     [activeStory, characters]
+  );
+  const activeCharacter = useMemo(
+    () => chooseActiveCastLead(activeStory, activeStoryCharacters) || characters[0] || null,
+    [activeStory, activeStoryCharacters, characters]
   );
   const selectedCharacter = useMemo(() => {
     if (!selectedCharacterSheetId) return characters[0] || null;
@@ -471,6 +476,7 @@ export default function useAppManager() {
     isExtractingUpdates,
     activeWorld,
     activeStoryCharacters,
+    activeCharacter,
     selectedCharacter,
     selectedWorld,
     saveKoboldBaseUrl,

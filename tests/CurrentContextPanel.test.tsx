@@ -49,8 +49,8 @@ describe("CurrentContextPanel", () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText(/Story World Location/i), "loc_archive");
-    await user.click(screen.getByRole("button", { name: /Save Scene Control/i }));
+    await user.selectOptions(screen.getByLabelText(/World Location/i), "loc_archive");
+    await user.click(screen.getByRole("button", { name: /Save Changes/i }));
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -88,9 +88,9 @@ describe("CurrentContextPanel", () => {
       />
     );
 
-    await user.clear(screen.getByLabelText(/Current Location/i));
-    await user.type(screen.getByLabelText(/Current Location/i), "Improvised Alley");
-    await user.click(screen.getByRole("button", { name: /Save Scene Control/i }));
+    await user.clear(screen.getByLabelText(/Location Name/i));
+    await user.type(screen.getByLabelText(/Location Name/i), "Improvised Alley");
+    await user.click(screen.getByRole("button", { name: /Save Changes/i }));
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({

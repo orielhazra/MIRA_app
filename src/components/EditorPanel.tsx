@@ -2,75 +2,31 @@ import React, { useState, useEffect } from "react";
 import ControlPanelHome from "../app/layout/panels/ControlPanelHome";
 import CurrentContextPanel from "../app/layout/panels/CurrentContextPanel";
 import StoryJournalPanel from "../app/layout/panels/StoryJournalPanel";
-import StoryWorldPanel from "../app/layout/panels/StoryWorldPanel";
-import CastStatePanel from "../app/layout/panels/CastStatePanel";
-import LoreRulesPanel from "../app/layout/panels/LoreRulesPanel";
 
 const PANEL_LABELS = {
   context: "Scene Control",
   memory: "Story Journal",
-  story: "Story & Cast",
-  character: "Cast State",
-  lore: "Lore & Rules"
 };
 
 export default function EditorPanel({
   activeStory,
   activeWorld,
   activeCharacters = [],
-  characters = [], // All characters for template resolution
-  activeLoreMemory,
-  loreStatusText,
-  isCollapsed = false,
   onToggleCollapse,
   onClearDirectorNotes,
   onSaveSceneControl,
-  onExportStory,
-  onDeleteStory,
-  onUpdateStoryCharacterPatch,
-  onAddStoryCharacterLoreEntry,
-  onUpdateStoryCharacterLoreEntry,
-  onRemoveStoryCharacterLoreEntry,
-  onResetStoryCharacterOverlay,
-  onUpgradeStoryCastMemberTemplate,
-  onExportCharacterTemplate,
-  onImportCharacterTemplate,
-  onUpdateStoryLore,
-  onUpdateWorldLore,
-  onUpdateCharacterLore,
-  onSaveTemporaryLore,
-  onClearTemporaryLore,
-  onRefreshActiveLore,
-  onSaveStoryWorldPatch,
-  onAddStoryWorldLocation,
-  onUpdateStoryWorldLocation,
-  onRemoveStoryWorldLocation,
-  onAddStoryWorldLoreEntry,
-  onUpdateStoryWorldLoreEntry,
-  onRemoveStoryWorldLoreEntry,
-  onResetStoryWorldOverlay,
-  onUpgradeStoryWorldTemplate,
-  currentContext,
-  storyMemory,
-  castState,
   onSaveStoryMemory,
-  onSaveCastState,
   onExtractUpdates,
   isExtractingUpdates = false,
-  worlds = [],
+  isCollapsed = false,
+  currentContext,
+  storyMemory,
 }) {
   const [activePanel, setActivePanel] = useState(null);
-  const [temporaryLoreDraft, setTemporaryLoreDraft] = useState(activeStory?.temporaryLorebook || []);
-  const [temporaryLoreStatus, setTemporaryLoreStatus] = useState("");
   const [contextStatus, setContextStatus] = useState("");
   const [memoryStatus, setMemoryStatus] = useState("");
-  const [castStatus, setCastStatus] = useState("");
 
   const storyCharacters = activeCharacters.filter(Boolean);
-
-  useEffect(() => {
-    setTemporaryLoreDraft(activeStory?.temporaryLorebook || []);
-  }, [activeStory?.id, activeStory?.temporaryLorebook]);
 
   if (!activeStory || !activeWorld || storyCharacters.length === 0) return null;
 
@@ -99,20 +55,6 @@ export default function EditorPanel({
     setActivePanel(null);
   }
 
-  function saveTemporaryLore() {
-    onSaveTemporaryLore(temporaryLoreDraft);
-    setTemporaryLoreStatus("Temporary lore saved.");
-    setTimeout(() => setTemporaryLoreStatus(""), 1500);
-  }
-
-  function clearTemporaryLore() {
-    if (!confirm("Clear all temporary lore for this story?")) return;
-    setTemporaryLoreDraft([]);
-    onClearTemporaryLore();
-    setTemporaryLoreStatus("Temporary lore cleared.");
-    setTimeout(() => setTemporaryLoreStatus(""), 1500);
-  }
-
   function clearDirectorNotes() {
     if (!confirm("Clear all director notes for this story?")) return;
     onClearDirectorNotes();
@@ -128,12 +70,6 @@ export default function EditorPanel({
     onSaveStoryMemory?.(memoryDraft);
     setMemoryStatus("Story memory saved.");
     setTimeout(() => setMemoryStatus(""), 1500);
-  }
-
-  function saveCastState(castDraft) {
-    onSaveCastState?.(castDraft);
-    setCastStatus("Cast state saved.");
-    setTimeout(() => setCastStatus(""), 1500);
   }
 
   return (
@@ -157,7 +93,6 @@ export default function EditorPanel({
             activeStory={activeStory}
             activeWorld={activeWorld}
             storyCharacters={storyCharacters}
-            loreStatusText={loreStatusText}
             onOpenPanel={openPanel}
           />
         ) : (
@@ -189,65 +124,8 @@ export default function EditorPanel({
               {activePanel === "memory" && (
                 <StoryJournalPanel
                   journal={storyMemory || activeStory.storyMemory}
-                  characters={storyCharacters}
                   status={memoryStatus}
                   onSave={saveStoryMemory}
-                />
-              )}
-
-              {activePanel === "story" && (
-                <StoryWorldPanel
-                  activeStory={activeStory}
-                  activeWorld={activeWorld}
-                  storyCharacters={storyCharacters}
-                  characters={characters}
-                  worlds={worlds}
-                  onExportStory={onExportStory}
-                  onDeleteStory={onDeleteStory}
-                  onUpdateStoryCharacterPatch={onUpdateStoryCharacterPatch}
-                  onAddStoryCharacterLoreEntry={onAddStoryCharacterLoreEntry}
-                  onUpdateStoryCharacterLoreEntry={onUpdateStoryCharacterLoreEntry}
-                  onRemoveStoryCharacterLoreEntry={onRemoveStoryCharacterLoreEntry}
-                  onResetStoryCharacterOverlay={onResetStoryCharacterOverlay}
-                  onUpgradeStoryCastMemberTemplate={onUpgradeStoryCastMemberTemplate}
-                  onExportCharacterTemplate={onExportCharacterTemplate}
-                  onImportCharacterTemplate={onImportCharacterTemplate}
-                  onSaveStoryWorldPatch={onSaveStoryWorldPatch}
-                  onAddStoryWorldLocation={onAddStoryWorldLocation}
-                  onUpdateStoryWorldLocation={onUpdateStoryWorldLocation}
-                  onRemoveStoryWorldLocation={onRemoveStoryWorldLocation}
-                  onAddStoryWorldLoreEntry={onAddStoryWorldLoreEntry}
-                  onUpdateStoryWorldLoreEntry={onUpdateStoryWorldLoreEntry}
-                  onRemoveStoryWorldLoreEntry={onRemoveStoryWorldLoreEntry}
-                  onResetStoryWorldOverlay={onResetStoryWorldOverlay}
-                  onUpgradeStoryWorldTemplate={onUpgradeStoryWorldTemplate}
-                />
-              )}
-
-              {activePanel === "character" && (
-                <CastStatePanel
-                  activeStory={activeStory}
-                  effectiveCharacters={storyCharacters}
-                  status={castStatus}
-                  onSave={saveCastState}
-                />
-              )}
-
-              {activePanel === "lore" && (
-                <LoreRulesPanel
-                  activeStory={activeStory}
-                  activeWorld={activeWorld}
-                  storyCharacters={storyCharacters}
-                  activeLoreMemory={activeLoreMemory}
-                  temporaryLoreDraft={temporaryLoreDraft}
-                  temporaryLoreStatus={temporaryLoreStatus}
-                  onTemporaryLoreChange={setTemporaryLoreDraft}
-                  onSaveTemporaryLore={saveTemporaryLore}
-                  onClearTemporaryLore={clearTemporaryLore}
-                  onRefreshActiveLore={onRefreshActiveLore}
-                  onUpdateStoryLore={onUpdateStoryLore}
-                  onUpdateWorldLore={onUpdateWorldLore}
-                  onUpdateCharacterLore={onUpdateCharacterLore}
                 />
               )}
             </div>

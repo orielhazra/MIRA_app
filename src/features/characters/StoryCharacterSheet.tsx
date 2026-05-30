@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
-import { parseKeywords } from "../../utils/helpers";
+import { parseKeywords, createId } from "../../utils/helpers";
+import { getLatestTemplateCharacterByKey } from "../../services/storyCharacters";
 
 export default function StoryCharacterSheet({
   castMember,
   effectiveCharacter,
+  characters = [],
   castStateRow,
   relationshipRow,
   journalEntries = [],
@@ -17,8 +19,10 @@ export default function StoryCharacterSheet({
   onUpdateLore,
   onRemoveLore,
   onResetOverlay,
+  onUpgradeTemplate,
   onBackToStory,
-  onExportTemplate
+  onExportTemplate,
+  onUpdateJournal
 }) {
   const [activeTab, setActiveTab] = useState("identity");
   const [status, setStatus] = useState("");
@@ -44,7 +48,6 @@ export default function StoryCharacterSheet({
   }
 
   function saveAll() {
-    // 1. Save Identity Patch
     onUpdatePatch(castMember.id, {
       name: identityDraft.name,
       shortDescription: identityDraft.shortDescription,
@@ -65,16 +68,46 @@ export default function StoryCharacterSheet({
       promptPinned: identityDraft.promptPinned,
     });
 
-    // 2. Save Live State
     onUpdateState(castMember.id, stateDraft);
-
-    // 3. Save Relationship
     onUpdateRelationship(castMember.id, relDraft);
-
     showStatus("Character dossier saved.");
   }
 
+  function upgradeTemplate() {
+    onUpgradeTemplate?.(castMember.id);
+    showStatus("Template upgraded to latest version.");
+  }
+
+  // Journal handlers
+  function addJournalEntry() {
+    const newEntry = {
+      id: `${castMember.id}-${Date.now()}`,
+      content: "",
+      active: true,
+      createdAt: Date.now()
+    };
+    onUpdateJournal([...journalEntries, newEntry]);
+  }
+
+  function updateJournalEntry(id, content) {
+    const nextEntries = journalEntries.map(e => e.id === id ? { ...e, content } : e);
+    onUpdateJournal(nextEntries);
+  }
+
+  function toggleJournalEntry(id, active) {
+    const nextEntries = journalEntries.map(e => e.id === id ? { ...e, active } : e);
+    onUpdateJournal(nextEntries);
+  }
+
+  function removeJournalEntry(id) {
+    if (!confirm("Delete this memory?")) return;
+    const nextEntries = journalEntries.filter(e => e.id !== id);
+    onUpdateJournal(nextEntries);
+  }
+
   const patch = castMember?.overlay?.identityPatch || {};
+  const latestCharacterTemplate = getLatestTemplateCharacterByKey(castMember.templateCharacterKey || castMember.templateCharacterId, characters);
+  const isUpgradeAvailable = latestCharacterTemplate && latestCharacterTemplate.id !== castMember.templateCharacterId;
 
   return (
     <section className="messages sheet-view">
@@ -90,11 +123,19 @@ export default function StoryCharacterSheet({
           </div>
         </header>
 
+        {isUpgradeAvailable && (
+          <div className="info-box upgrade-box">
+            <p>A newer global template version (v{latestCharacterTemplate.templateVersion}) is available.</p>
+            <button type="button" onClick={upgradeTemplate}>Upgrade Instance to v{latestCharacterTemplate.templateVersion}</button>
+          </div>
+        )}
+
         <p className="sheet-status">{status}</p>
 
         <nav className="dossier-tabs">
-          <button className={activeTab === "identity" ? "active" : ""} onClick={() => setActiveTab("identity")}>Identity & Lore</button>
+          <button className={activeTab === "identity" ? "active" : ""} onClick={() => setActiveTab("identity")}>Identity</button>
           <button className={activeTab === "state" ? "active" : ""} onClick={() => setActiveTab("state")}>Live Status</button>
+          <button className={activeTab === "lore" ? "active" : ""} onClick={() => setActiveTab("lore")}>Lorebook</button>
           <button className={activeTab === "memory" ? "active" : ""} onClick={() => setActiveTab("memory")}>Memory ({journalEntries.length})</button>
         </nav>
 
@@ -128,19 +169,8 @@ export default function StoryCharacterSheet({
                 </label>
               </div>
 
-              <h3>Instance Lorebook</h3>
-              <p className="muted small">Effective lore for this instance (Template + Overlays).</p>
-              <LoreInfoViewer 
-                lorebook={effectiveCharacter.lorebook || []} 
-                castMemberId={castMember.id}
-                overlay={castMember.overlay}
-                onAddLore={onAddLore}
-                onUpdateLore={onUpdateLore}
-                onRemoveLore={onRemoveLore}
-              />
-              
               <div className="sheet-actions" style={{ marginTop: '2rem' }}>
-                <button type="button" className="danger" onClick={() => { if(confirm("Reset all overrides?")) onResetOverlay(castMember.id); }}>Reset All Story Overrides</button>
+                <button type="button" className="danger" onClick={() => { if(confirm("Reset all identity overrides?")) onResetOverlay(castMember.id); }}>Reset All Story Overrides</button>
                 <button type="button" onClick={() => onExportTemplate(identityDraft)}>Export As Template</button>
               </div>
             </div>
@@ -174,21 +204,55 @@ export default function StoryCharacterSheet({
             </div>
           )}
 
+          {activeTab === "lore" && (
+            <div className="sheet-form">
+              <div className="section-header-actions">
+                <h3>Instance Lorebook</h3>
+                <button type="button" onClick={() => onAddLore(castMember.id, { name: "New Story Lore", keywords: [], content: "", enabled: true, alwaysOn: false })}>+ Add Lore</button>
+              </div>
+              <p className="muted small">Effective lore for this instance (Template + Overlays).</p>
+              <LoreInfoViewer 
+                lorebook={effectiveCharacter.lorebook || []} 
+                castMemberId={castMember.id}
+                overlay={castMember.overlay}
+                onUpdateLore={onUpdateLore}
+                onRemoveLore={onRemoveLore}
+              />
+            </div>
+          )}
+
           {activeTab === "memory" && (
             <div className="character-memory-list">
-              <h3>Story Memory</h3>
+              <div className="section-header-actions">
+                <h3>Story Memory</h3>
+                <button type="button" onClick={addJournalEntry}>+ Add Memory</button>
+              </div>
               <p className="muted">Events and facts specifically remembered by {effectiveCharacter.name}.</p>
               {journalEntries.length === 0 ? (
                 <p className="empty-note">No character-specific memories have been recorded yet.</p>
               ) : (
                 <div className="journal-list">
-                  {journalEntries.map((entry) => (
-                    <div key={entry.id} className="memory-entry card">
-                      <div className="memory-meta">
-                        <span className="memory-date">{new Date(entry.createdAt).toLocaleDateString()}</span>
-                        {!entry.active && <span className="pill muted">Inactive</span>}
+                  {[...journalEntries].sort((a, b) => b.createdAt - a.createdAt).map((entry) => (
+                    <div key={entry.id} className="memory-entry card journal-entry">
+                      <div className="memory-meta journal-entry-header">
+                        <label className="journal-toggle">
+                          <input
+                            type="checkbox"
+                            checked={entry.active}
+                            onChange={(e) => toggleJournalEntry(entry.id, e.target.checked)}
+                          />
+                          <span>Include in prompt</span>
+                        </label>
+                        <button type="button" className="remove-entry-btn" onClick={() => removeJournalEntry(entry.id)}>
+                          Delete
+                        </button>
                       </div>
-                      <p>{entry.content}</p>
+                      <textarea
+                        value={entry.content}
+                        onChange={(e) => updateJournalEntry(entry.id, e.target.value)}
+                        placeholder="What does this character remember?"
+                        onBlur={() => onUpdateJournal(journalEntries)}
+                      />
                     </div>
                   ))}
                 </div>
@@ -201,15 +265,12 @@ export default function StoryCharacterSheet({
   );
 }
 
-function LoreInfoViewer({ lorebook, castMemberId, overlay, onAddLore, onUpdateLore, onRemoveLore }) {
+function LoreInfoViewer({ lorebook, castMemberId, overlay, onUpdateLore, onRemoveLore }) {
   const addedIds = new Set((overlay.addedLoreEntries || []).map(e => e.id));
   const modifiedIds = new Set(Object.keys(overlay.modifiedLoreEntries || {}));
   
   return (
     <div className="dossier-lore-viewer">
-       <div className="sheet-actions compact-actions">
-          <button type="button" onClick={() => onAddLore(castMemberId, { name: "New Story Lore", keywords: [], content: "", enabled: true, alwaysOn: false })}>+ Add Story Lore</button>
-       </div>
        <div className="context-card-list">
           {lorebook.map((entry) => {
             const isAdded = addedIds.has(entry.id);
