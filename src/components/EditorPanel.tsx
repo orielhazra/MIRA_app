@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ControlPanelHome from "../app/layout/panels/ControlPanelHome";
 import CurrentContextPanel from "../app/layout/panels/CurrentContextPanel";
 import StoryJournalPanel from "../app/layout/panels/StoryJournalPanel";
+import DirectorGuidancePanel from "../app/layout/panels/DirectorGuidancePanel";
+import CastQuickStatePanel from "../app/layout/panels/CastQuickStatePanel";
 
 const PANEL_LABELS = {
   context: "Scene Control",
   memory: "Story Journal",
+  guidance: "Director Guidance",
+  cast: "Cast Quick State"
 };
 
 export default function EditorPanel({
@@ -16,6 +20,8 @@ export default function EditorPanel({
   onClearDirectorNotes,
   onSaveSceneControl,
   onSaveStoryMemory,
+  onSaveCastState,
+  onUpdateUserProfile, // New prop
   onExtractUpdates,
   isExtractingUpdates = false,
   isCollapsed = false,
@@ -25,6 +31,8 @@ export default function EditorPanel({
   const [activePanel, setActivePanel] = useState(null);
   const [contextStatus, setContextStatus] = useState("");
   const [memoryStatus, setMemoryStatus] = useState("");
+  const [guidanceStatus, setGuidanceStatus] = useState("");
+  const [castStatus, setCastStatus] = useState("");
 
   const storyCharacters = activeCharacters.filter(Boolean);
 
@@ -55,21 +63,28 @@ export default function EditorPanel({
     setActivePanel(null);
   }
 
-  function clearDirectorNotes() {
-    if (!confirm("Clear all director notes for this story?")) return;
-    onClearDirectorNotes();
-  }
-
-  function saveSceneControl(contextDraft, directorDraft) {
-    onSaveSceneControl(contextDraft, directorDraft);
+  function saveSceneControl(contextDraft) {
+    onSaveSceneControl(contextDraft, activeStory.directorNotes);
     setContextStatus("Scene control saved.");
     setTimeout(() => setContextStatus(""), 1500);
+  }
+
+  function saveDirectorGuidance(directorDraft) {
+    onSaveSceneControl(activeStory.currentContext, directorDraft);
+    setGuidanceStatus("Guidance saved.");
+    setTimeout(() => setGuidanceStatus(""), 1500);
   }
 
   function saveStoryMemory(memoryDraft) {
     onSaveStoryMemory?.(memoryDraft);
     setMemoryStatus("Story memory saved.");
     setTimeout(() => setMemoryStatus(""), 1500);
+  }
+
+  function saveCastQuickState(castDraft) {
+    onSaveCastState?.(castDraft);
+    setCastStatus("Cast state saved.");
+    setTimeout(() => setCastStatus(""), 1500);
   }
 
   return (
@@ -112,12 +127,30 @@ export default function EditorPanel({
                 <CurrentContextPanel
                   context={currentContext}
                   activeWorld={activeWorld}
-                  directorNotes={activeStory.directorNotes}
                   status={contextStatus}
                   onSave={saveSceneControl}
-                  onClearDirectorNotes={clearDirectorNotes}
                   onExtractUpdates={onExtractUpdates}
                   isExtractingUpdates={isExtractingUpdates}
+                />
+              )}
+
+              {activePanel === "guidance" && (
+                <DirectorGuidancePanel
+                  directorNotes={activeStory.directorNotes}
+                  status={guidanceStatus}
+                  onSave={saveDirectorGuidance}
+                  onClear={onClearDirectorNotes}
+                />
+              )}
+
+              {activePanel === "cast" && (
+                <CastQuickStatePanel
+                  activeStory={activeStory}
+                  activeStoryCharacters={storyCharacters}
+                  activeWorld={activeWorld}
+                  status={castStatus}
+                  onSave={saveCastQuickState}
+                  onUpdateUserProfile={onUpdateUserProfile}
                 />
               )}
 

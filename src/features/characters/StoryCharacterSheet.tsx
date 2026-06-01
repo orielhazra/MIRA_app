@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
-import { parseKeywords, createId } from "../../utils/helpers";
+import { parseKeywords } from "../../utils/helpers";
 import { getLatestTemplateCharacterByKey } from "../../services/storyCharacters";
 
 export default function StoryCharacterSheet({
   castMember,
   effectiveCharacter,
   characters = [],
+  activeWorld,
   castStateRow,
   relationshipRow,
   journalEntries = [],
@@ -36,6 +37,8 @@ export default function StoryCharacterSheet({
   // Relationship State
   const [relDraft, setRelDraft] = useState(relationshipRow || {});
 
+  const worldLocations = activeWorld?.locations || [];
+
   useEffect(() => {
     setIdentityDraft(effectiveCharacter);
     setStateDraft(castStateRow || {});
@@ -48,6 +51,7 @@ export default function StoryCharacterSheet({
   }
 
   function saveAll() {
+    // 1. Save Identity Patch
     onUpdatePatch(castMember.id, {
       name: identityDraft.name,
       shortDescription: identityDraft.shortDescription,
@@ -68,8 +72,12 @@ export default function StoryCharacterSheet({
       promptPinned: identityDraft.promptPinned,
     });
 
+    // 2. Save Live State
     onUpdateState(castMember.id, stateDraft);
+
+    // 3. Save Relationship
     onUpdateRelationship(castMember.id, relDraft);
+
     showStatus("Character dossier saved.");
   }
 
@@ -188,6 +196,18 @@ export default function StoryCharacterSheet({
                     <option value="inactive">Inactive (Off-scene)</option>
                   </select>
                 </label>
+                
+                <label>
+                  Current Location
+                  <select value={stateDraft.locationId || "with_user"} onChange={(e) => setStateDraft({...stateDraft, locationId: e.target.value})}>
+                    <option value="with_user">With User (Follows Scene)</option>
+                    <option value="unknown">Unknown / Hidden</option>
+                    {worldLocations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                </label>
+
                 <TextInput label="Current Mood" value={stateDraft.mood} onChange={(v) => setStateDraft({...stateDraft, mood: v})} />
                 <TextInput label="Physical Condition" value={stateDraft.condition} onChange={(v) => setStateDraft({...stateDraft, condition: v})} />
                 <TextInput label="Current Outfit" value={stateDraft.outfit} onChange={(v) => setStateDraft({...stateDraft, outfit: v})} />

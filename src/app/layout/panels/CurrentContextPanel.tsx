@@ -3,23 +3,19 @@ import React, { useState, useEffect, useMemo } from "react";
 export default function CurrentContextPanel({ 
   context, 
   activeWorld, 
-  directorNotes, 
   status, 
   onSave, 
-  onClearDirectorNotes, 
   onExtractUpdates, 
   isExtractingUpdates 
 }) {
   const [draft, setDraft] = useState(() => buildCurrentContextDraft(context));
-  const [directorDraft, setDirectorDraft] = useState(() => buildDirectorGuidanceDraft(directorNotes));
   const [dirty, setDirty] = useState(false);
   
-  const contextResetKey = `${JSON.stringify(context || {})}::${JSON.stringify(directorNotes || {})}`;
+  const contextResetKey = JSON.stringify(context || {});
   const worldLocations = useMemo(() => Array.isArray(activeWorld?.locations) ? activeWorld.locations : [], [activeWorld?.locations]);
 
   useEffect(() => {
     setDraft(buildCurrentContextDraft(context));
-    setDirectorDraft(buildDirectorGuidanceDraft(directorNotes));
     setDirty(false);
   }, [contextResetKey]);
 
@@ -28,16 +24,22 @@ export default function CurrentContextPanel({
     setDraft(updater);
   }
 
-  function setDirectorField(field, value) {
-    setDirty(true);
-    setDirectorDraft((current) => ({ ...current, [field]: value }));
-  }
-
   function setSceneField(field, value) {
     updateDraft((current) => ({
       ...current,
       scene: { ...current.scene, [field]: value }
     }));
+  }
+
+  function setLocationField(field, value) {
+    updateDraft((current) => {
+      const nextLocation = { ...current.location, [field]: value };
+      if (field === "name") {
+        const matchedLocation = worldLocations.find(l => l.name.toLowerCase() === value.toLowerCase());
+        nextLocation.locationId = matchedLocation?.id || "";
+      }
+      return { ...current, location: nextLocation };
+    });
   }
 
   function selectLocation(locationId) {
@@ -60,7 +62,7 @@ export default function CurrentContextPanel({
   }
 
   function save() {
-    onSave(draft, directorDraft);
+    onSave(draft);
     setDirty(false);
   }
 
@@ -101,19 +103,6 @@ export default function CurrentContextPanel({
         </div>
         <ObjectsEditor draft={draft} updateDraft={updateDraft} />
       </details>
-
-      <h3 style={{ marginTop: '20px' }}>Director Guidance</h3>
-      <p className="muted">Private steering for the AI's next response.</p>
-      <div className="context-grid">
-        <ContextTextarea label="Next Story Beat / Objective" value={directorDraft.nextStoryBeat} onChange={(v) => setDirectorField("nextStoryBeat", v)} />
-        <ContextTextarea label="Character Goals / Motivation" value={directorDraft.characterMotivation} onChange={(v) => setDirectorField("characterMotivation", v)} />
-        <ContextTextarea label="Avoid / Do Not Mention" value={directorDraft.avoid} onChange={(v) => setDirectorField("avoid", v)} />
-        <ContextTextarea label="Custom Note" value={directorDraft.customNotes} onChange={(v) => setDirectorField("customNotes", v)} />
-      </div>
-      
-      <div className="sheet-actions compact-actions">
-        <button type="button" className="danger" onClick={onClearDirectorNotes}>Clear Guidance</button>
-      </div>
     </div>
   );
 }
@@ -129,12 +118,10 @@ function ObjectsEditor({ draft, updateDraft }) {
     objects: c.objects.filter((_, i) => i !== idx)
   }));
 
-  const updateObject = (idx, field, val) => updateDraft(c => {
-    return {
-      ...c,
-      objects: c.objects.map((o, i) => i === idx ? { ...o, [field]: val } : o)
-    };
-  });
+  const updateObject = (idx, field, val) => updateDraft(c => ({
+    ...c,
+    objects: c.objects.map((o, i) => i === idx ? { ...o, [field]: val } : o)
+  }));
 
   return (
     <div className="objects-editor">
@@ -154,17 +141,6 @@ function ObjectsEditor({ draft, updateDraft }) {
       </div>
     </div>
   );
-}
-
-function buildDirectorGuidanceDraft(notes) {
-  const source = notes || {};
-  return {
-    nextStoryBeat: source.nextStoryBeat || "",
-    characterMotivation: source.characterMotivation || "",
-    avoid: source.avoid || "",
-    customNotes: source.customNotes || "",
-    userPlan: source.userPlan || ""
-  };
 }
 
 function buildCurrentContextDraft(context) {

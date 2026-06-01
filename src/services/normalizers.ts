@@ -1,7 +1,8 @@
 import { 
   DirectorNotes, StoryJournal, CurrentContext, CastState, 
   LoreEntry, World, WorldLocation, StoryWorldOverlay, Character, Story, ChatMessage,
-  CastMemberState, RelationshipState, ObjectContext, StoryCharacterOverlay, StoryCastMember
+  CastMemberState, RelationshipState, ObjectContext, StoryCharacterOverlay, StoryCastMember,
+  UserProfile
 } from "../types/index";
 import { defaultWorlds, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { clampNumber, createId, parseKeywords } from "../utils/helpers";
@@ -183,6 +184,7 @@ export function normalizeCastState(castState: any = {}, castMembers: StoryCastMe
       castMemberId,
       presence,
       present: presence !== "inactive",
+      locationId: String(row.locationId || row.location || "with_user"),
       outfit: String(row.outfit || character.defaultOutfit || ""),
       mood: String(row.mood || row.attitude || ""),
       condition: String(row.condition || row.physicalState || ""),
@@ -316,6 +318,20 @@ export function normalizeCharacter(character: any = {}): Character {
   };
 }
 
+export function normalizeUserProfile(profile: any): UserProfile {
+  const source = profile || {};
+  return {
+    name: String(source.name || "You"),
+    description: String(source.description || ""),
+    appearance: String(source.appearance || ""),
+    backstory: String(source.backstory || ""),
+    mood: String(source.mood || ""),
+    condition: String(source.condition || ""),
+    outfit: String(source.outfit || ""),
+    locationId: String(source.locationId || "with_user")
+  };
+}
+
 export function normalizeStory(story: any = {}, worlds: World[] = [], characters: Character[] = []): Story {
   const fallbackWorld = normalizeWorld(worlds?.[0] || defaultWorlds[0]);
   
@@ -347,6 +363,7 @@ export function normalizeStory(story: any = {}, worlds: World[] = [], characters
     templateWorldVersion: Number(story.templateWorldVersion || templateWorld.templateVersion || 1),
     worldOverlay: normalizeStoryWorldOverlay(story.worldOverlay),
     castMembers,
+    userProfile: normalizeUserProfile(story.userProfile),
     scenario: String(story.scenario || ""),
     greeting: String(story.greeting || "The scene begins."),
     createdAt: Number(story.createdAt || Date.now()),

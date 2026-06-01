@@ -12,7 +12,8 @@ export default function Sidebar({
   onSelectCharacter,
   onNewCharacter,
   onSelectWorld,
-  onEditStory
+  onEditStory,
+  onSelectUser // New prop
 }) {
   if (isCollapsed) {
     return (
@@ -60,6 +61,23 @@ export default function Sidebar({
           >
             <strong>{activeStory.title}</strong>
             <span>Edit story details</span>
+          </button>
+          <hr />
+        </>
+      )}
+
+      {/* User Section (Quick Access to User Dossier) */}
+      {activeStory && (
+        <>
+          <h2>You</h2>
+          <button
+            type="button"
+            className={`character ${selectedCharacterSheetId === "user" ? "active" : ""}`}
+            disabled={isGenerating}
+            onClick={() => onSelectUser?.()}
+          >
+            <strong>{activeStory.userProfile?.name || "You"}</strong>
+            <span>View your dossier</span>
           </button>
           <hr />
         </>

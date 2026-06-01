@@ -139,6 +139,7 @@ export interface CastMemberState {
   castMemberId: string; // changed from characterId
   presence: "active" | "nearby" | "inactive";
   present?: boolean;
+  locationId?: string; // "with_user" | "unknown" | worldLocationId
   outfit?: string;
   mood?: string;
   condition?: string;
@@ -158,6 +159,17 @@ export interface RelationshipState {
 export interface CastState {
   activeCharacters: CastMemberState[];
   relationships: RelationshipState[];
+}
+
+export interface UserProfile {
+  name: string;
+  description?: string;
+  appearance?: string;
+  backstory?: string;
+  mood?: string;
+  condition?: string;
+  outfit?: string;
+  locationId?: string;
 }
 
 export interface JournalEntry {
@@ -255,6 +267,7 @@ export interface Story {
   worldOverlay: StoryWorldOverlay;
 
   castMembers: StoryCastMember[]; // replaced characterIds: string[]
+  userProfile: UserProfile;
 
   scenario?: string;
   greeting?: string;

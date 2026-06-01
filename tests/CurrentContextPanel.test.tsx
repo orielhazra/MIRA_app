@@ -40,10 +40,8 @@ describe("CurrentContextPanel", () => {
           recentFacts: {},
         }}
         activeWorld={activeWorld as any}
-        directorNotes={{}}
         status=""
         onSave={onSave}
-        onClearDirectorNotes={vi.fn()}
         onExtractUpdates={vi.fn()}
         isExtractingUpdates={false}
       />
@@ -61,12 +59,11 @@ describe("CurrentContextPanel", () => {
           visibleExits: "Stone stair",
           hazards: "Falling dust",
         }),
-      }),
-      expect.any(Object)
+      })
     );
   });
 
-  it("manual unmatched location names clear the linked locationId", async () => {
+  it("can toggle advanced facts and edit discoveries", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
 
@@ -76,30 +73,28 @@ describe("CurrentContextPanel", () => {
           scene: {},
           location: { locationId: "loc_square", name: "Market Square", description: "Crowded and bright.", visibleExits: "North Gate", availableLocations: "", hazards: "Pickpockets" },
           objects: [],
-          recentFacts: {},
+          recentFacts: { importantDiscoveries: "Initial fact" },
         }}
         activeWorld={activeWorld as any}
-        directorNotes={{}}
         status=""
         onSave={onSave}
-        onClearDirectorNotes={vi.fn()}
         onExtractUpdates={vi.fn()}
         isExtractingUpdates={false}
       />
     );
 
-    await user.clear(screen.getByLabelText(/Location Name/i));
-    await user.type(screen.getByLabelText(/Location Name/i), "Improvised Alley");
+    const advancedFacts = screen.getByText(/Advanced Scene Facts/i);
+    expect(advancedFacts).toBeInTheDocument();
+    
+    await user.type(screen.getByLabelText(/Discoveries & Facts/i), " and new info");
     await user.click(screen.getByRole("button", { name: /Save Changes/i }));
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        location: expect.objectContaining({
-          locationId: "",
-          name: "Improvised Alley",
+        recentFacts: expect.objectContaining({
+          importantDiscoveries: "Initial fact and new info",
         }),
-      }),
-      expect.any(Object)
+      })
     );
   });
 });

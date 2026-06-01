@@ -1,6 +1,7 @@
 import { defaultCharacters, defaultStories, defaultWorlds } from "../constants/defaultData";
 import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
 import { storyToMeta } from "../services/storyMeta";
+import { getAutoPresence } from "../utils/appHelpers";
 
 export function createStoryBindings(ctx: any, storyActions: any) {
   return {
@@ -69,17 +70,56 @@ export function createStoryBindings(ctx: any, storyActions: any) {
       setActiveView: ctx.setActiveView,
     }),
 
-    saveCurrentContext: (nextContext?: any) => storyActions.saveCurrentContext({
-      activeStory: nextContext && ctx.activeStory ? { ...ctx.activeStory, currentContext: nextContext } : ctx.activeStory,
-      saveActiveStory: ctx.saveActiveStory,
-    }),
+    saveCurrentContext: (nextContext?: any) => {
+      const next = nextContext && ctx.activeStory ? { ...ctx.activeStory, currentContext: nextContext } : ctx.activeStory;
+      if (!next) return;
 
-    saveSceneControl: (nextContext: any, nextDirectorNotes: any) => storyActions.saveSceneControl({
-      activeStory: ctx.activeStory,
-      saveActiveStory: ctx.saveActiveStory,
-      nextContext,
-      nextDirectorNotes,
-    }),
+      // Handle Auto Presence on location change
+      const oldLocId = ctx.activeStory?.currentContext?.location?.locationId;
+      const newLocId = next.currentContext?.location?.locationId;
+
+      if (oldLocId !== newLocId) {
+        next.castState = {
+          ...next.castState,
+          activeCharacters: next.castState.activeCharacters.map(char => {
+            const presence = getAutoPresence(char.locationId, newLocId);
+            return { ...char, presence, present: presence !== "inactive" };
+          })
+        };
+      }
+
+      storyActions.saveCurrentContext({
+        activeStory: next,
+        saveActiveStory: ctx.saveActiveStory,
+      });
+    },
+
+    saveSceneControl: (nextContext: any, nextDirectorNotes: any) => {
+      if (!ctx.activeStory) return;
+      
+      const next = { ...ctx.activeStory, currentContext: nextContext, directorNotes: nextDirectorNotes };
+      
+      // Handle Auto Presence on location change
+      const oldLocId = ctx.activeStory.currentContext?.location?.locationId;
+      const newLocId = nextContext.location?.locationId;
+
+      if (oldLocId !== newLocId) {
+        next.castState = {
+          ...next.castState,
+          activeCharacters: next.castState.activeCharacters.map(char => {
+            const presence = getAutoPresence(char.locationId, newLocId);
+            return { ...char, presence, present: presence !== "inactive" };
+          })
+        };
+      }
+
+      storyActions.saveSceneControl({
+        activeStory: next,
+        saveActiveStory: ctx.saveActiveStory,
+        nextContext: next.currentContext,
+        nextDirectorNotes: next.directorNotes,
+      });
+    },
 
     saveStoryMemory: (nextMemory: any) => storyActions.saveStoryMemory({
       activeStory: ctx.activeStory,
@@ -87,13 +127,32 @@ export function createStoryBindings(ctx: any, storyActions: any) {
       nextMemory,
     }),
 
-    saveCastState: (nextCastState: any) => storyActions.saveCastState({
-      activeStory: ctx.activeStory,
-      saveActiveStory: ctx.saveActiveStory,
-      castMembers: ctx.activeStory?.castMembers || [],
-      activeStoryCharacters: ctx.activeStoryCharacters,
-      nextCastState,
-    }),
+    saveCastState: (nextCastState: any) => {
+      if (!ctx.activeStory) return;
+
+      const sceneLocId = ctx.activeStory.currentContext?.location?.locationId;
+      
+      // Handle Auto Presence on individual character location change
+      const autoCastState = {
+        ...nextCastState,
+        activeCharacters: nextCastState.activeCharacters.map((char: any, i: number) => {
+          const oldChar = ctx.activeStory.castState.activeCharacters.find((c: any) => c.castMemberId === char.castMemberId);
+          if (oldChar && oldChar.locationId !== char.locationId) {
+            const presence = getAutoPresence(char.locationId, sceneLocId);
+            return { ...char, presence, present: presence !== "inactive" };
+          }
+          return char;
+        })
+      };
+
+      storyActions.saveCastState({
+        activeStory: ctx.activeStory,
+        saveActiveStory: ctx.saveActiveStory,
+        castMembers: ctx.activeStory.castMembers || [],
+        activeStoryCharacters: ctx.activeStoryCharacters,
+        nextCastState: autoCastState,
+      });
+    },
 
     saveDirectorNotes: (notes: any) => storyActions.saveDirectorNotes({
       activeStory: ctx.activeStory,

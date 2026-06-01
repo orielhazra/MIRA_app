@@ -3,7 +3,6 @@ import React from "react";
 export default function ControlPanelHome({
   activeStory,
   activeWorld,
-  storyCharacters,
   onOpenPanel
 }) {
   return (
@@ -16,13 +15,23 @@ export default function ControlPanelHome({
 
       <div className="control-button-grid" aria-label="Editor sections">
         <ControlButton
-          title="Scene Control"
-          description="Manage current scene facts, time of day, and director guidance for AI responses."
+          title="Scene State"
+          description="Fundamental facts: time, atmosphere, location, and conflict."
           onClick={() => onOpenPanel("context")}
         />
         <ControlButton
+          title="Cast Quick State"
+          description="Quickly manage presence and mood for the entire cast."
+          onClick={() => onOpenPanel("cast")}
+        />
+        <ControlButton
+          title="Director Guidance"
+          description="Private steering for AI behavior and next story beats."
+          onClick={() => onOpenPanel("guidance")}
+        />
+        <ControlButton
           title="Story Journal"
-          description="View long-term continuity: general plot summary and task tracking."
+          description="Global plot summary and general task tracking."
           onClick={() => onOpenPanel("memory")}
         />
       </div>
@@ -30,7 +39,7 @@ export default function ControlPanelHome({
       <div className="control-summary-card">
         <h3>Ensemble Navigation</h3>
         <p className="editor-small">
-          Use the <strong>Left Sidebar</strong> to access detailed dossiers for each character and the world. Dossiers contain identity overrides, live state, and individual memories.
+          Use the <strong>Left Sidebar</strong> to access detailed dossiers for each character and the world. Dossiers contain identity overrides, individual lore, and character-specific memories.
         </p>
       </div>
     </div>

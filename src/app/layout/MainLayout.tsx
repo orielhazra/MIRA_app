@@ -11,6 +11,7 @@ import StoryCreationSheet from "../../features/stories/StoryCreationSheet";
 import StoryEditSheet from "../../features/stories/StoryEditSheet";
 import CharacterSheet from "../../features/characters/CharacterSheet";
 import StoryCharacterSheet from "../../features/characters/StoryCharacterSheet";
+import StoryUserSheet from "../../features/characters/StoryUserSheet";
 import WorldSheet from "../../features/worlds/WorldSheet";
 import StoryWorldSheet from "../../features/worlds/StoryWorldSheet";
 
@@ -100,6 +101,7 @@ export default function MainLayout() {
           castMember={castMember}
           effectiveCharacter={effectiveCharacter}
           characters={app.characters}
+          activeWorld={app.activeWorld}
           castStateRow={castStateRow}
           relationshipRow={relationshipRow}
           journalEntries={journalEntries}
@@ -126,6 +128,22 @@ export default function MainLayout() {
           })}
           onBackToStory={() => app.setActiveView("story")}
           onExportTemplate={app.exportCharacter}
+        />
+      );
+    }
+
+    if (app.activeView === "story-user") {
+      if (!app.activeStory) {
+        app.setActiveView("landing");
+        return null;
+      }
+
+      return (
+        <StoryUserSheet
+          userProfile={app.activeStory.userProfile}
+          activeWorld={app.activeWorld}
+          onUpdateProfile={(profile) => app.saveActiveStory({ ...app.activeStory, userProfile: profile })}
+          onBackToStory={() => app.setActiveView("story")}
         />
       );
     }
@@ -261,6 +279,11 @@ export default function MainLayout() {
               app.setActiveView(app.activeStory ? "story-character" : "character"); 
               app.setStoryDraft(null); 
             }}
+            onSelectUser={() => {
+              app.setSelectedCharacterSheetId("user");
+              app.setActiveView("story-user");
+              app.setStoryDraft(null);
+            }}
             onSelectWorld={(id) => { 
               app.setSelectedWorldSheetId(id); 
               app.setActiveView(app.activeStory ? "story-world" : "world"); 
@@ -336,6 +359,7 @@ export default function MainLayout() {
             onRemoveStoryWorldLoreEntry={app.removeStoryWorldLoreEntry}
             onResetStoryWorldOverlay={app.resetStoryWorldOverlay}
             onUpgradeStoryWorldTemplate={app.upgradeStoryWorldTemplate}
+            onUpdateUserProfile={(profile) => app.saveActiveStory({ ...app.activeStory, userProfile: profile })}
             currentContext={app.activeStory.currentContext}
             storyMemory={app.activeStory.storyMemory}
             castState={app.activeStory.castState}

@@ -26,6 +26,13 @@ export function normalizeCastPresence(value: any): "active" | "nearby" | "inacti
   return value === false ? "inactive" : "active";
 }
 
+export function getAutoPresence(charLocId: string | undefined, sceneLocId: string | undefined): "active" | "nearby" | "inactive" {
+  if (charLocId === "with_user") return "active";
+  if (charLocId === "unknown") return "inactive";
+  if (sceneLocId && charLocId === sceneLocId) return "nearby";
+  return "inactive";
+}
+
 export function syncDirectorNotesFromContext(notes: DirectorNotes | undefined, context: CurrentContext): DirectorNotes {
   const normalizedNotes = normalizeDirectorNotes(notes);
   const normalizedContext = normalizeCurrentContext(context);
@@ -91,6 +98,7 @@ export function createInitialCastState(castMembers: StoryCastMember[], character
       castMemberId: member.id,
       presence: "active",
       present: true,
+      locationId: "with_user",
       outfit: template?.defaultOutfit || "",
       mood: "",
       condition: "",
@@ -300,7 +308,7 @@ export function findCharacterFromText(text: string, characterByName: Map<string,
 export function ensureCharacterState(castState: CastState, castMemberId: string): CastMemberState {
   let row = castState.activeCharacters.find((item) => item.castMemberId === castMemberId);
   if (!row) {
-    row = { castMemberId, presence: "active", present: true, outfit: "", mood: "", condition: "", currentGoal: "", knowledge: "", temporarySecret: "", sceneInstruction: "" };
+    row = { castMemberId, presence: "active", present: true, locationId: "with_user", outfit: "", mood: "", condition: "", currentGoal: "", knowledge: "", temporarySecret: "", sceneInstruction: "" };
     castState.activeCharacters.push(row);
   }
   return row;

@@ -1,5 +1,5 @@
 import { 
-  Story, World, Character, CurrentContext, ChatMessage, LoreEntry, CastState
+  Story, World, Character, CurrentContext, ChatMessage, LoreEntry, CastState, UserProfile
 } from "../types/index";
 import { CHAT_CONTEXT_MESSAGES } from "../constants/defaultData";
 import { buildDirectorNotesPrompt, formatLoreForPrompt } from "./lore";
@@ -92,6 +92,9 @@ ${section("Title", story?.title)}
 ${section("Scenario", compactText(story?.scenario, 900))}
 ${section("Current Objective", smartContext.currentObjective)}
 
+[User Profile - Roleplayed by the Human]
+${formatUserProfile(story?.userProfile, world)}
+
 [Story Memory]
 ${formatStoryMemory(story?.storyMemory)}
 
@@ -99,10 +102,10 @@ ${formatStoryMemory(story?.storyMemory)}
 ${formatSmartCurrentContext(smartContext)}
 
 [Active Character Profiles - Full Detail]
-${formatFullCharacterProfiles(smartContext.fullCharacters, smartContext.characterStateById, smartContext.relationshipById)}
+${formatFullCharacterProfiles(smartContext.fullCharacters, smartContext.characterStateById, smartContext.relationshipById, world)}
 
 [Nearby / Mentioned Character Profiles - Compact]
-${formatCompactCharacterProfiles(smartContext.compactCharacters, smartContext.characterStateById, smartContext.relationshipById)}
+${formatCompactCharacterProfiles(smartContext.compactCharacters, smartContext.characterStateById, smartContext.relationshipById, world)}
 
 [Inactive Cast Reference]
 ${formatInactiveCast(smartContext.inactiveCharacters)}
@@ -152,6 +155,7 @@ export function section(title: string, value: string | undefined): string {
 export function buildOpeningMessage(story: Story, world: World | null, characters: Character[] = []): string {
   const safeWorld = world || { name: "the world" };
   const castNames = characters.map((item) => item.name).join(", ");
+  const userName = story?.userProfile?.name || "the user";
   const template = story?.greeting || `The scene begins with ${castNames || "the characters"}.`;
 
   return String(template)
@@ -160,7 +164,9 @@ export function buildOpeningMessage(story: Story, world: World | null, character
     .replaceAll("{{cast}}", castNames || "the cast")
     .replaceAll("{{castNames}}", castNames || "the cast")
     .replaceAll("{{world}}", safeWorld.name)
-    .replaceAll("{{worldName}}", safeWorld.name);
+    .replaceAll("{{worldName}}", safeWorld.name)
+    .replaceAll("{{user}}", userName)
+    .replaceAll("{{userName}}", userName);
 }
 
 interface SmartPromptParams {
@@ -259,6 +265,25 @@ export function buildSmartPromptContext({ story, world, characters = [], history
   };
 }
 
+function formatUserProfile(profile: UserProfile | undefined, world: World): string {
+  if (!profile) return "User is roleplaying as themselves.";
+  const locName = resolveCharacterLocationName(profile.locationId, world);
+  
+  const stateLines = [
+    profile.outfit ? `Current Outfit: ${profile.outfit}` : "",
+    profile.mood ? `Mood: ${profile.mood}` : "",
+    locName ? `Current Location: ${locName}` : "",
+    profile.condition ? `Condition: ${profile.condition}` : "",
+  ].filter(Boolean);
+
+  return `
+User Persona: ${profile.name || "You"}
+${section("Description / Appearance", profile.description || profile.appearance)}
+${section("Backstory", profile.backstory)}
+${stateLines.length ? `Current State:\n${stateLines.join("\n")}` : ""}
+`.trim();
+}
+
 function formatStoryMemory(memory: any): string {
   const source = memory && typeof memory === "object" ? memory : {};
   const sections: string[] = [];
@@ -333,16 +358,19 @@ function formatSmartCurrentContext(smartContext: any): string {
   return blocks.join("\n\n") || "No current context saved.";
 }
 
-function formatFullCharacterProfiles(characters: Character[], characterStateById: Map<string, any>, relationshipById: Map<string, any>): string {
+function formatFullCharacterProfiles(characters: Character[], characterStateById: Map<string, any>, relationshipById: Map<string, any>, world: World): string {
   if (!characters.length) return "No active character profile available.";
 
   return characters.map((character) => {
     const state = characterStateById.get(character.id) || {};
     const relationship = relationshipById.get(character.id) || {};
     const roleLabel = "Character Profile";
+    const locName = resolveCharacterLocationName(state.locationId, world);
+    
     const stateLines = [
       state.outfit || character.defaultOutfit ? `Current Outfit: ${state.outfit || character.defaultOutfit}` : "",
       state.mood ? `Mood: ${state.mood}` : "",
+      locName ? `Current Location: ${locName}` : "",
       state.condition ? `Condition: ${state.condition}` : "",
       state.currentGoal ? `Current Goal: ${state.currentGoal}` : "",
       state.knowledge ? `Knows / Remembers: ${state.knowledge}` : "",
@@ -370,16 +398,19 @@ ${stateLines.length ? `Current State:\n${stateLines.join("\n")}` : ""}
   }).join("\n\n");
 }
 
-function formatCompactCharacterProfiles(characters: Character[], characterStateById: Map<string, any>, relationshipById: Map<string, any>): string {
+function formatCompactCharacterProfiles(characters: Character[], characterStateById: Map<string, any>, relationshipById: Map<string, any>, world: World): string {
   if (!characters.length) return "None.";
   return characters.map((character) => {
     const state = characterStateById.get(character.id) || {};
     const relationship = relationshipById.get(character.id) || {};
+    const locName = resolveCharacterLocationName(state.locationId, world);
+
     const parts = [
       character.race ? `race/type: ${character.race}` : "",
       character.role ? `role: ${character.role}` : "",
       character.profileSummary || character.shortDescription || character.description ? `summary: ${compactText(character.profileSummary || character.shortDescription || character.description, 260)}` : "",
       normalizePresence(state) === "nearby" ? "nearby/background" : normalizePresence(state) === "inactive" ? "not currently present" : "",
+      locName ? `location: ${locName}` : "",
       state.mood ? `mood: ${state.mood}` : "",
       state.condition ? `condition: ${state.condition}` : "",
       state.currentGoal ? `goal: ${compactText(state.currentGoal, 120)}` : "",
@@ -388,6 +419,13 @@ function formatCompactCharacterProfiles(characters: Character[], characterStateB
     ].filter(Boolean);
     return `- ${character.name}: ${parts.join("; ") || "mentioned cast member"}`;
   }).join("\n");
+}
+
+function resolveCharacterLocationName(locationId: string | undefined, world: World): string {
+  if (!locationId || locationId === "with_user") return ""; // "With User" is default/implied by active presence
+  if (locationId === "unknown") return "Unknown / Hidden";
+  const loc = world.locations?.find(l => l.id === locationId);
+  return loc?.name || "Elsewhere";
 }
 
 function formatInactiveCast(characters: Character[]): string {
