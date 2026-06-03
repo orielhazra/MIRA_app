@@ -13,6 +13,9 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       { id: "char-1", name: "Mira", shortDescription: "Lead one", goals: "Find answers", relationshipToUser: "Curious" },
       { id: "char-2", name: "Ari", shortDescription: "Lead two", goals: "Protect the station", relationshipToUser: "Wary" },
     ],
+    personas: [
+      { id: "persona-1", name: "Explorer" }
+    ],
     stories: [
       { 
         id: "story-1", 
@@ -62,6 +65,14 @@ const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
       }),
       clear: vi.fn(),
       removeLegacyChat: vi.fn(),
+    },
+    personas: {
+      list: vi.fn((fallback = []) => (state.personas.length ? clone(state.personas) : clone(fallback))),
+      saveAll: vi.fn((personas) => {
+        state.personas = clone(personas);
+        return true;
+      }),
+      clear: vi.fn(),
     },
     stories: {
       listMeta: vi.fn((fallback = []) => state.stories.length

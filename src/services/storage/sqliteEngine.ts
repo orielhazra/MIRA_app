@@ -1,8 +1,8 @@
 import { cloneJson } from "../../utils/helpers";
 import { CUSTOM_DB_PATH } from "../../constants/defaultData";
 import { storyToMeta } from "../storyMeta";
-import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry } from "../../types";
-import { ensureSqliteSchema, SQLITE_WORLD_INSERT_SQL, SQLITE_CHARACTER_INSERT_SQL, SQLITE_STORY_INSERT_SQL } from "./sqliteSchema";
+import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry, Persona } from "../../types";
+import { ensureSqliteSchema, SQLITE_WORLD_INSERT_SQL, SQLITE_CHARACTER_INSERT_SQL, SQLITE_STORY_INSERT_SQL, SQLITE_PERSONA_INSERT_SQL } from "./sqliteSchema";
 
 
 
@@ -11,6 +11,7 @@ interface SqliteCache {
   characters: Character[];
   stories: Story[];
   storyMetas: StoryMeta[];
+  personas: Persona[];
   chats: Record<string, ChatMessage[]>;
   loreMemory: Record<string, LoreEntry[]>;
   settings: Record<string, string>;
@@ -28,6 +29,7 @@ const cache: SqliteCache = {
   characters: [],
   stories: [],
   storyMetas: [],
+  personas: [],
   chats: {},
   loreMemory: {},
   settings: {}
@@ -130,8 +132,7 @@ function cancelScheduledWrite(writeKey: string): void {
 
   if (scheduledWriteTasks.delete(writeKey)) {
     updatePersistenceStatus({
-      pendingWrites: persistenceStatus.pendingWrites + 1,
-      lastOperation: operationLabel,
+      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
     });
   }
 }
@@ -329,10 +330,21 @@ export const sqliteEngine = {
         };
       });
 
+      // 4. Load Personas
+      const rawPersonas = (await db.select("SELECT * FROM personas")) as any[];
+      cache.personas = rawPersonas.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description || "",
+        appearance: row.appearance || "",
+        backstory: row.backstory || "",
+        createdAt: row.createdAt
+      }));
+
       // Note: Full stories are no longer loaded into cache.stories at startup
       cache.stories = [];
 
-      // 4. Load Chats
+      // 5. Load Chats
       const rawChats = (await db.select("SELECT * FROM chats")) as any[];
       for (const row of rawChats as any[]) {
         if (row.storyId) {
@@ -340,7 +352,7 @@ export const sqliteEngine = {
         }
       }
 
-      // 5. Load Lore Memory
+      // 6. Load Lore Memory
       const rawLoreMemory = (await db.select("SELECT * FROM lore_memory")) as any[];
       for (const row of rawLoreMemory as any[]) {
         if (row.storyId) {
@@ -348,7 +360,7 @@ export const sqliteEngine = {
         }
       }
 
-      // 6. Load Settings
+      // 7. Load Settings
       const rawSettings = (await db.select("SELECT * FROM settings")) as any[];
       for (const row of rawSettings as any[]) {
         if (row.key) {
@@ -442,6 +454,39 @@ export const sqliteEngine = {
     }
   },
 
+  personas: {
+    list(fallback: Persona[] = []): Persona[] {
+      return cache.personas.length ? cache.personas : fallback;
+    },
+    saveAll(personas: Persona[]): boolean {
+      cache.personas = cloneJson(personas);
+      
+      scheduleDbWrite("personas", "Save personas", async (db) => {
+        await runInTransaction(db, async () => {
+          await db.execute("DELETE FROM personas");
+          for (const persona of personas) {
+            await db.execute(
+              SQLITE_PERSONA_INSERT_SQL,
+              [
+                persona.id, persona.name, persona.description || "",
+                persona.appearance || "", persona.backstory || "",
+                persona.createdAt || Date.now()
+              ]
+            );
+          }
+        });
+      });
+      return true;
+    },
+    clear(): void {
+      cache.personas = [];
+      cancelScheduledWrite("personas");
+      enqueueDbWrite("Clear personas", async (db) => {
+        await db.execute("DELETE FROM personas");
+      });
+    }
+  },
+
   stories: {
     // Returns lightweight metadata only (Phase 1)
     listMeta(fallback: StoryMeta[] = []): StoryMeta[] {
@@ -467,6 +512,7 @@ export const sqliteEngine = {
           templateWorldVersion: Number(row.templateWorldVersion || 1),
           worldOverlay: row.worldOverlay ? JSON.parse(row.worldOverlay) : { worldPatch: {}, modifiedLocations: {}, addedLocations: [], removedLocationIds: [], modifiedLoreEntries: {}, addedLoreEntries: [], removedLoreEntryIds: [] },
           castMembers: row.castMembers ? JSON.parse(row.castMembers) : [],
+          userProfile: row.userProfile ? JSON.parse(row.userProfile) : { name: "You", locationId: "with_user" },
           scenario: row.scenario || "",
           greeting: row.greeting || "",
           storyLorebook: row.storyLorebook ? JSON.parse(row.storyLorebook) : [],
@@ -506,6 +552,7 @@ export const sqliteEngine = {
                 Number(story.templateWorldVersion || 1),
                 JSON.stringify(story.worldOverlay || {}),
                 JSON.stringify(story.castMembers || []),
+                JSON.stringify(story.userProfile || { name: "You", locationId: "with_user" }),
                 story.scenario || "",
                 story.greeting || "",
                 JSON.stringify(story.storyLorebook || []),
@@ -539,9 +586,9 @@ export const sqliteEngine = {
       scheduleDbWrite(`story:${story.id}`, "Save story", async (db) => {
         await db.execute(
           `INSERT INTO stories (
-            id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, castMembers, scenario, greeting,
+            id, title, templateWorldId, templateWorldKey, templateWorldVersion, worldOverlay, castMembers, userProfile, scenario, greeting,
             storyLorebook, temporaryLorebook, storyMemory, currentContext, castState, directorNotes, createdAt, lastPlayedAt
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
           ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             templateWorldId = EXCLUDED.templateWorldId,
@@ -549,6 +596,7 @@ export const sqliteEngine = {
             templateWorldVersion = EXCLUDED.templateWorldVersion,
             worldOverlay = EXCLUDED.worldOverlay,
             castMembers = EXCLUDED.castMembers,
+            userProfile = EXCLUDED.userProfile,
             scenario = EXCLUDED.scenario,
             greeting = EXCLUDED.greeting,
             storyLorebook = EXCLUDED.storyLorebook,
@@ -567,6 +615,7 @@ export const sqliteEngine = {
             Number(story.templateWorldVersion || 1),
             JSON.stringify(story.worldOverlay || {}),
             JSON.stringify(story.castMembers || []),
+            JSON.stringify(story.userProfile || { name: "You", locationId: "with_user" }),
             story.scenario || "",
             story.greeting || "",
             JSON.stringify(story.storyLorebook || []),
@@ -723,6 +772,7 @@ export const sqliteEngine = {
       cache.chats = {};
       cache.loreMemory = {};
       cache.settings = {};
+      cache.personas = [];
       
       for (const key of Array.from(scheduledWriteTasks.keys())) cancelScheduledWrite(key);
 
@@ -734,6 +784,7 @@ export const sqliteEngine = {
           await db.execute("DELETE FROM chats");
           await db.execute("DELETE FROM lore_memory");
           await db.execute("DELETE FROM settings");
+          await db.execute("DELETE FROM personas");
         });
       });
     },

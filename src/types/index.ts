@@ -172,6 +172,15 @@ export interface UserProfile {
   locationId?: string;
 }
 
+export interface Persona {
+  id: string;
+  name: string;
+  description?: string;
+  appearance?: string;
+  backstory?: string;
+  createdAt?: number;
+}
+
 export interface JournalEntry {
   id: string;
   content: string;

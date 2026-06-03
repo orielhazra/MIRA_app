@@ -1,9 +1,10 @@
 // Story, world, character, and UI navigation state reducer.
-import { World, Character, Story, StoryMeta } from "../types/index";
+import { World, Character, Story, StoryMeta, Persona } from "../types/index";
 
 export interface StoryState {
   worlds: World[];
   characters: Character[];
+  personas: Persona[];
   storyMetas: StoryMeta[];      // Lightweight list (Phase 2)
   activeStory: Story | null;    // Only one full story loaded at a time
   activeView: string;
@@ -16,6 +17,7 @@ export interface StoryState {
 export const storyInitialState: StoryState = {
   worlds: [],
   characters: [],
+  personas: [],
   storyMetas: [],
   activeStory: null,
   activeView: "landing",
@@ -28,6 +30,7 @@ export const storyInitialState: StoryState = {
 export type StoryAction =
   | { type: "SAVE_WORLDS"; payload: World[] }
   | { type: "SAVE_CHARACTERS"; payload: Character[] }
+  | { type: "SAVE_PERSONAS"; payload: Persona[] }
   | { type: "SET_STORY_METAS"; payload: StoryMeta[] }
   | { type: "UPSERT_STORY_META"; payload: StoryMeta }
   | { type: "REMOVE_STORY_META"; payload: string }
@@ -40,7 +43,7 @@ export type StoryAction =
   | { type: "SET_DEBUG_OPEN"; payload: boolean }
   | {
       type: "FACTORY_RESET";
-      payload: { worlds: World[]; characters: Character[]; storyMetas: StoryMeta[] };
+      payload: { worlds: World[]; characters: Character[]; storyMetas: StoryMeta[]; personas: Persona[] };
     };
 
 export function storyReducer(state: StoryState, action: StoryAction): StoryState {
@@ -50,6 +53,9 @@ export function storyReducer(state: StoryState, action: StoryAction): StoryState
 
     case "SAVE_CHARACTERS":
       return { ...state, characters: action.payload };
+
+    case "SAVE_PERSONAS":
+      return { ...state, personas: action.payload };
 
     case "SET_STORY_METAS":
       return { ...state, storyMetas: action.payload };
@@ -94,6 +100,7 @@ export function storyReducer(state: StoryState, action: StoryAction): StoryState
         worlds: action.payload.worlds,
         characters: action.payload.characters,
         storyMetas: action.payload.storyMetas,
+        personas: action.payload.personas,
         selectedWorldSheetId: action.payload.worlds[0]?.id || "",
         selectedCharacterSheetId: action.payload.characters[0]?.id || "",
       };

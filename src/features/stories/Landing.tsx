@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { getLatestTemplateWorlds } from "../../services/storyWorld";
+import { Persona } from "../../types";
 
-type LibraryTab = "stories" | "characters" | "worlds";
+type LibraryTab = "stories" | "characters" | "worlds" | "personas";
 
 interface StoryMeta {
   id: string;
@@ -38,6 +39,7 @@ interface LandingProps {
   storyMetas: StoryMeta[];
   worlds: World[];
   characters: Character[];
+  personas?: Persona[];
   onNewStory: () => void;
   onImportStory: () => void;
   onSelectStory: (storyId: string) => void;
@@ -48,6 +50,9 @@ interface LandingProps {
   onNewWorld: () => void;
   onSelectWorld: (worldId: string) => void;
   onDeleteWorld: (worldId: string) => void;
+  onNewPersona: () => void;
+  onSelectPersona: (personaId: string) => void;
+  onDeletePersona: (personaId: string) => void;
   onFactoryReset?: () => void;
   isGenerating?: boolean;
 }
@@ -62,12 +67,14 @@ const TABS: { key: LibraryTab; label: string }[] = [
   { key: "stories", label: "Stories" },
   { key: "characters", label: "Characters" },
   { key: "worlds", label: "Worlds" },
+  { key: "personas", label: "Personas" },
 ];
 
 export default function Landing({
   storyMetas = [],
   worlds = [],
   characters = [],
+  personas = [],
   onNewStory,
   onImportStory,
   onSelectStory,
@@ -78,6 +85,9 @@ export default function Landing({
   onNewWorld,
   onSelectWorld,
   onDeleteWorld,
+  onNewPersona,
+  onSelectPersona,
+  onDeletePersona,
   onFactoryReset,
   isGenerating = false,
 }: LandingProps) {
@@ -184,6 +194,46 @@ export default function Landing({
       ));
     }
 
+    if (activeTab === "personas") {
+       if (personas.length === 0) {
+          return (
+            <div className="empty-library-note">
+              <p>No personas yet.</p>
+              <p>Create a reusable persona for yourself.</p>
+            </div>
+          );
+       }
+       return personas.map((persona) => (
+        <article key={persona.id} className="character-library-card">
+          <div className="character-library-details">
+            <span className="character-library-name">{persona.name}</span>
+            <span className="character-library-meta">
+              {persona.description || "No description"}
+            </span>
+          </div>
+
+          <div className="character-library-actions" aria-label={`Actions for ${persona.name}`}>
+            <button
+              type="button"
+              className="story-library-action play"
+              onClick={() => onSelectPersona(persona.id)}
+              disabled={isGenerating}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="story-library-action delete"
+              onClick={() => onDeletePersona(persona.id)}
+              disabled={isGenerating}
+            >
+              Delete
+            </button>
+          </div>
+        </article>
+      ));
+    }
+
     // worlds
     if (latestWorlds.length === 0) {
       return (
@@ -259,6 +309,16 @@ export default function Landing({
       );
     }
 
+    if (activeTab === "personas") {
+      return (
+        <div className="landing-library-actions">
+          <button onClick={onNewPersona} disabled={isGenerating} type="button" className="primary-library-button">
+            + New Persona
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="landing-library-actions">
         <button onClick={onNewWorld} disabled={isGenerating} type="button" className="primary-library-button">
@@ -280,6 +340,7 @@ export default function Landing({
           {TABS.map((tab) => {
             const count = tab.key === "stories" ? storyMetas.length
               : tab.key === "characters" ? characters.length
+              : tab.key === "personas" ? personas.length
               : latestWorlds.length;
 
             return (

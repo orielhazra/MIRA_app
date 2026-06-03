@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useReducer, useState } from "react";
-import { ChatMessage, StoryCastMember, Character, World } from "../types";
-import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories, createEmptyCharacterOverlay } from "../constants/defaultData";
-import { normalizeCharacter, normalizeStory, normalizeWorld } from "../services/normalizers";
+import { ChatMessage, StoryCastMember, Character, World, Persona } from "../types";
+import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories, createEmptyCharacterOverlay, defaultPersonas } from "../constants/defaultData";
+import { normalizeCharacter, normalizeStory, normalizeWorld, normalizePersona } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
 import { repository, isTauri } from "../services/repository";
 import { resolveEffectiveWorld } from "../services/storyWorld";
 import { storyToMeta } from "../services/storyMeta";
 import {
-  chooseActiveCastLead,
   loadInitialState,
   getStoryCharactersFromLists,
   createInitialCastState,
@@ -42,13 +41,19 @@ import {
 import { createId } from "../utils/helpers";
 
 export default function useAppManager() {
-  const initial = useMemo(loadInitialState, []);
+  const initial = useMemo(() => {
+    const state = loadInitialState();
+    const personas = repository.personas.list(defaultPersonas).map(normalizePersona);
+    repository.personas.saveAll(personas);
+    return { ...state, personas };
+  }, []);
 
   const [storyState, dispatchStory] = useReducer(storyReducer, {
     ...storyInitialState,
     worlds: initial.worlds,
     characters: initial.characters,
     storyMetas: initial.storyMetas || [],
+    personas: initial.personas || [],
     activeStory: initial.activeStory || null,
     activeView: initial.activeView,
     selectedCharacterSheetId: initial.selectedCharacterSheetId,
@@ -83,6 +88,7 @@ export default function useAppManager() {
   const {
     worlds,
     characters,
+    personas,
     storyMetas,
     activeStory,
     activeView,
@@ -126,10 +132,7 @@ export default function useAppManager() {
     () => (activeStory ? getStoryCharactersFromLists(activeStory, characters) : characters[0] ? [characters[0]] : []),
     [activeStory, characters]
   );
-  const activeCharacter = useMemo(
-    () => chooseActiveCastLead(activeStory, activeStoryCharacters) || characters[0] || null,
-    [activeStory, activeStoryCharacters, characters]
-  );
+
   const selectedCharacter = useMemo(() => {
     if (!selectedCharacterSheetId) return characters[0] || null;
 
@@ -168,6 +171,11 @@ export default function useAppManager() {
   const selectedWorld = useMemo(
     () => worlds.find((world) => world.id === selectedWorldSheetId) || worlds[0] || null,
     [worlds, selectedWorldSheetId]
+  );
+
+  const selectedPersona = useMemo(
+    () => personas.find((p) => p.id === selectedCharacterSheetId) || personas[0] || null,
+    [personas, selectedCharacterSheetId]
   );
 
   useEffect(() => {
@@ -251,6 +259,12 @@ export default function useAppManager() {
     const normalizedCharacters = nextCharacters.map((character) => normalizeCharacter(character));
     dispatchStory({ type: "SAVE_CHARACTERS", payload: normalizedCharacters });
     repository.characters.saveAll(normalizedCharacters);
+  };
+
+  const savePersonaList = (nextPersonas: any[]) => {
+    const normalizedPersonas = nextPersonas.map((persona) => normalizePersona(persona));
+    dispatchStory({ type: "SAVE_PERSONAS", payload: normalizedPersonas });
+    repository.personas.saveAll(normalizedPersonas);
   };
 
   const saveStoryMetas = (nextMetas: any[]) => {
@@ -406,6 +420,24 @@ export default function useAppManager() {
     setActiveView("landing");
   };
 
+  const createBlankPersona = () => {
+    if (isGenerating) return;
+    const next = normalizePersona({ id: createId("persona"), name: "New Persona" });
+    savePersonaList([...personas, next]);
+    setSelectedCharacterSheetId(next.id);
+    setActiveView("persona");
+  };
+
+  const savePersonaEdits = (draft: any) => {
+    savePersonaList(personas.map(p => p.id === draft.id ? draft : p));
+  };
+
+  const deletePersona = (id: string) => {
+    if (!confirm("Delete this persona?")) return;
+    savePersonaList(personas.filter(p => p.id !== id));
+    setActiveView("landing");
+  };
+
   const resetCurrentStoryState = (
     storyId = activeStory?.id,
     story = activeStory,
@@ -449,6 +481,7 @@ export default function useAppManager() {
     dispatchLore,
     worlds,
     characters,
+    personas,
     storyMetas,
     activeStory,
     activeView,
@@ -476,9 +509,9 @@ export default function useAppManager() {
     isExtractingUpdates,
     activeWorld,
     activeStoryCharacters,
-    activeCharacter,
     selectedCharacter,
     selectedWorld,
+    selectedPersona,
     saveKoboldBaseUrl,
     clearPersistenceError,
     flushPersistence,
@@ -504,6 +537,7 @@ export default function useAppManager() {
     setIsExtractingUpdates,
     saveWorldList,
     saveCharacterList,
+    savePersonaList,
     saveStoryMetas,
     upsertStoryMeta,
     removeStoryMeta,
@@ -519,6 +553,9 @@ export default function useAppManager() {
     saveStoryEdits,
     cancelStoryEdit,
     resetCurrentStoryState,
+    createBlankPersona,
+    savePersonaEdits,
+    deletePersona
   };
 
   const storyBindings = createStoryBindings(managerContext, storyActions);
@@ -541,6 +578,7 @@ export default function useAppManager() {
     activeWorld,
     characterImportRef,
     characters,
+    personas,
     chatHistory,
     debugOpen,
     editingMessageIndex,
@@ -567,6 +605,7 @@ export default function useAppManager() {
     selectedPendingUpdateIds,
     selectedWorld,
     selectedWorldSheetId,
+    selectedPersona,
     setActiveView,
     setDebugOpen,
     setSelectedCharacterSheetId,
@@ -588,6 +627,9 @@ export default function useAppManager() {
     storyImportRef,
     worldImportRef,
     worlds,
+    createBlankPersona,
+    savePersonaEdits,
+    deletePersona,
     ...storyBindings,
     ...chatBindings,
     ...stateUpdateBindings,

@@ -12,6 +12,7 @@ import StoryEditSheet from "../../features/stories/StoryEditSheet";
 import CharacterSheet from "../../features/characters/CharacterSheet";
 import StoryCharacterSheet from "../../features/characters/StoryCharacterSheet";
 import StoryUserSheet from "../../features/characters/StoryUserSheet";
+import PersonaSheet from "../../features/characters/PersonaSheet";
 import WorldSheet from "../../features/worlds/WorldSheet";
 import StoryWorldSheet from "../../features/worlds/StoryWorldSheet";
 
@@ -132,6 +133,17 @@ export default function MainLayout() {
       );
     }
 
+    if (app.activeView === "persona") {
+      return (
+        <PersonaSheet
+          persona={app.selectedPersona}
+          onSave={app.savePersonaEdits}
+          onDelete={app.deletePersona}
+          onBack={() => { app.setActiveView("landing"); app.setSelectedCharacterSheetId(""); }}
+        />
+      );
+    }
+
     if (app.activeView === "story-user") {
       if (!app.activeStory) {
         app.setActiveView("landing");
@@ -142,6 +154,7 @@ export default function MainLayout() {
         <StoryUserSheet
           userProfile={app.activeStory.userProfile}
           activeWorld={app.activeWorld}
+          personas={app.personas}
           onUpdateProfile={(profile) => app.saveActiveStory({ ...app.activeStory, userProfile: profile })}
           onBackToStory={() => app.setActiveView("story")}
         />
@@ -200,6 +213,7 @@ export default function MainLayout() {
           storyMetas={app.storyMetas}
           worlds={app.worlds}
           characters={app.characters}
+          personas={app.personas}
           onNewStory={app.openStoryCreationSheet}
           onImportStory={() => app.storyImportRef.current?.click()}
           onSelectStory={app.switchStory}
@@ -210,6 +224,9 @@ export default function MainLayout() {
           onNewWorld={app.createBlankWorld}
           onSelectWorld={(id) => { app.setSelectedWorldSheetId(id); app.setActiveView("world"); app.setStoryDraft(null); }}
           onDeleteWorld={app.deleteSelectedWorld}
+          onNewPersona={app.createBlankPersona}
+          onSelectPersona={(id) => { app.setSelectedCharacterSheetId(id); app.setActiveView("persona"); app.setStoryDraft(null); }}
+          onDeletePersona={app.deletePersona}
           onFactoryReset={app.factoryReset}
           isGenerating={app.isGenerating}
         />

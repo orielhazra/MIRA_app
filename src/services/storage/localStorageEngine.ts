@@ -1,7 +1,7 @@
 import { STORAGE_KEYS } from "../../constants/defaultData";
 import { cloneJson } from "../../utils/helpers";
 import { storyToMeta, upsertStoryMeta } from "../storyMeta";
-import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry } from "../../types";
+import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry, Persona } from "../../types";
 
 interface PersistenceStatus {
   lastError: string | null;
@@ -135,6 +135,20 @@ export const localStorageEngine = {
     }
   },
 
+  personas: {
+    list(fallback: Persona[] = []): Persona[] {
+      return readLocalStorageJson<Persona[]>(STORAGE_KEYS.personas, fallback);
+    },
+    saveAll(personas: Persona[]): boolean {
+      return withTrackedWrite("Save personas", () => writeLocalStorageJson<Persona[]>(STORAGE_KEYS.personas, personas));
+    },
+    clear(): void {
+      withTrackedWrite("Clear personas", () => {
+        localStorage.removeItem(STORAGE_KEYS.personas);
+      });
+    }
+  },
+
   stories: {
     listMeta(fallback: StoryMeta[] = []): StoryMeta[] {
       return readLocalStorageJson<StoryMeta[]>(STORAGE_KEYS.storyMetas, fallback);
@@ -222,7 +236,7 @@ export const localStorageEngine = {
     },
     remove(storyId: string): void {
       if (!storyId) return;
-      withTrackedWrite("Remove lore memory", () => {
+      withTrackedWrite("Remove chat memory", () => {
         localStorage.removeItem(`roleplay_story_lore_memory_${storyId}`);
       });
     }
@@ -276,6 +290,7 @@ export const localStorageEngine = {
         localStorage.removeItem(STORAGE_KEYS.characters);
         localStorage.removeItem(STORAGE_KEYS.storyMetas);
         localStorage.removeItem(STORAGE_KEYS.activeStory);
+        localStorage.removeItem(STORAGE_KEYS.personas);
       });
     },
     removeStoryRuntimeData(storyId: string): void {

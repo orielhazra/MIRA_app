@@ -2,7 +2,7 @@ import {
   DirectorNotes, StoryJournal, CurrentContext, CastState, 
   LoreEntry, World, WorldLocation, StoryWorldOverlay, Character, Story, ChatMessage,
   CastMemberState, RelationshipState, ObjectContext, StoryCharacterOverlay, StoryCastMember,
-  UserProfile
+  UserProfile, Persona
 } from "../types/index";
 import { defaultWorlds, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { clampNumber, createId, parseKeywords } from "../utils/helpers";
@@ -136,7 +136,7 @@ export function normalizeCurrentContext(context: any = {}): CurrentContext {
       timeOfDay: String(source.scene?.timeOfDay || ""),
       atmosphere: String(source.scene?.atmosphere || ""),
       currentConflict: String(source.scene?.currentConflict || ""),
-      currentObjective: String(source.scene?.currentObjective || source.scene?.objective || "")
+      currentObjective: String(source.scene?.currentObjective || String(source.scene?.objective || ""))
     },
     location: {
       locationId: String(source.location?.locationId || source.location?.id || ""),
@@ -329,6 +329,18 @@ export function normalizeUserProfile(profile: any): UserProfile {
     condition: String(source.condition || ""),
     outfit: String(source.outfit || ""),
     locationId: String(source.locationId || "with_user")
+  };
+}
+
+export function normalizePersona(persona: any): Persona {
+  const source = persona || {};
+  return {
+    id: String(source.id || createId("persona")),
+    name: String(source.name || "Unnamed Persona"),
+    description: String(source.description || ""),
+    appearance: String(source.appearance || ""),
+    backstory: String(source.backstory || ""),
+    createdAt: Number.isFinite(Number(source.createdAt)) ? Number(source.createdAt) : Date.now()
   };
 }
 

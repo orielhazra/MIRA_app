@@ -1,10 +1,11 @@
-import { World, Character, Story, StoryJournal, DirectorNotes, StoryWorldOverlay, StoryCharacterOverlay, StoryCastMember } from "../types/index";
+import { World, Character, Story, StoryJournal, DirectorNotes, StoryWorldOverlay, StoryCharacterOverlay, StoryCastMember, Persona } from "../types/index";
 
 export const STORAGE_KEYS = {
   storyMetas: "roleplay_story_metas",
   activeStory: "active_story_id",
   characters: "roleplay_characters",
-  worlds: "roleplay_worlds"
+  worlds: "roleplay_worlds",
+  personas: "roleplay_personas"
 };
 
 // Permanent desktop DB decision for now: use the Windows custom SQLite path when supported.
@@ -168,7 +169,7 @@ export const defaultWorlds: World[] = [
         name: "Velvet Chain Salon",
         summary: "A hidden contract house beneath Aldmyr's old opera house.",
         description: "Crimson curtains, black marble, mirrored alcoves, and silver symbols of devotion and patronage fill this subterranean salon. Every smile may conceal a clause, and every invitation may be a negotiation.",
-        mood: "Gothic, elegant, intimate, dangerous.",
+        mood: "Gothic, elegant, intimiate, dangerous.",
         visibleExits: "Opera house stair, private negotiation rooms, mirrored corridor",
         hazards: "Hidden clauses, predatory nobles, coercive magic disguised as romance.",
         connectedTo: "Black Canal Walk, Oath Mirror Chamber",
@@ -430,6 +431,17 @@ export const defaultCharacters: Character[] = [
   }
 ];
 
+export const defaultPersonas: Persona[] = [
+  {
+    id: "persona_default",
+    name: "Standard Persona",
+    description: "A versatile protagonist template.",
+    appearance: "Wears comfortable travel clothes.",
+    backstory: "A newcomer to these lands, carrying a few belongings and a desire for adventure.",
+    createdAt: 1717000000000
+  }
+];
+
 export const defaultStories: Story[] = [
   {
     id: "story_mira_station",
@@ -447,6 +459,11 @@ export const defaultStories: Story[] = [
         overlay: createEmptyCharacterOverlay(),
       }
     ],
+    userProfile: {
+      name: "You",
+      description: "A lost traveler",
+      locationId: "with_user"
+    },
     scenario: "The user meets Mira at an old train station at night.",
     greeting: 'Mira looks up from her notebook. "You came after all."',
     createdAt: Date.now(),
@@ -521,6 +538,11 @@ export const defaultStories: Story[] = [
           overlay: createEmptyCharacterOverlay(),
         }
     ],
+    "userProfile": {
+      "name": "You",
+      "description": "Morwen's partner",
+      "locationId": "with_user"
+    },
     "scenario": "In the dark fantasy city of Aldmyr, nobles and mages gather at the Velvet Chain Salon, a forbidden contract house where adult companions negotiate magical service bonds, patronage pacts, protective oaths, and symbolic claim arrangements. The setting is gothic, sensual in tone, and morally dangerous, but legitimate bonds require clear adult consent and may be challenged if corrupt magic or deception is involved. The user arrives with Morwen Nightbloom, their adult partner, to navigate politics, loyalty, jealousy, temptation, and dangerous offers involving several adult women from different fantasy peoples.",
     "greeting": "The Velvet Chain Salon glows beneath Aldmyr’s old opera house, all crimson curtains, black marble, and candlelight reflected in polished silver collars that are more symbol than shackle. Morwen Nightbloom stands at your side, her gloved hand resting possessively—but gently—against your arm. \"Remember,\" she murmurs, violet eyes flicking toward the masked patrons, \"no true bond forms without consent. Anyone who forgets that will answer to me.\" Across the salon, an elven seer watches you through moon-pale lashes, a horned fireblood smiles like trouble, a merfolk diplomat adjusts her pearl-laced throat ribbon, and an orc-blooded knight studies the exits with disciplined calm.",
     "createdAt": 1777895212315,

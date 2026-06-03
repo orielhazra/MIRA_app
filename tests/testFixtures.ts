@@ -1,4 +1,4 @@
-import { normalizeCharacter, normalizeStory, normalizeWorld } from "../src/services/normalizers";
+import { normalizeCharacter, normalizeStory, normalizeWorld, normalizePersona } from "../src/services/normalizers";
 import { createEmptyCharacterOverlay } from "../src/constants/defaultData";
 
 export function createAppFixtures() {
@@ -28,6 +28,10 @@ export function createAppFixtures() {
     ),
   ];
 
+  const personas = [
+    normalizePersona({ id: "persona-1", name: "Explorer" })
+  ];
+
   const stories = [
     normalizeStory(
       {
@@ -44,6 +48,7 @@ export function createAppFixtures() {
           }
         ],
         greeting: "Opening one",
+        userProfile: { name: "You", description: "Default profile" }
       },
       worlds,
       characters
@@ -63,21 +68,23 @@ export function createAppFixtures() {
           }
         ],
         greeting: "Opening two",
+        userProfile: { name: "You", description: "Default profile" }
       },
       worlds,
       characters
     ),
   ];
 
-  return { worlds, characters, stories };
+  return { worlds, characters, stories, personas };
 }
 
 export function createRepositoryState() {
-  const { worlds, characters, stories } = createAppFixtures();
+  const { worlds, characters, stories, personas } = createAppFixtures();
   return {
     worlds,
     characters,
     stories,
+    personas,
     chats: {
       "story-1": [{ role: "assistant", content: "Saved chat one" }],
       "story-2": [{ role: "assistant", content: "Saved chat two" }],

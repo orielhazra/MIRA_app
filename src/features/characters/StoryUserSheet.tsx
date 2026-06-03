@@ -5,6 +5,7 @@ import TextArea from "../../components/ui/TextArea";
 export default function StoryUserSheet({
   userProfile,
   activeWorld,
+  personas = [], // Global personas gallery
   onUpdateProfile,
   onBackToStory
 }) {
@@ -26,6 +27,19 @@ export default function StoryUserSheet({
     showStatus("Your dossier saved.");
   }
 
+  function applyPersona(personaId) {
+    const persona = personas.find(p => p.id === personaId);
+    if (!persona) return;
+    
+    setDraft({
+      ...draft,
+      name: persona.name,
+      description: persona.description || persona.appearance,
+      backstory: persona.backstory
+    });
+    showStatus(`Applied persona: ${persona.name}`);
+  }
+
   return (
     <section className="messages sheet-view">
       <div className="sheet dossier-sheet">
@@ -44,7 +58,18 @@ export default function StoryUserSheet({
 
         <div className="dossier-content">
           <div className="sheet-form">
-            <h3>Identity</h3>
+            <div className="section-header-actions">
+               <h3>Identity</h3>
+               {personas.length > 0 && (
+                 <select onChange={(e) => applyPersona(e.target.value)} defaultValue="" className="persona-selector" style={{ width: 'auto', padding: '4px 8px', fontSize: '12px' }}>
+                    <option value="" disabled>Apply Persona from Gallery...</option>
+                    {personas.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                 </select>
+               )}
+            </div>
+            
             <div className="context-grid">
               <TextInput label="Your Name" value={draft.name} onChange={(v) => setDraft({...draft, name: v})} />
               <TextArea label="Description / Appearance" value={draft.description} onChange={(v) => setDraft({...draft, description: v})} />
