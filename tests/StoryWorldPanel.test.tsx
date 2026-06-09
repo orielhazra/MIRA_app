@@ -56,6 +56,9 @@ describe("StoryWorldPanel", () => {
     expect(onAddStoryWorldLoreEntry).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /Reset Story World Overlay/i }));
+    // ConfirmDialog now appears — click the confirm button inside the dialog
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /Reset/i }));
     expect(onResetStoryWorldOverlay).toHaveBeenCalled();
   });
 

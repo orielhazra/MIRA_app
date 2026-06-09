@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 import { useApp } from "../../context/AppContext";
 import Sidebar from "../../components/Sidebar";
 import ChatHeader from "../../components/ChatHeader";
@@ -15,6 +16,8 @@ import StoryUserSheet from "../../features/characters/StoryUserSheet";
 import PersonaSheet from "../../features/characters/PersonaSheet";
 import WorldSheet from "../../features/worlds/WorldSheet";
 import StoryWorldSheet from "../../features/worlds/StoryWorldSheet";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import ToastContainer from "../../components/ui/ToastContainer";
 
 export default function MainLayout() {
   const app = useApp();
@@ -22,15 +25,36 @@ export default function MainLayout() {
   const isLanding = !app.activeStory || app.activeView === "landing";
   const shouldShowEditor = app.activeView === "story" && app.activeStory?.id;
   const shouldShowGlobalSidebar = !isLanding;
-  const appClassName = [
+  const appClassName = useMemo(() => [
     "app",
     shouldShowEditor ? "with-editor" : "without-editor",
     shouldShowGlobalSidebar ? "with-sidebar" : "no-sidebar",
     app.sidebarCollapsed ? "sidebar-collapsed" : "sidebar-expanded",
     shouldShowEditor ? (app.editorCollapsed ? "editor-collapsed" : "editor-expanded") : "editor-hidden",
-  ].join(" ");
+  ].join(" "), [shouldShowEditor, shouldShowGlobalSidebar, app.sidebarCollapsed, app.editorCollapsed]);
+
+  const handleGoHome = useCallback(() => { app.setActiveView("landing"); app.setStoryDraft(null); }, [app]);
+  const handleBackToStory = useCallback(() => { app.setActiveView("story"); app.setStoryDraft(null); }, [app]);
 
   function renderMainContent() {
+    if (app.isLoadingStory) {
+      return (
+        <div className="loading-story-indicator" style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+          gap: "0.5rem",
+          color: "var(--muted)",
+          fontSize: "0.95rem",
+        }}>
+          <strong>Loading story…</strong>
+          <span>Synchronizing data</span>
+        </div>
+      );
+    }
+
     if (app.activeView === "story-create") {
       return (
         <StoryCreationSheet
@@ -78,8 +102,8 @@ export default function MainLayout() {
           onDelete={app.deleteSelectedCharacter}
           onExport={app.exportCharacter}
           onImport={() => app.characterImportRef.current?.click()}
-          onBackHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
-          onBackToStory={() => { app.setActiveView("story"); app.setStoryDraft(null); }}
+          onBackHome={handleGoHome}
+          onBackToStory={handleBackToStory}
         />
       );
     }
@@ -201,8 +225,8 @@ export default function MainLayout() {
           onDelete={app.deleteSelectedWorld}
           onExport={app.exportWorld}
           onImport={() => app.worldImportRef.current?.click()}
-          onBackHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
-          onBackToStory={() => { app.setActiveView("story"); app.setStoryDraft(null); }}
+          onBackHome={handleGoHome}
+          onBackToStory={handleBackToStory}
         />
       );
     }
@@ -241,7 +265,6 @@ export default function MainLayout() {
           isGenerating={app.isGenerating}
           onStartEdit={app.startEditingMessage}
           onCancelEdit={app.cancelMessageEdit}
-          onToggleSelection={app.selectAssistantOption}
           onSaveEdit={app.saveMessageEdit}
           onDeleteFromHere={app.deleteMessagesFromIndex}
           onRegenerateFromHere={app.regenerateFromMessage}
@@ -328,9 +351,11 @@ export default function MainLayout() {
             progressPercent={app.progressPercent}
             isCollapsed={app.topbarCollapsed}
             onToggleCollapse={app.toggleTopbarCollapsed}
-            onHome={() => { app.setActiveView("landing"); app.setStoryDraft(null); }}
+            onHome={handleGoHome}
             onDebug={() => app.setDebugOpen(true)}
             onSaveKoboldBaseUrl={app.saveKoboldBaseUrl}
+            databasePath={app.databasePath}
+            onSaveDatabasePath={app.saveDatabasePath}
             onClearPersistenceError={app.clearPersistenceError}
             onFlushPersistence={app.flushPersistence}
           />
@@ -343,47 +368,17 @@ export default function MainLayout() {
             activeStory={app.activeStory}
             activeWorld={app.activeWorld}
             activeCharacters={app.activeStoryCharacters}
-            characters={app.characters}
-            worlds={app.worlds}
-            activeLoreMemory={app.activeLoreMemory}
-            loreStatusText={app.loreStatusText}
             isCollapsed={app.editorCollapsed}
             onToggleCollapse={app.toggleEditorCollapsed}
             onClearDirectorNotes={app.clearDirectorNotes}
             onSaveSceneControl={app.saveSceneControl}
-            onExportStory={app.exportActiveStory}
-            onDeleteStory={app.deleteActiveStory}
-            onUpdateStoryCharacterPatch={app.updateStoryCharacterPatch}
-            onAddStoryCharacterLoreEntry={app.addStoryCharacterLoreEntry}
-            onUpdateStoryCharacterLoreEntry={app.updateStoryCharacterLoreEntry}
-            onRemoveStoryCharacterLoreEntry={app.removeStoryCharacterLoreEntry}
-            onResetStoryCharacterOverlay={app.resetStoryCharacterOverlay}
-            onUpgradeStoryCastMemberTemplate={app.upgradeStoryCastMemberTemplate}
-            onExportCharacterTemplate={app.exportCharacter}
-            onImportCharacterTemplate={() => app.characterImportRef.current?.click()}
-            onUpdateStoryLore={app.updateStoryLore}
-            onUpdateWorldLore={app.updateWorldLore}
-            onUpdateCharacterLore={app.updateCharacterLore}
-            onSaveTemporaryLore={app.saveTemporaryLore}
-            onClearTemporaryLore={app.clearTemporaryLore}
-            onRefreshActiveLore={app.refreshActiveLore}
-            onSaveStoryWorldPatch={app.updateStoryWorldPatch}
-            onAddStoryWorldLocation={app.addStoryWorldLocation}
-            onUpdateStoryWorldLocation={app.updateStoryWorldLocation}
-            onRemoveStoryWorldLocation={app.removeStoryWorldLocation}
-            onAddStoryWorldLoreEntry={app.addStoryWorldLoreEntry}
-            onUpdateStoryWorldLoreEntry={app.updateStoryWorldLoreEntry}
-            onRemoveStoryWorldLoreEntry={app.removeStoryWorldLoreEntry}
-            onResetStoryWorldOverlay={app.resetStoryWorldOverlay}
-            onUpgradeStoryWorldTemplate={app.upgradeStoryWorldTemplate}
-            onUpdateUserProfile={(profile) => app.saveActiveStory({ ...app.activeStory, userProfile: profile })}
-            currentContext={app.activeStory.currentContext}
-            storyMemory={app.activeStory.storyMemory}
-            castState={app.activeStory.castState}
             onSaveStoryMemory={app.saveStoryMemory}
             onSaveCastState={app.saveCastState}
+            onUpdateUserProfile={(profile) => app.saveActiveStory({ ...app.activeStory, userProfile: profile })}
             onExtractUpdates={app.extractStateUpdates}
             isExtractingUpdates={app.isExtractingUpdates}
+            currentContext={app.activeStory.currentContext}
+            storyMemory={app.activeStory.storyMemory}
           />
         )}
       </div>
@@ -401,6 +396,20 @@ export default function MainLayout() {
         history={app.chatHistory}
         activeLoreMemory={app.activeLoreMemory}
       />
+
+      {app.pendingConfirm && (
+        <ConfirmDialog
+          open={app.pendingConfirm.open}
+          title={app.pendingConfirm.title}
+          message={app.pendingConfirm.message}
+          confirmLabel={app.pendingConfirm.confirmLabel}
+          variant={app.pendingConfirm.variant}
+          onConfirm={app.pendingConfirm.action}
+          onCancel={app.dismissConfirm}
+        />
+      )}
+
+      <ToastContainer />
     </>
   );
 }

@@ -1,7 +1,9 @@
 import { Story, StoryCharacterOverlay, LoreEntry, Character } from "../types/index";
 import { normalizeStoryCharacterOverlay } from "../services/normalizers";
 import { createId } from "../utils/helpers";
+import { uniqueCompact } from "../utils/arrayUtils";
 import { getLatestTemplateCharacterByKey } from "../services/storyCharacters";
+import { useToast } from "../context/ToastContext";
 
 interface StoryCharacterActionDeps {
   activeStory: Story | null;
@@ -10,6 +12,7 @@ interface StoryCharacterActionDeps {
 }
 
 export default function useStoryCharacterActions() {
+  const { showToast } = useToast();
   function updateStoryCharacterPatch(
     castMemberId: string,
     patch: Partial<StoryCharacterOverlay["identityPatch"]>,
@@ -151,8 +154,8 @@ export default function useStoryCharacterActions() {
     const templateKey = castMember.templateCharacterKey || castMember.templateCharacterId;
     const latest = getLatestTemplateCharacterByKey(templateKey, characters);
 
-    if (!latest) return alert("Latest template version not found.");
-    if (latest.id === castMember.templateCharacterId) return alert("Already using the latest version.");
+    if (!latest) return showToast("Latest template version not found.");
+    if (latest.id === castMember.templateCharacterId) return showToast("Already using the latest version.");
 
     const nextCastMembers = activeStory.castMembers.map(member => {
       if (member.id !== castMemberId) return member;
@@ -178,6 +181,4 @@ export default function useStoryCharacterActions() {
   };
 }
 
-function uniqueCompact(values: any[]): string[] {
-  return [...new Set((values || []).map(String).filter(Boolean))];
-}
+

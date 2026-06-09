@@ -2,6 +2,8 @@ import { Story, StoryWorldOverlay, World, WorldLocation, LoreEntry, CurrentConte
 import { normalizeStoredLorebook, normalizeStoryWorldOverlay, normalizeWorldLocations } from "../services/normalizers";
 import { createEmptyWorldOverlay, getLatestTemplateByKey } from "../services/storyWorld";
 import { createId } from "../utils/helpers";
+import { uniqueCompact } from "../utils/arrayUtils";
+import { useToast } from "../context/ToastContext";
 
 interface StoryWorldActionDeps {
   activeStory?: Story | null;
@@ -16,6 +18,7 @@ interface StoryWorldActionDeps {
 }
 
 export default function useStoryWorldActions() {
+  const { showToast } = useToast();
   function updateStoryWorldPatch({ activeStory, saveActiveStory, patch }: StoryWorldActionDeps) {
     if (!activeStory || !saveActiveStory) return;
     const overlay = getOverlay(activeStory);
@@ -212,8 +215,8 @@ export default function useStoryWorldActions() {
     const templateKey = activeStory.templateWorldKey || activeStory.templateWorldId;
     const latest = getLatestTemplateByKey(templateKey, worlds);
     
-    if (!latest) return alert("Latest template version not found.");
-    if (latest.id === activeStory.templateWorldId) return alert("Already using the latest version.");
+    if (!latest) return showToast("Latest template version not found.");
+    if (latest.id === activeStory.templateWorldId) return showToast("Already using the latest version.");
 
     saveActiveStory({
       ...activeStory,
@@ -269,6 +272,4 @@ function clearCurrentContextLocation(currentContext: CurrentContext): CurrentCon
   };
 }
 
-function uniqueCompact(values: string[]): string[] {
-  return [...new Set((values || []).map(String).filter(Boolean))];
-}
+

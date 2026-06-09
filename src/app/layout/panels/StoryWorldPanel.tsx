@@ -1,6 +1,9 @@
 import React, { useMemo, useState, useEffect } from "react";
 import LoreEditor from "../../../components/LoreEditor";
 import { parseKeywords } from "../../../utils/helpers";
+import { getRowPresence, formatPresenceLabel } from "../../../utils/castUtils";
+import { ContextInput, ContextTextarea } from "../../../components/ui/FormFields";
+import ConfirmDialog, { ConfirmActionState, CONFIRM_CLOSED } from "../../../components/ui/ConfirmDialog";
 import { resolveEffectiveStoryCharacter } from "../../../services/storyCharacters";
 import { getLatestTemplateByKey } from "../../../services/storyWorld";
 import { getLatestTemplateCharacterByKey } from "../../../services/storyCharacters";
@@ -35,21 +38,22 @@ export default function StoryWorldPanel({
   const [locationDrafts, setLocationDrafts] = useState(() => buildLocationDrafts(activeWorld?.locations || []));
   const [loreDrafts, setLoreDrafts] = useState(() => buildLoreDrafts(activeWorld?.worldLorebook || []));
   const [status, setStatus] = useState("");
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionState>(CONFIRM_CLOSED);
 
   const addedLocationIds = useMemo(
-    () => new Set((activeStory?.worldOverlay?.addedLocations || []).map((location: any) => location.id)),
+    () => new Set<string>((activeStory?.worldOverlay?.addedLocations || []).map((location: any) => location.id)),
     [activeStory?.worldOverlay?.addedLocations]
   );
   const modifiedLocationIds = useMemo(
-    () => new Set(Object.keys(activeStory?.worldOverlay?.modifiedLocations || {})),
+    () => new Set<string>(Object.keys(activeStory?.worldOverlay?.modifiedLocations || {})),
     [activeStory?.worldOverlay?.modifiedLocations]
   );
   const addedLoreIds = useMemo(
-    () => new Set((activeStory?.worldOverlay?.addedLoreEntries || []).map((entry: any) => entry.id)),
+    () => new Set<string>((activeStory?.worldOverlay?.addedLoreEntries || []).map((entry: any) => entry.id)),
     [activeStory?.worldOverlay?.addedLoreEntries]
   );
   const modifiedLoreIds = useMemo(
-    () => new Set(Object.keys(activeStory?.worldOverlay?.modifiedLoreEntries || {})),
+    () => new Set<string>(Object.keys(activeStory?.worldOverlay?.modifiedLoreEntries || {})),
     [activeStory?.worldOverlay?.modifiedLoreEntries]
   );
 
@@ -165,9 +169,12 @@ export default function StoryWorldPanel({
   }
 
   function resetOverlay() {
-    if (!confirm("Reset all story-world customizations back to the base template?")) return;
-    onResetStoryWorldOverlay?.();
-    showStatus("Story world overlay reset.");
+    setConfirmAction({
+      open: true,
+      title: "Reset World Customizations",
+      message: "Reset all story-world customizations back to the base template?",
+      action: () => { onResetStoryWorldOverlay?.(); showStatus("Story world overlay reset."); },
+    });
   }
 
   function upgradeWorld() {
@@ -316,6 +323,16 @@ export default function StoryWorldPanel({
         <button onClick={onExportStory}>Export Story</button>
         <button className="danger" onClick={onDeleteStory}>Delete Story</button>
       </div>
+
+      <ConfirmDialog
+        open={confirmAction.open}
+        title={confirmAction.title}
+        message={confirmAction.message}
+        confirmLabel="Reset"
+        variant="danger"
+        onConfirm={() => { confirmAction.action(); setConfirmAction(CONFIRM_CLOSED); }}
+        onCancel={() => setConfirmAction(CONFIRM_CLOSED)}
+      />
     </div>
   );
 }
@@ -323,13 +340,14 @@ export default function StoryWorldPanel({
 function StoryCastIdentityCard({ castMember, effectiveCharacter, characters, presenceLabel, onUpdatePatch, onAddLore, onUpdateLore, onRemoveLore, onResetOverlay, onUpgradeTemplate, onExportTemplate }: any) {
   const [draft, setDraft] = useState(effectiveCharacter);
   const [status, setStatus] = useState("");
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionState>(CONFIRM_CLOSED);
 
   const addedLoreIds = useMemo(
-    () => new Set((castMember.overlay.addedLoreEntries || []).map((entry: any) => entry.id)),
+    () => new Set<string>((castMember.overlay.addedLoreEntries || []).map((entry: any) => entry.id)),
     [castMember.overlay.addedLoreEntries]
   );
   const modifiedLoreIds = useMemo(
-    () => new Set(Object.keys(castMember.overlay.modifiedLoreEntries || {})),
+    () => new Set<string>(Object.keys(castMember.overlay.modifiedLoreEntries || {})),
     [castMember.overlay.modifiedLoreEntries]
   );
 
@@ -367,10 +385,12 @@ function StoryCastIdentityCard({ castMember, effectiveCharacter, characters, pre
   }
 
   function resetOverlay() {
-    if (!confirm(`Reset ${effectiveCharacter.name}'s story customization back to the base template?`)) return;
-    onResetOverlay?.(castMember.id);
-    setStatus("Identity reset.");
-    setTimeout(() => setStatus(""), 1400);
+    setConfirmAction({
+      open: true,
+      title: "Reset Character Customization",
+      message: `Reset ${effectiveCharacter.name}'s story customization back to the base template?`,
+      action: () => { onResetOverlay?.(castMember.id); setStatus("Identity reset."); setTimeout(() => setStatus(""), 1400); },
+    });
   }
 
   function upgradeTemplate() {
@@ -459,6 +479,16 @@ function StoryCastIdentityCard({ castMember, effectiveCharacter, characters, pre
         <button type="button" onClick={() => onExportTemplate?.(draft)}>Export As Reusable Template</button>
       </div>
       <p className="sheet-status">{status}</p>
+
+      <ConfirmDialog
+        open={confirmAction.open}
+        title={confirmAction.title}
+        message={confirmAction.message}
+        confirmLabel="Reset"
+        variant="danger"
+        onConfirm={() => { confirmAction.action(); setConfirmAction(CONFIRM_CLOSED); }}
+        onCancel={() => setConfirmAction(CONFIRM_CLOSED)}
+      />
     </details>
   );
 }
@@ -498,37 +528,7 @@ function getPresenceLabel(story: any, castMemberId: string) {
   return formatPresenceLabel(getRowPresence(row));
 }
 
-function getRowPresence(row: any) {
-  const raw = String(row?.presence || "").trim().toLowerCase();
-  if (["active", "nearby", "inactive"].includes(raw)) return raw;
-  return row?.present === false ? "inactive" : "active";
-}
 
-function formatPresenceLabel(presence: string) {
-  if (presence === "nearby") return "Nearby / background";
-  if (presence === "inactive") return "Inactive / off-scene";
-  return "Active";
-}
-
-function ContextInput({ label, value = "", onChange, isOverridden = false }: any) {
-  return (
-    <label>
-      {isOverridden && <span className="overridden-dot" title="Overridden for this story"></span>}
-      {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
-
-function ContextTextarea({ label, value = "", onChange, isOverridden = false }: any) {
-  return (
-    <label>
-      {isOverridden && <span className="overridden-dot" title="Overridden for this story"></span>}
-      {label}
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
 
 function InfoField({ label, value }: any) {
   return (

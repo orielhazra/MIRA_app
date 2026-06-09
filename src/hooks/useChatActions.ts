@@ -9,6 +9,7 @@ import {
   appendGeneratedReplyToLastAssistant,
   addAlternativeToLastAssistant,
 } from "../utils/appHelpers";
+import { useToast } from "../context/ToastContext";
 
 interface ChatActionDeps {
   text?: string;
@@ -29,6 +30,7 @@ interface ChatActionDeps {
 }
 
 export default function useChatActions({ generateAssistantReply }: { generateAssistantReply: any }) {
+  const { showToast } = useToast();
   async function sendMessage(deps: ChatActionDeps) {
     const {
       text,
@@ -58,9 +60,9 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
     if (isGenerating) return;
 
     const lastAssistantIndex = findLastAssistantIndex(chatHistory);
-    if (lastAssistantIndex === -1) return alert("Nothing to continue.");
+    if (lastAssistantIndex === -1) return showToast("Nothing to continue.");
     if (lastAssistantIndex !== chatHistory.length - 1) {
-      return alert("Continue works best after an assistant reply. Generate or reroll the next reply first.");
+      return showToast("Continue works best after an assistant reply. Generate or reroll the next reply first.");
     }
 
     const committed = commitLastAssistantChoice(chatHistory);
@@ -79,7 +81,7 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
 
     const lastMessage = chatHistory[chatHistory.length - 1];
     if (!lastMessage || lastMessage.role !== "assistant") {
-      return alert("The last message is not an assistant reply.");
+      return showToast("The last message is not an assistant reply.");
     }
 
     const originalReply = getMessageDisplayText(lastMessage);
@@ -96,11 +98,11 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
   async function rerollLastReply(deps: ChatActionDeps) {
     const { chatHistory, isGenerating } = deps;
     if (isGenerating) return;
-    if (chatHistory.length <= 1) return alert("Nothing to reroll.");
+    if (chatHistory.length <= 1) return showToast("Nothing to reroll.");
 
     const lastMessage = chatHistory[chatHistory.length - 1];
     if (!lastMessage || lastMessage.role !== "assistant") {
-      return alert("The last message is not an assistant reply.");
+      return showToast("The last message is not an assistant reply.");
     }
 
     const historyWithoutLastAssistant = chatHistory.slice(0, -1);
@@ -120,7 +122,7 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
     const targetMessage = chatHistory[index];
     if (!targetMessage) return;
     if (index <= 0 && targetMessage.role === "assistant") {
-      alert("The opening message cannot be regenerated from here.");
+      showToast("The opening message cannot be regenerated from here.");
       return;
     }
 
@@ -147,7 +149,7 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
 
   function rollbackLastExchange({ chatHistory, isGenerating, saveChatForActiveStory, setChatHistory }: ChatActionDeps) {
     if (isGenerating) return;
-    if (chatHistory.length <= 1) return alert("Nothing to rollback.");
+    if (chatHistory.length <= 1) return showToast("Nothing to rollback.");
 
     const nextHistory = [...chatHistory];
     const last = nextHistory[nextHistory.length - 1];
@@ -162,7 +164,6 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
 
   function resetChat({ isGenerating, resetCurrentStoryState }: ChatActionDeps) {
     if (isGenerating) return;
-    if (!confirm("Reset this story's chat back to its opening message?")) return;
     resetCurrentStoryState?.();
   }
 
@@ -190,7 +191,7 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
     if (isGenerating) return;
 
     const trimmed = newText.trim();
-    if (!trimmed) return alert("Message cannot be empty.");
+    if (!trimmed) return showToast("Message cannot be empty.");
 
     const nextHistory = chatHistory.map((message, messageIndex) => {
       if (messageIndex !== index) return message;
@@ -228,8 +229,7 @@ export default function useChatActions({ generateAssistantReply }: { generateAss
 
   function deleteMessagesFromIndex({ chatHistory, isGenerating, index = 0, setEditingMessageIndex, setChatHistory, saveChatForActiveStory }: ChatActionDeps) {
     if (isGenerating) return;
-    if (index <= 0) return alert("The opening message cannot be deleted from here.");
-    if (!confirm("Delete this message and everything after it?")) return;
+    if (index <= 0) return showToast("The opening message cannot be deleted from here.");
 
     const nextHistory = chatHistory.slice(0, index);
     setEditingMessageIndex?.(null);

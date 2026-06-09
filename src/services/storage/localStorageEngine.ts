@@ -2,57 +2,10 @@ import { STORAGE_KEYS } from "../../constants/defaultData";
 import { cloneJson } from "../../utils/helpers";
 import { storyToMeta, upsertStoryMeta } from "../storyMeta";
 import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry, Persona } from "../../types";
+import { createPersistenceTracker } from "./persistenceTracker";
 
-interface PersistenceStatus {
-  lastError: string | null;
-  lastOperation: string | null;
-  lastSavedAt: number | null;
-  pendingWrites: number;
-}
-
-const persistenceStatus: PersistenceStatus = {
-  lastError: null,
-  lastOperation: null,
-  lastSavedAt: null,
-  pendingWrites: 0,
-};
-
-const persistenceListeners = new Set<(status: PersistenceStatus) => void>();
-
-function emitPersistenceStatus() {
-  const snapshot = { ...persistenceStatus };
-  for (const listener of persistenceListeners) {
-    listener(snapshot);
-  }
-}
-
-function updatePersistenceStatus(patch: Partial<PersistenceStatus>) {
-  Object.assign(persistenceStatus, patch);
-  emitPersistenceStatus();
-}
-
-function withTrackedWrite<T>(operationLabel: string, writer: () => T): T {
-  updatePersistenceStatus({ pendingWrites: persistenceStatus.pendingWrites + 1, lastOperation: operationLabel });
-
-  try {
-    const result = writer();
-    updatePersistenceStatus({
-      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
-      lastError: null,
-      lastOperation: operationLabel,
-      lastSavedAt: Date.now(),
-    });
-    return result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    updatePersistenceStatus({
-      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
-      lastError: `${operationLabel}: ${message}`,
-      lastOperation: operationLabel,
-    });
-    throw error;
-  }
-}
+const tracker = createPersistenceTracker();
+const { withTrackedWrite } = tracker;
 
 function readLocalStorageJson<T>(key: string, fallback: T): T {
   const saved = localStorage.getItem(key);
@@ -86,17 +39,9 @@ export const localStorageEngine = {
   },
 
   persistence: {
-    getStatus(): PersistenceStatus {
-      return { ...persistenceStatus };
-    },
-    subscribe(listener: (status: PersistenceStatus) => void): () => void {
-      persistenceListeners.add(listener);
-      listener({ ...persistenceStatus });
-      return () => persistenceListeners.delete(listener);
-    },
-    clearError(): void {
-      updatePersistenceStatus({ lastError: null });
-    },
+    getStatus: tracker.getStatus,
+    subscribe: tracker.subscribe,
+    clearError: tracker.clearError,
     async flush(): Promise<void> {
       return Promise.resolve();
     }

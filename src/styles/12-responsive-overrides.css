@@ -74,7 +74,7 @@
   .app.with-editor .editor,
   .app.with-editor.editor-collapsed .editor,
   .app.with-editor.sidebar-collapsed.editor-collapsed .editor {
-    display: block !important;
+    display: block;
     grid-column: 1 / -1;
     grid-row: 2;
     border-left: none;
@@ -123,7 +123,7 @@
 
   .app.with-editor .sidebar,
   .app.without-editor .sidebar {
-    display: block !important;
+    display: block;
     grid-column: 1;
     grid-row: 1;
     max-height: 32vh;
@@ -146,7 +146,7 @@
   }
 
   .app.with-editor .editor {
-    display: block !important;
+    display: block;
     grid-column: 1;
     grid-row: 3;
     max-height: none;

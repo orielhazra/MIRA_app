@@ -3,6 +3,7 @@
 import { World, StoryMeta } from "../types/index";
 import { normalizeWorld } from "../services/normalizers";
 import { createId } from "../utils/helpers";
+import { useToast } from "../context/ToastContext";
 
 interface WorldActionDeps {
   isGenerating?: boolean;
@@ -18,6 +19,7 @@ interface WorldActionDeps {
 }
 
 export default function useWorldActions() {
+  const { showToast } = useToast();
   function createBlankWorld(deps: WorldActionDeps) {
     const { isGenerating, worlds, saveWorldList, setSelectedWorldSheetId, setActiveView, setStoryDraft } = deps;
     if (isGenerating || !worlds || !saveWorldList) return;
@@ -87,11 +89,10 @@ export default function useWorldActions() {
 
     if (storiesUsingTemplateFamily.length > 0) {
       const storyNames = storiesUsingTemplateFamily.map((storyMeta) => `"${storyMeta.title}"`).join(", ");
-      alert(`Cannot delete template ${world.name}. This template family is used in ${storiesUsingTemplateFamily.length} story(s): ${storyNames}.\n\nDelete or reassign these stories first.`);
+      showToast(`Cannot delete template ${world.name}. This template family is used in ${storiesUsingTemplateFamily.length} story(s): ${storyNames}.\n\nDelete or reassign these stories first.`);
       return;
     }
 
-    if (!confirm(`Delete template family ${world.name}? This removes ${familyVersions.length} saved version(s).`)) return;
 
     const nextWorlds = worlds.filter((item) => !familyVersionIds.has(item.id));
     saveWorldList(nextWorlds);

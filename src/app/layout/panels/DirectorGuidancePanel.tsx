@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ContextTextarea } from "../../../components/ui/FormFields";
 
 export default function DirectorGuidancePanel({ 
   directorNotes, 
@@ -6,11 +7,11 @@ export default function DirectorGuidancePanel({
   onSave, 
   onClear 
 }) {
-  const [draft, setDraft] = useState(() => buildDraft(directorNotes));
+  const [draft, setDraft] = useState(() => buildGuidanceDraft(directorNotes));
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    setDraft(buildDraft(directorNotes));
+    setDraft(buildGuidanceDraft(directorNotes));
     setDirty(false);
   }, [JSON.stringify(directorNotes || {})]);
 
@@ -65,7 +66,7 @@ export default function DirectorGuidancePanel({
   );
 }
 
-function buildDraft(notes) {
+function buildGuidanceDraft(notes) {
   const source = notes || {};
   return {
     nextStoryBeat: source.nextStoryBeat || "",
@@ -80,15 +81,3 @@ function buildDraft(notes) {
   };
 }
 
-function ContextTextarea({ label, value = "", onChange, placeholder }) {
-  return (
-    <label>
-      {label}
-      <textarea 
-        value={value} 
-        onChange={(event) => onChange(event.target.value)} 
-        placeholder={placeholder}
-      />
-    </label>
-  );
-}

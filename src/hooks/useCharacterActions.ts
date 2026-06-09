@@ -6,6 +6,7 @@ import { createId } from "../utils/helpers";
 import { normalizeCastPresence, uniqueCompact } from "../utils/appHelpers";
 import { createEmptyCharacterOverlay } from "../constants/defaultData";
 import { resolveEffectiveStoryCharacters } from "../services/storyCharacters";
+import { useToast } from "../context/ToastContext";
 
 interface CharacterActionDeps {
   isGenerating?: boolean;
@@ -28,6 +29,7 @@ interface CharacterActionDeps {
 }
 
 export default function useCharacterActions() {
+  const { showToast } = useToast();
   function createBlankCharacter(deps: CharacterActionDeps) {
     const {
       isGenerating,
@@ -84,7 +86,6 @@ export default function useCharacterActions() {
     // For now, we'll allow deletion but caution. 
     // A better approach would be to check the repository for all full stories.
     
-    if (!confirm(`Delete template ${character.name} (v${character.templateVersion || 1})?`)) return;
 
     saveCharacterList(characters.filter((item) => item.id !== character.id));
     // repository?.characters.removeLegacyChat?.(character.id); // Character chats are gone now
@@ -106,7 +107,7 @@ export default function useCharacterActions() {
     if (!activeStory || !saveActiveStory || !characterId) return;
 
     const castMember = activeStory.castMembers.find(m => m.id === characterId || m.templateCharacterId === characterId);
-    if (!castMember) return alert("Cast member not found.");
+    if (!castMember) return showToast("Cast member not found.");
 
     const normalizedPresence = normalizeCastPresence(presence);
     const effectiveCharacters = resolveEffectiveStoryCharacters(activeStory, characters);
@@ -136,11 +137,11 @@ export default function useCharacterActions() {
     if (!activeStory || !getCharacter || !saveActiveStory || !characterId) return;
 
     const template = getCharacter(characterId);
-    if (!template) return alert("Character template not found.");
+    if (!template) return showToast("Character template not found.");
 
     // Check if already in story
     if (activeStory.castMembers.some(m => m.templateCharacterId === template.id)) {
-      alert("Character is already in the story cast.");
+      showToast("Character is already in the story cast.");
       return;
     }
 
@@ -181,7 +182,7 @@ export default function useCharacterActions() {
 
     const remainingCast = activeStory.castMembers.filter((m) => m.id !== castMember.id);
     if (remainingCast.length === 0) {
-      alert("A story needs at least one cast member.");
+      showToast("A story needs at least one cast member.");
       return;
     }
 

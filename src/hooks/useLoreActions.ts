@@ -17,6 +17,14 @@ interface LoreActionDeps {
   characterId?: string;
   lorebook?: LoreEntry[];
   story?: Story | null;
+  // Used by updateWorldLore
+  worlds?: World[];
+  saveWorldList?: (worlds: World[]) => void;
+  // Used by updateCharacterLore
+  saveCharacterList?: (characters: Character[]) => void;
+  // Used by refreshActiveLore
+  activeStoryCharacters?: Character[];
+  chatHistory?: any[];
 }
 
 export default function useLoreActions() {

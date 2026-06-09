@@ -2,7 +2,6 @@ import React from "react";
 import AppProviders from "./app/AppProviders";
 import MainLayout from "./app/layout/MainLayout";
 import { repository } from "./services/repository";
-import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   const [loading, setLoading] = React.useState(true);
@@ -65,9 +64,7 @@ export default function App() {
 
   return (
     <AppProviders>
-      <ErrorBoundary>
-        <MainLayout />
-      </ErrorBoundary>
+      <MainLayout />
     </AppProviders>
   );
 }

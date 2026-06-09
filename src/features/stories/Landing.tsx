@@ -2,38 +2,9 @@
 
 import { useState } from "react";
 import { getLatestTemplateWorlds } from "../../services/storyWorld";
-import { Persona } from "../../types";
+import { Persona, StoryMeta, Character, World } from "../../types";
 
 type LibraryTab = "stories" | "characters" | "worlds" | "personas";
-
-interface StoryMeta {
-  id: string;
-  title: string;
-  templateWorldId: string;
-  characterIds: string[];
-  characterCount?: number;
-  createdAt?: number;
-  lastPlayedAt?: number;
-}
-
-interface Character {
-  id: string;
-  name: string;
-  shortDescription?: string;
-  race?: string;
-  role?: string;
-}
-
-interface World {
-  id: string;
-  templateKey?: string;
-  templateVersion?: number;
-  name: string;
-  shortDescription?: string;
-  description?: string;
-  rules?: string;
-  locations?: any[];
-}
 
 interface LandingProps {
   storyMetas: StoryMeta[];
@@ -108,7 +79,7 @@ export default function Landing({
         const world = worlds.find((w) => w.id === meta.templateWorldId);
         const created = formatDate(meta.createdAt);
         const lastPlayed = formatDate(meta.lastPlayedAt);
-        const castCount = meta.characterCount ?? meta.characterIds?.length ?? 0;
+        const castCount = meta.castMemberCount ?? 0;
         return (
           <article key={meta.id} className="story-library-card">
             <button

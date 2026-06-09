@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CUSTOM_DB_PATH, DEFAULT_KOBOLD_BASE_URL, GENERATION_SETTINGS } from "../constants/defaultData";
+import { DEFAULT_KOBOLD_BASE_URL, GENERATION_SETTINGS } from "../constants/defaultData";
 
 type SettingsSectionKey = "connection" | "generation" | "storage";
 
@@ -18,6 +18,8 @@ interface HeaderSettingsMenuProps {
   persistenceInfo?: PersistenceInfo;
   storageModeLabel: string;
   storageTargetLabel: string;
+  databasePath?: string;
+  onSaveDatabasePath?: (path: string) => void | Promise<void>;
 }
 
 export default function HeaderSettingsMenu({
@@ -28,6 +30,8 @@ export default function HeaderSettingsMenu({
   persistenceInfo,
   storageModeLabel,
   storageTargetLabel,
+  databasePath = "",
+  onSaveDatabasePath,
 }: HeaderSettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const [openSection, setOpenSection] = useState<SettingsSectionKey | null>(null);
@@ -172,10 +176,29 @@ export default function HeaderSettingsMenu({
             <div className="settings-section-body">
               <div className="settings-grid compact-grid">
                 <span>Backend</span><strong>{storageModeLabel}</strong>
-                <span>Preferred Target</span><strong>{storageTargetLabel}</strong>
-                <span>Custom Path</span><strong>{CUSTOM_DB_PATH || "Not set"}</strong>
+                <span>Active Target</span><strong>{storageTargetLabel}</strong>
                 <span>Save Status</span><strong>{saveSummary}</strong>
               </div>
+              {onSaveDatabasePath && (
+                <label className="settings-field">
+                  <span>Custom Database Path</span>
+                  <input
+                    type="text"
+                    defaultValue={databasePath}
+                    placeholder="Leave empty for default (App Data)"
+                    onBlur={async (e) => {
+                      const newPath = e.target.value.trim();
+                      if (newPath !== databasePath) {
+                        await onSaveDatabasePath(newPath);
+                        setStatus("Database path saved. Restart the app for changes to take effect.");
+                      }
+                    }}
+                  />
+                  <small style={{ color: "var(--muted)", marginTop: "0.25rem" }}>
+                    Absolute path to a .db file. Changes require app restart.
+                  </small>
+                </label>
+              )}
               {typeof persistenceInfo?.lastError === "string" && persistenceInfo.lastError.trim() && (
                 <div className="settings-warning-box">
                   <p>{persistenceInfo.lastError}</p>

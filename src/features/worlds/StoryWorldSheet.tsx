@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { parseKeywords } from "../../utils/helpers";
 import { getLatestTemplateByKey } from "../../services/storyWorld";
 
@@ -23,6 +24,7 @@ export default function StoryWorldSheet({
 }) {
   const [activeTab, setActiveTab] = useState("identity");
   const [status, setStatus] = useState("");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Local drafts for identity fields
   const [identityDraft, setIdentityDraft] = useState({
@@ -114,7 +116,7 @@ export default function StoryWorldSheet({
               </div>
 
               <div className="sheet-actions" style={{ marginTop: '2rem' }}>
-                <button type="button" className="danger" onClick={() => { if(confirm("Reset all world overrides?")) onResetOverlay(); }}>Reset All World Overrides</button>
+                <button type="button" className="danger" onClick={() => setShowResetConfirm(true)}>Reset All World Overrides</button>
                 <button type="button" onClick={() => onExportTemplate(activeWorld)}>Export As Template</button>
               </div>
             </div>
@@ -196,6 +198,15 @@ export default function StoryWorldSheet({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={showResetConfirm}
+        title="Reset World Overrides"
+        message="Reset all world overrides? This will revert all story-specific world changes back to the base template."
+        confirmLabel="Reset"
+        variant="danger"
+        onConfirm={() => { onResetOverlay(); setShowResetConfirm(false); }}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </section>
   );
 }

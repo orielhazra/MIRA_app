@@ -1,8 +1,9 @@
 import { cloneJson } from "../../utils/helpers";
-import { CUSTOM_DB_PATH } from "../../constants/defaultData";
 import { storyToMeta } from "../storyMeta";
+import { loadDatabasePath } from "../appConfig";
 import { World, Character, Story, StoryMeta, ChatMessage, LoreEntry, Persona } from "../../types";
 import { ensureSqliteSchema, SQLITE_WORLD_INSERT_SQL, SQLITE_CHARACTER_INSERT_SQL, SQLITE_STORY_INSERT_SQL, SQLITE_PERSONA_INSERT_SQL } from "./sqliteSchema";
+import { createPersistenceTracker } from "./persistenceTracker";
 
 
 
@@ -17,12 +18,6 @@ interface SqliteCache {
   settings: Record<string, string>;
 }
 
-interface PersistenceStatus {
-  lastError: string | null;
-  lastOperation: string | null;
-  lastSavedAt: number | null;
-  pendingWrites: number;
-}
 
 const cache: SqliteCache = {
   worlds: [],
@@ -35,47 +30,14 @@ const cache: SqliteCache = {
   settings: {}
 };
 
-const persistenceStatus: PersistenceStatus = {
-  lastError: null,
-  lastOperation: null,
-  lastSavedAt: null,
-  pendingWrites: 0,
-};
 
-const persistenceListeners = new Set<(status: PersistenceStatus) => void>();
+const tracker = createPersistenceTracker();
+const { update: updatePersistenceStatus, markSuccess: markPersistenceSuccess, markFailure: markPersistenceFailure } = tracker;
+
 let writeQueue: Promise<void> = Promise.resolve();
 const WRITE_DEBOUNCE_MS = 350;
 const scheduledWriteTasks = new Map<string, { operationLabel: string; writer: (db: any) => Promise<void> }>();
 const scheduledWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-function emitPersistenceStatus() {
-  const snapshot = { ...persistenceStatus };
-  for (const listener of persistenceListeners) {
-    listener(snapshot);
-  }
-}
-
-function updatePersistenceStatus(patch: Partial<PersistenceStatus>) {
-  Object.assign(persistenceStatus, patch);
-  emitPersistenceStatus();
-}
-
-function markPersistenceSuccess(operationLabel: string) {
-  updatePersistenceStatus({
-    lastError: null,
-    lastOperation: operationLabel,
-    lastSavedAt: Date.now(),
-  });
-}
-
-function markPersistenceFailure(operationLabel: string, error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`${operationLabel} failed:`, error);
-  updatePersistenceStatus({
-    lastError: `${operationLabel}: ${message}`,
-    lastOperation: operationLabel,
-  });
-}
 
 async function runInTransaction(db: any, operation: () => Promise<void>): Promise<void> {
   await db.execute("BEGIN TRANSACTION");
@@ -101,7 +63,7 @@ function enqueueDbWrite(
 
   if (!options.alreadyTracked) {
     updatePersistenceStatus({
-      pendingWrites: persistenceStatus.pendingWrites + 1,
+      pendingWrites: tracker.getStatus().pendingWrites + 1,
       lastOperation: operationLabel,
     });
   }
@@ -115,7 +77,7 @@ function enqueueDbWrite(
       markPersistenceFailure(operationLabel, error);
     } finally {
       updatePersistenceStatus({
-        pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+        pendingWrites: Math.max(0, tracker.getStatus().pendingWrites - 1),
       });
     }
   };
@@ -132,7 +94,7 @@ function cancelScheduledWrite(writeKey: string): void {
 
   if (scheduledWriteTasks.delete(writeKey)) {
     updatePersistenceStatus({
-      pendingWrites: Math.max(0, persistenceStatus.pendingWrites - 1),
+      pendingWrites: Math.max(0, tracker.getStatus().pendingWrites - 1),
     });
   }
 }
@@ -155,7 +117,7 @@ function scheduleDbWrite(
 
   if (!hadPendingTask) {
     updatePersistenceStatus({
-      pendingWrites: persistenceStatus.pendingWrites + 1,
+      pendingWrites: tracker.getStatus().pendingWrites + 1,
       lastOperation: operationLabel,
     });
   } else {
@@ -211,9 +173,9 @@ function shouldUseCustomDbPath(customDbPath: string): boolean {
 async function loadTauriDatabase(): Promise<any> {
   try {
     const SQL = await import("@tauri-apps/plugin-sql");
-    const customDbPath = CUSTOM_DB_PATH.trim();
+    const customDbPath = await loadDatabasePath();
 
-    if (shouldUseCustomDbPath(customDbPath)) {
+    if (customDbPath && shouldUseCustomDbPath(customDbPath)) {
       try {
         const fsApi = await import("@tauri-apps/plugin-fs");
         const pathApi = await import("@tauri-apps/api/path");
@@ -225,14 +187,14 @@ async function loadTauriDatabase(): Promise<any> {
           await fsApi.mkdir(dbDir, { recursive: true });
         }
 
-        console.log(`Loading SQLite from custom location: ${customDbPath}`);
+        console.debug(`Loading SQLite from custom location: ${customDbPath}`);
         return await SQL.default.load(`sqlite:${customDbPath}`);
       } catch (pathError) {
         console.warn("Failed to initialize custom SQLite path. Falling back to default app database.", pathError);
       }
     }
 
-    console.log(`Loading SQLite from default app database: ${DEFAULT_TAURI_DB_URL}`);
+    console.debug(`Loading SQLite from default app database: ${DEFAULT_TAURI_DB_URL}`);
     return await SQL.default.load(DEFAULT_TAURI_DB_URL);
   } catch (e) {
     console.error("Failed to dynamically load SQLite database:", e);
@@ -246,17 +208,9 @@ if (isTauri) {
 
 export const sqliteEngine = {
   persistence: {
-    getStatus(): PersistenceStatus {
-      return { ...persistenceStatus };
-    },
-    subscribe(listener: (status: PersistenceStatus) => void): () => void {
-      persistenceListeners.add(listener);
-      listener({ ...persistenceStatus });
-      return () => persistenceListeners.delete(listener);
-    },
-    clearError(): void {
-      updatePersistenceStatus({ lastError: null });
-    },
+    getStatus: tracker.getStatus,
+    subscribe: tracker.subscribe,
+    clearError: tracker.clearError,
     async flush(): Promise<void> {
       await flushPendingWrites();
     }
@@ -368,7 +322,7 @@ export const sqliteEngine = {
         }
       }
 
-      console.log(" M.I.R.A. SQLite DB initialized successfully in write-through cache!");
+      console.debug("M.I.R.A. SQLite DB initialized successfully in write-through cache.");
     } catch (error) {
       console.error("Failed to load SQLite tables into cache:", error);
     }

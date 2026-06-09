@@ -12,14 +12,14 @@ export default function CastQuickStatePanel({
   const castState = activeStory?.castState || { activeCharacters: [] };
   const userProfile = activeStory?.userProfile;
 
-  const [draft, setDraft] = useState(() => buildDraft(castState, activeStoryCharacters));
+  const [draft, setDraft] = useState(() => buildCastQuickDraft(castState, activeStoryCharacters));
   const [userDraft, setUserDraft] = useState(userProfile);
   const [dirty, setDirty] = useState(false);
 
   const worldLocations = activeWorld?.locations || [];
 
   useEffect(() => {
-    setDraft(buildDraft(castState, activeStoryCharacters));
+    setDraft(buildCastQuickDraft(castState, activeStoryCharacters));
     setUserDraft(userProfile);
     setDirty(false);
   }, [JSON.stringify(castState || {}), JSON.stringify(userProfile || {}), activeStoryCharacters.length]);
@@ -126,7 +126,7 @@ export default function CastQuickStatePanel({
   );
 }
 
-function buildDraft(castState, characters = []) {
+function buildCastQuickDraft(castState, characters = []) {
   const source = castState || {};
   const activeCharacters = characters.map((char) => {
     const existing = (source.activeCharacters || []).find((row) => row.castMemberId === char.id) || {};

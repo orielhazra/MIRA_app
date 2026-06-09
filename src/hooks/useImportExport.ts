@@ -5,16 +5,21 @@ import { normalizeCharacter, normalizeChatMessage, normalizeStory, normalizeWorl
 import { createEmptyWorldOverlay, getTemplateWorldByKeyAndVersion, resolveEffectiveWorld } from "../services/storyWorld";
 import { buildOpeningMessage } from "../services/prompt";
 import { cloneJson, createId, downloadJson, readJsonFile, safeFileName } from "../utils/helpers";
+import { useToast } from "../context/ToastContext";
 import {
-  validateIncomingCharacterBundle,
-  validateIncomingWorldBundle,
-  validateStoryExportBundle,
-  validateIncomingStoryBundle,
   hydrateBundleLore,
   remapImportedContextCastIds,
   remapImportedCastStateIds,
   buildStoryExportBundle,
 } from "../utils/appHelpers";
+import {
+  CharacterImportSchema,
+  WorldImportSchema,
+  StoryBundleImportSchema,
+  StoryExportBundleSchema,
+  MAX_IMPORT_FILE_SIZE,
+  formatZodErrors,
+} from "../schemas/importSchemas";
 import { createEmptyCharacterOverlay } from "../constants/defaultData";
 
 interface ExportDeps {
@@ -61,6 +66,7 @@ interface StoryImportDeps {
 }
 
 export default function useImportExport() {
+  const { showToast } = useToast();
   function exportCharacter({ character }: ExportDeps) {
     if (!character) return;
     downloadJson(`${safeFileName(character.name, "character")}.character.json`, {
@@ -83,12 +89,12 @@ export default function useImportExport() {
 
   function exportActiveStory(deps: ExportDeps) {
     const { activeStory, getWorld, getStoryCharacters, chatHistory } = deps;
-    if (!activeStory) return alert("No active story to export.");
+    if (!activeStory) return showToast("No active story to export.");
 
     const bundle = buildStoryExportBundle(activeStory, getWorld!, getStoryCharacters!, chatHistory!);
-    const validation = validateStoryExportBundle(bundle);
-    if (!validation.ok) {
-      alert("Story export is incomplete:\n\n" + validation.issues.join("\n"));
+    const exportValidation = StoryExportBundleSchema.safeParse(bundle);
+    if (!exportValidation.success) {
+      showToast("Story export is incomplete:\n\n" + formatZodErrors(exportValidation.error));
       return;
     }
     downloadJson(`${safeFileName(activeStory.title, "story")}.story.json`, bundle);
@@ -98,11 +104,15 @@ export default function useImportExport() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      showToast(`Import file is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`);
+      return;
+    }
     try {
       const parsed = await readJsonFile(file);
       handler(parsed);
     } catch (error: any) {
-      alert(error.message);
+      showToast(error.message);
     }
   }
 
@@ -114,9 +124,9 @@ export default function useImportExport() {
     setActiveView,
   }: CharacterImportDeps) {
     const imported = parsed.character || parsed;
-    const validation = validateIncomingCharacterBundle(imported);
-    if (!validation.ok) {
-      alert(`Invalid character file:\n\n${validation.issues.join("\n")}`);
+    const charResult = CharacterImportSchema.safeParse(imported);
+    if (!charResult.success) {
+      showToast(`Invalid character file:\n\n${formatZodErrors(charResult.error)}`);
       return;
     }
 
@@ -143,9 +153,9 @@ export default function useImportExport() {
     setActiveView,
   }: WorldImportDeps) {
     const imported = parsed.world || parsed;
-    const validation = validateIncomingWorldBundle(imported);
-    if (!validation.ok) {
-      alert(`Invalid world file:\n\n${validation.issues.join("\n")}`);
+    const worldResult = WorldImportSchema.safeParse(imported);
+    if (!worldResult.success) {
+      showToast(`Invalid world file:\n\n${formatZodErrors(worldResult.error)}`);
       return;
     }
 
@@ -186,9 +196,9 @@ export default function useImportExport() {
     setActiveView,
   }: StoryImportDeps) {
     const bundle = parsed.type === "roleplay-story-bundle" ? parsed : parsed.bundle || parsed;
-    const validationMessage = validateIncomingStoryBundle(bundle);
-    if (validationMessage) {
-      alert(validationMessage);
+    const storyResult = StoryBundleImportSchema.safeParse(bundle);
+    if (!storyResult.success) {
+      showToast(`Invalid story file:\n\n${formatZodErrors(storyResult.error)}`);
       return;
     }
 
@@ -297,7 +307,6 @@ export default function useImportExport() {
             role: "assistant",
             content: buildOpeningMessage(
               newStory,
-              fallbackCharacter,
               effectiveWorld,
               newCharacters
             ),

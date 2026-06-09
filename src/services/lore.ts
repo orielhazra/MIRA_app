@@ -12,15 +12,10 @@ import {
   MAX_LORE_PROMPT_CHARS,
 } from "../constants/defaultData";
 import { normalizeStoredLorebook } from "./normalizers";
+import { normalizeMatchText } from "../utils/textUtils";
 
-export function normalizeLoreMatchText(text: string | undefined): string {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+// Re-export under the legacy name for backward compatibility
+export const normalizeLoreMatchText = normalizeMatchText;
 
 export function buildDirectorNotesPrompt(notes: DirectorNotes | undefined): string {
   if (!notes) return "";

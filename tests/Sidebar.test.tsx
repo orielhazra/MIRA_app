@@ -32,6 +32,9 @@ describe("Landing", () => {
         onNewWorld={vi.fn()}
         onSelectWorld={vi.fn()}
         onDeleteWorld={vi.fn()}
+          onNewPersona={vi.fn()}
+          onSelectPersona={vi.fn()}
+          onDeletePersona={vi.fn()}
       />
     );
 
@@ -64,6 +67,9 @@ describe("Landing", () => {
         onNewWorld={vi.fn()}
         onSelectWorld={vi.fn()}
         onDeleteWorld={vi.fn()}
+          onNewPersona={vi.fn()}
+          onSelectPersona={vi.fn()}
+          onDeletePersona={vi.fn()}
       />
     );
 
@@ -111,6 +117,9 @@ describe("Landing", () => {
         onNewWorld={vi.fn()}
         onSelectWorld={vi.fn()}
         onDeleteWorld={vi.fn()}
+          onNewPersona={vi.fn()}
+          onSelectPersona={vi.fn()}
+          onDeletePersona={vi.fn()}
       />
     );
 
@@ -139,6 +148,9 @@ describe("Landing", () => {
         onNewWorld={vi.fn()}
         onSelectWorld={vi.fn()}
         onDeleteWorld={vi.fn()}
+          onNewPersona={vi.fn()}
+          onSelectPersona={vi.fn()}
+          onDeletePersona={vi.fn()}
       />
     );
 
@@ -185,6 +197,7 @@ describe("Sidebar", () => {
         onSelectCharacter={onSelectCharacter}
         onSelectWorld={onSelectWorld}
         onEditStory={vi.fn()}
+        onSelectUser={vi.fn()}
       />
     );
 

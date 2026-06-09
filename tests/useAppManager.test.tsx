@@ -1,5 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TestProviders } from "./testFixtures";
 
 const { repoState, mockRepository, resetRepoState } = vi.hoisted(() => {
   const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -158,7 +159,7 @@ describe("useAppManager", () => {
   });
 
   it("switches stories and loads chat + lore state", async () => {
-    const { result } = renderHook(() => useAppManager());
+    const { result } = renderHook(() => useAppManager(), { wrapper: TestProviders });
 
     await act(async () => {
       await result.current.switchStory("story-2");
@@ -178,7 +179,7 @@ describe("useAppManager", () => {
   });
 
   it("opens the story creation sheet from the manager", () => {
-    const { result } = renderHook(() => useAppManager());
+    const { result } = renderHook(() => useAppManager(), { wrapper: TestProviders });
 
     act(() => {
       result.current.openStoryCreationSheet();

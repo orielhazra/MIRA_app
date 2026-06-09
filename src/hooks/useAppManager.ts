@@ -1,22 +1,15 @@
-import { useEffect, useMemo, useRef, useReducer, useState } from "react";
-import { ChatMessage, StoryCastMember, Character, World, Persona } from "../types";
-import { DEFAULT_KOBOLD_BASE_URL, CUSTOM_DB_PATH, defaultStories, createEmptyCharacterOverlay, defaultPersonas } from "../constants/defaultData";
-import { normalizeCharacter, normalizeStory, normalizeWorld, normalizePersona } from "../services/normalizers";
+import { useRef, useState } from "react";
+import { ChatMessage, StoryCastMember, Character, World, Persona, Story, StoryMeta, LoreEntry } from "../types";
+import { repository } from "../services/repository";
+import { defaultStories, createEmptyCharacterOverlay } from "../constants/defaultData";
+import { normalizeStory, normalizePersona } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
-import { repository, isTauri } from "../services/repository";
-import { resolveEffectiveWorld } from "../services/storyWorld";
 import { storyToMeta } from "../services/storyMeta";
 import {
-  loadInitialState,
-  getStoryCharactersFromLists,
   createInitialCastState,
   createInitialCurrentContext,
 } from "../utils/appHelpers";
-import { storyReducer, storyInitialState } from "../reducers/storyReducer";
-import { chatReducer, chatInitialState } from "../reducers/chatReducer";
-import { loreReducer, loreInitialState } from "../reducers/loreReducer";
-import { generationReducer, generationInitialState } from "../reducers/generationReducer";
-import useGeneration from "./useGeneration";
+import useGeneration, { type GenerationDeps } from "./useGeneration";
 import useChatActions from "./useChatActions";
 import useStoryActions from "./useStoryActions";
 import useCharacterActions from "./useCharacterActions";
@@ -39,176 +32,55 @@ import {
   createStoryCharacterBindings,
 } from "./useAppManagerBindings";
 import { createId } from "../utils/helpers";
+import { useToast } from "../context/ToastContext";
+import { useUI } from "../context/UIContext";
+import { useChatState } from "../context/ChatStateContext";
+import { useLoreState } from "../context/LoreStateContext";
+import { useStoryState } from "../context/StoryStateContext";
 
 export default function useAppManager() {
-  const initial = useMemo(() => {
-    const state = loadInitialState();
-    const personas = repository.personas.list(defaultPersonas).map(normalizePersona);
-    repository.personas.saveAll(personas);
-    return { ...state, personas };
-  }, []);
+  const { showToast } = useToast();
 
-  const [storyState, dispatchStory] = useReducer(storyReducer, {
-    ...storyInitialState,
-    worlds: initial.worlds,
-    characters: initial.characters,
-    storyMetas: initial.storyMetas || [],
-    personas: initial.personas || [],
-    activeStory: initial.activeStory || null,
-    activeView: initial.activeView,
-    selectedCharacterSheetId: initial.selectedCharacterSheetId,
-    selectedWorldSheetId: initial.selectedWorldSheetId,
-    storyDraft: null,
-    debugOpen: false,
-  });
-
-  const [chatState, dispatchChat] = useReducer(chatReducer, {
-    ...chatInitialState,
-    chatHistory: initial.chatHistory,
-    editingMessageIndex: null,
-  });
-
-  const [loreState, dispatchLore] = useReducer(loreReducer, {
-    ...loreInitialState,
-    activeLoreMemory: initial.activeLoreMemory,
-    pendingUpdates: [],
-    selectedPendingUpdateIds: [],
-    pendingUpdateStatus: "",
-  });
-
-  const [generationState, dispatchGeneration] = useReducer(generationReducer, {
-    ...generationInitialState,
-    isGenerating: false,
-    promptTokens: "-- tokens",
-    generationStatus: "Idle",
-    progressPercent: 0,
-    isExtractingUpdates: false,
-  });
-
+  // Story state is managed by StoryStateContext
   const {
-    worlds,
-    characters,
-    personas,
-    storyMetas,
-    activeStory,
-    activeView,
-    selectedCharacterSheetId,
-    selectedWorldSheetId,
-    storyDraft,
-    debugOpen,
-  } = storyState;
-  const { chatHistory, editingMessageIndex } = chatState;
-  const { activeLoreMemory, pendingUpdates, selectedPendingUpdateIds, pendingUpdateStatus } = loreState;
-  const { isGenerating, promptTokens, generationStatus, progressPercent, isExtractingUpdates } = generationState;
+    worlds, characters, personas, storyMetas, activeStory, activeView,
+    selectedCharacterSheetId, selectedWorldSheetId, storyDraft,
+    activeWorld, activeStoryCharacters, selectedCharacter, selectedWorld, selectedPersona,
+    setActiveView, setSelectedCharacterSheetId, setSelectedWorldSheetId, setStoryDraft, setActiveStory,
+    saveWorldList, saveCharacterList, savePersonaList, saveStoryMetas, upsertStoryMeta, removeStoryMeta,
+    getWorld, getCharacter, getStoryCharacters, saveActiveStory, dispatchStory,
+  } = useStoryState();
+
+  // Chat + generation state is managed by ChatStateContext
+  const {
+    chatHistory, editingMessageIndex, setChatHistory, setEditingMessageIndex,
+    isGenerating, promptTokens, generationStatus, progressPercent, isExtractingUpdates,
+    setIsGenerating, setPromptTokens, setGenerationStatus, setProgressPercent, setIsExtractingUpdates,
+  } = useChatState();
+
+  // Lore state is managed by LoreStateContext
+  const {
+    activeLoreMemory, pendingUpdates, selectedPendingUpdateIds, pendingUpdateStatus, loreStatusText,
+    setActiveLoreMemory, setPendingUpdates, setSelectedPendingUpdateIds, setPendingUpdateStatus, resetPendingUpdates,
+  } = useLoreState();
 
   const storyImportRef = useRef<HTMLInputElement>(null);
   const characterImportRef = useRef<HTMLInputElement>(null);
   const worldImportRef = useRef<HTMLInputElement>(null);
 
-  const [persistenceInfo, setPersistenceInfo] = useState(
-    () => repository.persistence?.getStatus?.() || { lastError: null, lastOperation: null, lastSavedAt: null, pendingWrites: 0 }
-  );
-  const [koboldBaseUrl, setKoboldBaseUrlState] = useState(
-    () => repository.settings.getKoboldBaseUrl(DEFAULT_KOBOLD_BASE_URL)
-  );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("mira_sidebar_collapsed") === "true";
-  });
-  const [editorCollapsed, setEditorCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("mira_editor_collapsed") === "true";
-  });
-  const [topbarCollapsed, setTopbarCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("mira_topbar_collapsed") === "true";
-  });
+  // UI + settings + persistence + confirm state is managed by UIContext
+  const {
+    sidebarCollapsed, toggleSidebarCollapsed,
+    editorCollapsed, toggleEditorCollapsed,
+    topbarCollapsed, toggleTopbarCollapsed,
+    debugOpen, setDebugOpen,
+    isLoadingStory, setIsLoadingStory,
+    persistenceInfo, koboldBaseUrl, storageModeLabel, storageTargetLabel, databasePath,
+    saveKoboldBaseUrl, saveDatabasePath, clearPersistenceError, flushPersistence,
+    pendingConfirm, setPendingConfirm, dismissConfirm,
+  } = useUI();
 
-  const activeWorld = useMemo(
-    () => (activeStory ? resolveEffectiveWorld(activeStory, worlds) || worlds[0] || null : worlds[0] || null),
-    [worlds, activeStory]
-  );
-  const activeStoryCharacters = useMemo(
-    () => (activeStory ? getStoryCharactersFromLists(activeStory, characters) : characters[0] ? [characters[0]] : []),
-    [activeStory, characters]
-  );
 
-  const selectedCharacter = useMemo(() => {
-    if (!selectedCharacterSheetId) return characters[0] || null;
-
-    // 1. Try to find by template ID in the global library (the primary ID used for character sheets)
-    let found = characters.find((c) => c.id === selectedCharacterSheetId);
-    if (found) return found;
-
-    // 2. If not found in library, check if it's a cast member ID from the active story
-    if (activeStory) {
-      const member = activeStory.castMembers.find((m) => m.id === selectedCharacterSheetId);
-      if (member) {
-        found = characters.find((c) => c.id === member.templateCharacterId);
-        if (found) return found;
-      }
-    }
-
-    // 3. Last attempt: Check the activeStoryCharacters list directly (matches castMember ID)
-    const effectiveFound = activeStoryCharacters.find(c => c.id === selectedCharacterSheetId);
-    if (effectiveFound) {
-       // Find template for this effective character
-       const member = activeStory?.castMembers.find(m => m.id === selectedCharacterSheetId);
-       if (member) {
-          return characters.find(c => c.id === member.templateCharacterId) || effectiveFound;
-       }
-       return effectiveFound;
-    }
-
-    // fallback: if we have an ID but still haven't found it, something is wrong, but don't just return Mira
-    // if we are NOT in active story, characters[0] is fine.
-    if (!activeStory) return characters[0] || null;
-    
-    // if in active story, and we were looking for a character, return whatever we have
-    return found || effectiveFound || characters[0] || null;
-  }, [characters, selectedCharacterSheetId, activeStory, activeStoryCharacters]);
-
-  const selectedWorld = useMemo(
-    () => worlds.find((world) => world.id === selectedWorldSheetId) || worlds[0] || null,
-    [worlds, selectedWorldSheetId]
-  );
-
-  const selectedPersona = useMemo(
-    () => personas.find((p) => p.id === selectedCharacterSheetId) || personas[0] || null,
-    [personas, selectedCharacterSheetId]
-  );
-
-  useEffect(() => {
-    const unsubscribe = repository.persistence?.subscribe?.((status: any) => {
-      setPersistenceInfo(status);
-    });
-
-    return () => {
-      unsubscribe?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("mira_sidebar_collapsed", String(sidebarCollapsed));
-    }
-  }, [sidebarCollapsed]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("mira_editor_collapsed", String(editorCollapsed));
-    }
-  }, [editorCollapsed]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("mira_topbar_collapsed", String(topbarCollapsed));
-    }
-  }, [topbarCollapsed]);
-
-  const loreStatusText = activeLoreMemory.length
-    ? `Lore: ${activeLoreMemory.map((entry) => [entry.source, entry.name].filter(Boolean).join(": ")).join(", ")}`
-    : "Lore: none";
 
   const generation = useGeneration();
   const storyActions = useStoryActions();
@@ -220,118 +92,37 @@ export default function useAppManager() {
   const importExport = useImportExport();
   const storyCharacterActions = useStoryCharacterActions();
 
-  const setStoryDraft = (draft: any) => dispatchStory({ type: "SET_STORY_DRAFT", payload: draft });
-  const setActiveView = (view: string) => dispatchStory({ type: "SET_ACTIVE_VIEW", payload: view });
-  const setSelectedCharacterSheetId = (id: string) => dispatchStory({ type: "SELECT_CHARACTER_SHEET", payload: id });
-  const setSelectedWorldSheetId = (id: string) => dispatchStory({ type: "SELECT_WORLD_SHEET", payload: id });
-  const setDebugOpen = (open: boolean) => dispatchStory({ type: "SET_DEBUG_OPEN", payload: open });
 
   // New setter for active story
-  const setActiveStory = (story: any) => dispatchStory({ type: "SET_ACTIVE_STORY", payload: story });
 
-  const setChatHistory = (history: any[]) => dispatchChat({ type: "SET_HISTORY", payload: history });
-  const setEditingMessageIndex = (index: number | null) => {
-    if (index === null) dispatchChat({ type: "CANCEL_EDITING" });
-    else dispatchChat({ type: "START_EDITING", payload: index });
-  };
 
-  const setActiveLoreMemory = (memory: any[]) => dispatchLore({ type: "SET_ACTIVE_LORE", payload: memory });
-  const setPendingUpdates = (updates: any[]) => dispatchLore({ type: "SET_PENDING_UPDATES", payload: updates });
-  const setSelectedPendingUpdateIds = (ids: string[]) => dispatchLore({ type: "SET_SELECTED_PENDING_UPDATE_IDS", payload: ids });
-  const setPendingUpdateStatus = (status: string) => dispatchLore({ type: "SET_PENDING_UPDATE_STATUS", payload: status });
 
-  const setIsGenerating = (value: boolean) => {
-    if (value) dispatchGeneration({ type: "START_GENERATION" });
-    else dispatchGeneration({ type: "SET_IS_GENERATING", payload: false });
-  };
-  const setPromptTokens = (value: string | number) => dispatchGeneration({ type: "SET_PROMPT_TOKENS", payload: value });
-  const setGenerationStatus = (status: string) => dispatchGeneration({ type: "SET_STATUS", payload: status });
-  const setProgressPercent = (percent: number) => dispatchGeneration({ type: "UPDATE_PROGRESS", payload: percent });
-  const setIsExtractingUpdates = (value: boolean) => dispatchGeneration({ type: "SET_IS_EXTRACTING_UPDATES", payload: value });
 
-  const saveWorldList = (nextWorlds: any[]) => {
-    const normalizedWorlds = nextWorlds.map((world) => normalizeWorld(world));
-    dispatchStory({ type: "SAVE_WORLDS", payload: normalizedWorlds });
-    repository.worlds.saveAll(normalizedWorlds);
-  };
 
-  const saveCharacterList = (nextCharacters: any[]) => {
-    const normalizedCharacters = nextCharacters.map((character) => normalizeCharacter(character));
-    dispatchStory({ type: "SAVE_CHARACTERS", payload: normalizedCharacters });
-    repository.characters.saveAll(normalizedCharacters);
-  };
 
-  const savePersonaList = (nextPersonas: any[]) => {
-    const normalizedPersonas = nextPersonas.map((persona) => normalizePersona(persona));
-    dispatchStory({ type: "SAVE_PERSONAS", payload: normalizedPersonas });
-    repository.personas.saveAll(normalizedPersonas);
-  };
 
-  const saveStoryMetas = (nextMetas: any[]) => {
-    dispatchStory({ type: "SET_STORY_METAS", payload: nextMetas });
-  };
 
-  const upsertStoryMeta = (meta: any) => {
-    dispatchStory({ type: "UPSERT_STORY_META", payload: meta });
-  };
 
-  const removeStoryMeta = (storyId: string) => {
-    dispatchStory({ type: "REMOVE_STORY_META", payload: storyId });
-  };
 
-  const saveActiveStory = (nextStory: any) => {
-    if (!nextStory) return;
-    const normalizedStory = normalizeStory(nextStory, worlds, characters);
-    dispatchStory({ type: "SET_ACTIVE_STORY", payload: normalizedStory });
-    dispatchStory({ type: "UPSERT_STORY_META", payload: storyToMeta(normalizedStory) });
-    repository.stories.saveStory(normalizedStory);
-  };
 
-  const saveChatForActiveStory = (nextChatHistory: any[]) => {
+  const saveChatForActiveStory = (nextChatHistory: ChatMessage[]) => {
     if (!activeStory) return;
     repository.chats.save(activeStory.id, nextChatHistory);
   };
 
-  const saveLoreForActiveStory = (nextLoreMemory: any[]) => {
+  const saveLoreForActiveStory = (nextLoreMemory: LoreEntry[]) => {
     if (!activeStory) return;
     repository.loreMemory.save(activeStory.id, nextLoreMemory);
   };
 
-  const saveKoboldBaseUrl = async (value: string) => {
-    const normalized = value.trim() || DEFAULT_KOBOLD_BASE_URL;
-    setKoboldBaseUrlState(normalized);
-    repository.settings.setKoboldBaseUrl(normalized);
-    await repository.persistence?.flush?.();
-  };
 
-  const clearPersistenceError = () => {
-    repository.persistence?.clearError?.();
-  };
-
-  const flushPersistence = async () => {
-    await repository.persistence?.flush?.();
-  };
-
-  const storageModeLabel = isTauri ? "SQLite (Tauri)" : "LocalStorage (Browser fallback)";
-  const storageTargetLabel = isTauri
-    ? (CUSTOM_DB_PATH.trim() || "sqlite:mira.db")
-    : "Browser local storage";
-
-  const toggleSidebarCollapsed = () => setSidebarCollapsed((value) => !value);
-  const toggleEditorCollapsed = () => setEditorCollapsed((value) => !value);
-
-  const toggleTopbarCollapsed = () => setTopbarCollapsed((value) => !value);
-
-  const getWorld = (id: string) => worlds.find((world) => world.id === id) || null;
-  const getCharacter = (id: string) => characters.find((character) => character.id === id) || null;
-  const getStoryCharacters = (story: any) => getStoryCharactersFromLists(story, characters);
 
   const clearActiveStorySelection = () => {
     dispatchStory({ type: "CLEAR_ACTIVE_STORY" });
     setChatHistory([]);
     setActiveLoreMemory([]);
     setStoryDraft(null);
-    dispatchLore({ type: "RESET_PENDING_UPDATES" });
+    resetPendingUpdates();
     repository.activeStory.clear();
   };
 
@@ -339,52 +130,66 @@ export default function useAppManager() {
     if (!storyId) return;
     const meta = storyMetas.find((item) => item.id === storyId);
     const label = meta?.title || "this story";
-    if (!confirm(`Delete story "${label}"? This will delete its chat and lore memory.`)) return;
-    repository.stories.deleteStory?.(storyId);
-    repository.maintenance?.removeStoryRuntimeData?.(storyId);
-    removeStoryMeta(storyId);
-    if (activeStory?.id === storyId) clearActiveStorySelection();
+    setPendingConfirm({
+      open: true,
+      title: "Delete Story",
+      message: `Delete story "${label}"? This will delete its chat and lore memory.`,
+      variant: "danger",
+      confirmLabel: "Delete",
+      action: () => {
+        repository.stories.deleteStory?.(storyId);
+        repository.maintenance?.removeStoryRuntimeData?.(storyId);
+        removeStoryMeta(storyId);
+        if (activeStory?.id === storyId) clearActiveStorySelection();
+        setPendingConfirm(null);
+      },
+    });
   };
 
   const openStoryEditSheet = async (storyId: string) => {
     if (isGenerating) {
-      alert("Please wait for the current reply to finish before editing stories.");
+      showToast("Please wait for the current reply to finish before editing stories.");
       return;
     }
-    let loadedStory = await repository.stories.loadFull(storyId);
-    if (!loadedStory) {
-      const defaultStory = defaultStories.find((story: any) => story.id === storyId);
-      if (defaultStory) {
-        loadedStory = normalizeStory(defaultStory, worlds, characters);
+    setIsLoadingStory(true);
+    try {
+      let loadedStory = await repository.stories.loadFull(storyId);
+      if (!loadedStory) {
+        const defaultStory = defaultStories.find((story: { id: string }) => story.id === storyId);
+        if (defaultStory) {
+          loadedStory = normalizeStory(defaultStory, worlds, characters);
+        }
       }
-    }
-    if (!loadedStory) {
-      const meta = storyMetas.find((storyMeta) => storyMeta.id === storyId);
-      if (meta) {
-        const world = worlds.find((item) => item.id === meta.templateWorldId) || worlds[0] || null;
-        loadedStory = normalizeStory({
-          id: meta.id,
-          title: meta.title,
-          templateWorldId: meta.templateWorldId || world?.id || "",
-          castMembers: [],
-          greeting: "The scene begins.",
-          createdAt: meta.createdAt || Date.now(),
-          lastPlayedAt: meta.lastPlayedAt,
-        }, worlds, characters);
+      if (!loadedStory) {
+        const meta = storyMetas.find((storyMeta) => storyMeta.id === storyId);
+        if (meta) {
+          const world = worlds.find((item) => item.id === meta.templateWorldId) || worlds[0] || null;
+          loadedStory = normalizeStory({
+            id: meta.id,
+            title: meta.title,
+            templateWorldId: meta.templateWorldId || world?.id || "",
+            castMembers: [],
+            greeting: "The scene begins.",
+            createdAt: meta.createdAt || Date.now(),
+            lastPlayedAt: meta.lastPlayedAt,
+          }, worlds, characters);
+        }
       }
+      if (!loadedStory) {
+        showToast("Story not found.");
+        removeStoryMeta(storyId);
+        return;
+      }
+      repository.stories.saveStory(loadedStory);
+      upsertStoryMeta(storyToMeta(loadedStory));
+      setStoryDraft(normalizeStory(loadedStory, worlds, characters));
+      setActiveView("story-edit");
+    } finally {
+      setIsLoadingStory(false);
     }
-    if (!loadedStory) {
-      alert("Story not found.");
-      removeStoryMeta(storyId);
-      return;
-    }
-    repository.stories.saveStory(loadedStory);
-    upsertStoryMeta(storyToMeta(loadedStory));
-    setStoryDraft(normalizeStory(loadedStory, worlds, characters));
-    setActiveView("story-edit");
   };
 
-  const saveStoryEdits = (storyDraft: any) => {
+  const saveStoryEdits = (storyDraft: Story) => {
     if (!storyDraft) return { error: "No story draft is loaded." };
     if (!storyDraft.templateWorldId || !worlds.some((world) => world.id === storyDraft.templateWorldId)) {
       return { error: "Please choose a valid world." };
@@ -396,8 +201,8 @@ export default function useAppManager() {
     const prunedDraft = {
       ...storyDraft,
       castState: {
-        activeCharacters: (storyDraft.castState?.activeCharacters || []).filter((row: any) => selectedIdSet.has(row.castMemberId)),
-        relationships: (storyDraft.castState?.relationships || []).filter((row: any) => selectedIdSet.has(row.castMemberId)),
+        activeCharacters: (storyDraft.castState?.activeCharacters || []).filter((row: { castMemberId: string }) => selectedIdSet.has(row.castMemberId)),
+        relationships: (storyDraft.castState?.relationships || []).filter((row: { castMemberId: string }) => selectedIdSet.has(row.castMemberId)),
       },
       storyMemory: {
         ...storyDraft.storyMemory,
@@ -428,14 +233,23 @@ export default function useAppManager() {
     setActiveView("persona");
   };
 
-  const savePersonaEdits = (draft: any) => {
+  const savePersonaEdits = (draft: Persona) => {
     savePersonaList(personas.map(p => p.id === draft.id ? draft : p));
   };
 
   const deletePersona = (id: string) => {
-    if (!confirm("Delete this persona?")) return;
-    savePersonaList(personas.filter(p => p.id !== id));
-    setActiveView("landing");
+    setPendingConfirm({
+      open: true,
+      title: "Delete Persona",
+      message: "Delete this persona? This cannot be undone.",
+      variant: "danger",
+      confirmLabel: "Delete",
+      action: () => {
+        savePersonaList(personas.filter(p => p.id !== id));
+        setActiveView("landing");
+        setPendingConfirm(null);
+      },
+    });
   };
 
   const resetCurrentStoryState = (
@@ -451,10 +265,10 @@ export default function useAppManager() {
     repository.loreMemory.save(storyId, []);
     setChatHistory(opening);
     repository.chats.save(storyId, opening);
-    dispatchLore({ type: "RESET_PENDING_UPDATES" });
+    resetPendingUpdates();
   };
 
-  const runGeneration = (overrides: any) =>
+  const runGeneration = (overrides: Pick<GenerationDeps, "visibleHistory" | "promptHistory" | "finalBuilder" | "privateInstruction">) =>
     generation.generateAssistantReply({
       ...overrides,
       activeStory,
@@ -478,7 +292,6 @@ export default function useAppManager() {
   const managerContext = {
     repository,
     dispatchStory,
-    dispatchLore,
     worlds,
     characters,
     personas,
@@ -500,6 +313,7 @@ export default function useAppManager() {
     koboldBaseUrl,
     storageModeLabel,
     storageTargetLabel,
+    databasePath,
     sidebarCollapsed,
     editorCollapsed,
     topbarCollapsed,
@@ -513,6 +327,7 @@ export default function useAppManager() {
     selectedWorld,
     selectedPersona,
     saveKoboldBaseUrl,
+    saveDatabasePath,
     clearPersistenceError,
     flushPersistence,
     toggleSidebarCollapsed,
@@ -530,6 +345,7 @@ export default function useAppManager() {
     setPendingUpdates,
     setSelectedPendingUpdateIds,
     setPendingUpdateStatus,
+    resetPendingUpdates,
     setIsGenerating,
     setPromptTokens,
     setGenerationStatus,
@@ -555,7 +371,10 @@ export default function useAppManager() {
     resetCurrentStoryState,
     createBlankPersona,
     savePersonaEdits,
-    deletePersona
+    deletePersona,
+    setPendingConfirm,
+    isLoadingStory,
+    setIsLoadingStory,
   };
 
   const storyBindings = createStoryBindings(managerContext, storyActions);
@@ -596,6 +415,7 @@ export default function useAppManager() {
     koboldBaseUrl,
     storageModeLabel,
     storageTargetLabel,
+    databasePath,
     sidebarCollapsed,
     editorCollapsed,
     topbarCollapsed,
@@ -611,6 +431,7 @@ export default function useAppManager() {
     setSelectedCharacterSheetId,
     setSelectedWorldSheetId,
     saveKoboldBaseUrl,
+    saveDatabasePath,
     clearPersistenceError,
     flushPersistence,
     toggleSidebarCollapsed,
@@ -630,6 +451,9 @@ export default function useAppManager() {
     createBlankPersona,
     savePersonaEdits,
     deletePersona,
+    pendingConfirm,
+    dismissConfirm,
+    isLoadingStory,
     ...storyBindings,
     ...chatBindings,
     ...stateUpdateBindings,

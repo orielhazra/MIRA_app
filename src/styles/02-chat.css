@@ -57,7 +57,7 @@
 .collapsed-chat-header .stats,
 .collapsed-chat-header #persistenceStatus,
 .collapsed-chat-header .progress {
-  display: none !important;
+  display: none;
 }
 
 .stats {

@@ -6,6 +6,8 @@ import {
 } from "../types/index";
 import { defaultWorlds, createEmptyCharacterOverlay } from "../constants/defaultData";
 import { clampNumber, createId, parseKeywords } from "../utils/helpers";
+import { uniqueCompact } from "../utils/arrayUtils";
+import { normalizePresence } from "../utils/castUtils";
 
 // Safe fallback defaults for normalization
 export const DEFAULT_DIRECTOR_NOTES: DirectorNotes = {
@@ -461,17 +463,8 @@ function makeUniqueStableId(baseId: string, seenIds: Map<string, number>): strin
   return count === 0 ? normalizedBaseId : `${normalizedBaseId}_${count + 1}`;
 }
 
-function normalizePresence(value: any, legacyPresent: boolean = true): "active" | "nearby" | "inactive" {
-  const raw = String(value || "").trim().toLowerCase();
-  if (["active", "nearby", "inactive"].includes(raw)) return raw as any;
-  if (raw === "background" || raw === "present") return "nearby";
-  if (raw === "off-scene" || raw === "offscene" || raw === "not present") return "inactive";
-  return legacyPresent === false ? "inactive" : "active";
-}
 
-function uniqueCompact(values: any[]): string[] {
-  return [...new Set(values.map(String).filter(Boolean))];
-}
+
 
 export function normalizeChatMessage(message: any): ChatMessage {
   const normalized: ChatMessage = {

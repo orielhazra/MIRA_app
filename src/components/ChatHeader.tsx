@@ -20,6 +20,8 @@ export default function ChatHeader({
   onHome,
   onDebug,
   onSaveKoboldBaseUrl,
+  databasePath,
+  onSaveDatabasePath,
   onClearPersistenceError,
   onFlushPersistence,
 }) {
@@ -103,6 +105,8 @@ export default function ChatHeader({
           storageModeLabel={storageModeLabel}
           storageTargetLabel={storageTargetLabel}
           onSaveKoboldBaseUrl={onSaveKoboldBaseUrl}
+          databasePath={databasePath}
+          onSaveDatabasePath={onSaveDatabasePath}
           onClearPersistenceError={onClearPersistenceError}
           onFlushPersistence={onFlushPersistence}
         />

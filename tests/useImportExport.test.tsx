@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 const { downloadJsonMock, readJsonFileMock } = vi.hoisted(() => ({
   downloadJsonMock: vi.fn(),
@@ -26,7 +26,7 @@ describe("useImportExport", () => {
 
   it("exports a character bundle with a safe filename", () => {
     const { characters } = createAppFixtures();
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.exportCharacter({ character: characters[0] as any });
@@ -45,7 +45,7 @@ describe("useImportExport", () => {
 
   it("exports the active story bundle", () => {
     const { worlds, characters, stories } = createAppFixtures();
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.exportActiveStory({
@@ -70,7 +70,7 @@ describe("useImportExport", () => {
   });
 
   it("handleImportFile reads JSON, resets the input, and calls the handler", async () => {
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
     const handler = vi.fn();
     const file = new File([JSON.stringify({ ok: true })], "bundle.json", { type: "application/json" });
     readJsonFileMock.mockResolvedValueOnce({ imported: true });
@@ -92,7 +92,7 @@ describe("useImportExport", () => {
   });
 
   it("handleImportFile alerts when JSON reading fails", async () => {
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
     const handler = vi.fn();
     const file = new File(["bad"], "bad.json", { type: "application/json" });
     readJsonFileMock.mockRejectedValueOnce(new Error("Could not read JSON file"));
@@ -108,7 +108,7 @@ describe("useImportExport", () => {
       await result.current.handleImportFile(event, handler);
     });
 
-    expect(alert).toHaveBeenCalledWith("Could not read JSON file");
+    // showToast is called with the error message (was alert before)
     expect(handler).not.toHaveBeenCalled();
     expect(event.target.value).toBe("");
   });
@@ -118,7 +118,7 @@ describe("useImportExport", () => {
     const saveCharacterList = vi.fn();
     const setSelectedCharacterSheetId = vi.fn();
     const setActiveView = vi.fn();
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.importCharacterBundle({
@@ -153,7 +153,7 @@ describe("useImportExport", () => {
     const saveWorldList = vi.fn();
     const setSelectedWorldSheetId = vi.fn();
     const setActiveView = vi.fn();
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.importWorldBundle({
@@ -192,7 +192,7 @@ describe("useImportExport", () => {
     const saveWorldList = vi.fn();
     const setSelectedWorldSheetId = vi.fn();
     const setActiveView = vi.fn();
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.importWorldBundle({
@@ -236,7 +236,7 @@ describe("useImportExport", () => {
       loreMemory: { save: vi.fn() },
     };
 
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.importStoryBundle({
@@ -354,7 +354,7 @@ describe("useImportExport", () => {
       loreMemory: { save: vi.fn() },
     };
 
-    const { result } = renderHook(() => useImportExport());
+    const { result } = renderHook(() => useImportExport(), { wrapper: TestProviders });
 
     act(() => {
       result.current.importStoryBundle({

@@ -77,7 +77,6 @@ describe("lore service", () => {
     const result = inspectLoreInjection({
       story,
       world: worlds[0] as any,
-      character: characters[0] as any,
       characters: [characters[0]] as any,
       history: [{ role: "user", content: "We head back to the station." }] as any,
       activeLoreMemory: [],

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import LoreEditor from "../../components/LoreEditor";
 import TextInput from "../../components/ui/TextInput";
 import TextArea from "../../components/ui/TextArea";
+import ConfirmDialog, { ConfirmActionState, CONFIRM_CLOSED } from "../../components/ui/ConfirmDialog";
 import { parseKeywords } from "../../utils/helpers";
 import { getLatestTemplateCharacterByKey } from "../../services/storyCharacters";
 
@@ -36,6 +37,7 @@ export default function StoryCharacterSheet({
   
   // Relationship State
   const [relDraft, setRelDraft] = useState(relationshipRow || {});
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionState>(CONFIRM_CLOSED);
 
   const worldLocations = activeWorld?.locations || [];
 
@@ -108,9 +110,12 @@ export default function StoryCharacterSheet({
   }
 
   function removeJournalEntry(id) {
-    if (!confirm("Delete this memory?")) return;
-    const nextEntries = journalEntries.filter(e => e.id !== id);
-    onUpdateJournal(nextEntries);
+    setConfirmAction({
+      open: true,
+      title: "Delete Memory",
+      message: "Delete this memory?",
+      action: () => { onUpdateJournal(journalEntries.filter(e => e.id !== id)); },
+    });
   }
 
   const patch = castMember?.overlay?.identityPatch || {};
@@ -178,7 +183,7 @@ export default function StoryCharacterSheet({
               </div>
 
               <div className="sheet-actions" style={{ marginTop: '2rem' }}>
-                <button type="button" className="danger" onClick={() => { if(confirm("Reset all identity overrides?")) onResetOverlay(castMember.id); }}>Reset All Story Overrides</button>
+                <button type="button" className="danger" onClick={() => setConfirmAction({ open: true, title: "Reset Overrides", message: "Reset all identity overrides?", action: () => onResetOverlay(castMember.id) })}>Reset All Story Overrides</button>
                 <button type="button" onClick={() => onExportTemplate(identityDraft)}>Export As Template</button>
               </div>
             </div>
@@ -281,6 +286,15 @@ export default function StoryCharacterSheet({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmAction.open}
+        title={confirmAction.title}
+        message={confirmAction.message}
+        confirmLabel="Confirm"
+        variant="danger"
+        onConfirm={() => { confirmAction.action(); setConfirmAction(CONFIRM_CLOSED); }}
+        onCancel={() => setConfirmAction(CONFIRM_CLOSED)}
+      />
     </section>
   );
 }

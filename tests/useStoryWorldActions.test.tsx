@@ -1,13 +1,13 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import useStoryWorldActions from "../src/hooks/useStoryWorldActions";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 describe("useStoryWorldActions", () => {
   it("updateStoryWorldPatch merges world-level overlay fields", () => {
     const { stories } = createAppFixtures();
     const saveActiveStory = vi.fn();
-    const { result } = renderHook(() => useStoryWorldActions());
+    const { result } = renderHook(() => useStoryWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.updateStoryWorldPatch({
@@ -46,7 +46,7 @@ describe("useStoryWorldActions", () => {
       locations: [{ id: "loc_square", name: "Market Square", description: "Crowded and bright.", hazards: "None" }],
     } as any;
     const saveActiveStory = vi.fn();
-    const { result } = renderHook(() => useStoryWorldActions());
+    const { result } = renderHook(() => useStoryWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.updateStoryWorldLocation({
@@ -75,7 +75,7 @@ describe("useStoryWorldActions", () => {
   it("add and remove story-only locations update overlay collections", () => {
     const { stories } = createAppFixtures();
     const saveActiveStory = vi.fn();
-    const { result } = renderHook(() => useStoryWorldActions());
+    const { result } = renderHook(() => useStoryWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.addStoryWorldLocation({
@@ -106,7 +106,7 @@ describe("useStoryWorldActions", () => {
   it("add, update, and remove story-world lore entries through the overlay", () => {
     const { stories } = createAppFixtures();
     const saveActiveStory = vi.fn();
-    const { result } = renderHook(() => useStoryWorldActions());
+    const { result } = renderHook(() => useStoryWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.addStoryWorldLoreEntry({
@@ -164,7 +164,7 @@ describe("useStoryWorldActions", () => {
       },
     } as any;
     const saveActiveStory = vi.fn();
-    const { result } = renderHook(() => useStoryWorldActions());
+    const { result } = renderHook(() => useStoryWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.resetStoryWorldOverlay({

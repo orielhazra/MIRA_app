@@ -28,7 +28,17 @@ beforeEach(() => {
     });
   }
 
-  if (!("ResizeObserver" in globalThis)) {
+  // jsdom doesn't implement HTMLDialogElement.showModal/close
+  if (typeof HTMLDialogElement !== "undefined" && !HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    });
+  }
+
+  if (!(("ResizeObserver") in globalThis)) {
     class ResizeObserverMock {
       observe() {}
       unobserve() {}

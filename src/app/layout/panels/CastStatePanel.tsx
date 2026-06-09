@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { getRowPresence, formatPresenceLabel } from "../../../utils/castUtils";
+import { ContextInput, ContextTextarea } from "../../../components/ui/FormFields";
 
 export default function CastStatePanel({ activeStory, effectiveCharacters, status, onSave }) {
   const [draft, setDraft] = useState(() => buildCastStateDraft(activeStory?.castState, activeStory?.castMembers, effectiveCharacters));
@@ -93,17 +95,6 @@ export default function CastStatePanel({ activeStory, effectiveCharacters, statu
   );
 }
 
-function getRowPresence(row) {
-  const raw = String(row?.presence || "").trim().toLowerCase();
-  if (["active", "nearby", "inactive"].includes(raw)) return raw;
-  return row?.present === false ? "inactive" : "active";
-}
-
-function formatPresenceLabel(presence) {
-  if (presence === "nearby") return "Nearby / background";
-  if (presence === "inactive") return "Inactive / off-scene";
-  return "Active";
-}
 
 function buildCastStateDraft(castState, castMembers = [], effectiveCharacters = []) {
   const source = castState && typeof castState === "object" ? castState : {};
@@ -142,14 +133,6 @@ function buildCastStateDraft(castState, castMembers = [], effectiveCharacters = 
   };
 }
 
-function ContextInput({ label, value = "", onChange }) {
-  return (
-    <label>
-      {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
 
 function ContextSelect({ label, value = "", options = [], onChange }) {
   return (
@@ -164,11 +147,3 @@ function ContextSelect({ label, value = "", options = [], onChange }) {
   );
 }
 
-function ContextTextarea({ label, value = "", onChange }) {
-  return (
-    <label>
-      {label}
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}

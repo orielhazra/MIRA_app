@@ -13,18 +13,15 @@ import {
 } from "../services/normalizers";
 import { buildOpeningMessage } from "../services/prompt";
 import { repository } from "../services/repository";
+import { normalizeMatchText } from "./textUtils";
 import { storyToMeta } from "../services/storyMeta";
 import { cloneJson, createId } from "./helpers";
 import { getMessageDisplayText, isAssistantMessageWithOptions } from "./chatMessageUtils";
 import { resolveEffectiveStoryCharacters } from "../services/storyCharacters";
+import { normalizePresence } from "./castUtils";
 
-export function normalizeCastPresence(value: any): "active" | "nearby" | "inactive" {
-  const raw = String(value || "").trim().toLowerCase();
-  if (["active", "nearby", "inactive"].includes(raw)) return raw as any;
-  if (raw === "true") return "active";
-  if (raw === "false") return "inactive";
-  return value === false ? "inactive" : "active";
-}
+// Re-export under legacy name for backward compatibility
+export const normalizeCastPresence = normalizePresence;
 
 export function getAutoPresence(charLocId: string | undefined, sceneLocId: string | undefined): "active" | "nearby" | "inactive" {
   if (charLocId === "with_user") return "active";
@@ -264,15 +261,6 @@ function resolveWorldLocationFromText(world: World | null = null, label: string 
   }) || null;
 }
 
-function normalizeMatchText(text: string | undefined): string {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 export function appendRecentFact(context: CurrentContext, line: string): void {
   context.recentFacts.importantDiscoveries = appendLine(context.recentFacts.importantDiscoveries, line);
 }
@@ -409,9 +397,8 @@ export function getStoryCharactersFromLists(story: Story | null, characters: Cha
   return resolveEffectiveStoryCharacters(story, characters);
 }
 
-export function uniqueCompact(values: any[]): string[] {
-  return [...new Set((values || []).map(String).filter(Boolean))];
-}
+// Re-export from canonical location for backward compatibility
+export { uniqueCompact } from "./arrayUtils";
 
 export function createAssistantReply(content: string): ChatMessage {
   return { role: "assistant", content, alternatives: [content], selectedIndex: 0 };

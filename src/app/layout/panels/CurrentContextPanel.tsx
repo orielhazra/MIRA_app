@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { ContextInput, ContextTextarea } from "../../../components/ui/FormFields";
 
 export default function CurrentContextPanel({ 
   context, 
@@ -168,20 +169,3 @@ function buildCurrentContextDraft(context) {
   };
 }
 
-function ContextInput({ label, value = "", onChange }) {
-  return (
-    <label>
-      {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
-
-function ContextTextarea({ label, value = "", onChange }) {
-  return (
-    <label>
-      {label}
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}

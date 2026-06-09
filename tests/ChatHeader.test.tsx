@@ -13,7 +13,7 @@ describe("ChatHeader", () => {
         activeView="story"
         activeStory={{ id: "story-1", title: "Story One" } as any}
         activeWorld={{ id: "world-1", name: "World One" } as any}
-        activeCharacter={{ id: "char-1", name: "Mira" } as any}
+        
         activeCharacters={[{ id: "char-1", name: "Mira" }] as any}
         selectedWorld={null}
         selectedCharacter={null}
@@ -30,6 +30,8 @@ describe("ChatHeader", () => {
         onHome={vi.fn()}
         onDebug={vi.fn()}
         onSaveKoboldBaseUrl={vi.fn()}
+        databasePath=""
+        onSaveDatabasePath={vi.fn()}
         onClearPersistenceError={vi.fn()}
         onFlushPersistence={vi.fn()}
       />

@@ -103,6 +103,6 @@
 }
 
 .pending-update-change {
-  color: var(--text) !important;
+  color: var(--text);
 }
 

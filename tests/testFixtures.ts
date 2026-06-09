@@ -1,5 +1,54 @@
+import React from "react";
 import { normalizeCharacter, normalizeStory, normalizeWorld, normalizePersona } from "../src/services/normalizers";
 import { createEmptyCharacterOverlay } from "../src/constants/defaultData";
+import { ToastProvider } from "../src/context/ToastContext";
+import { UIProvider } from "../src/context/UIContext";
+import { ChatStateProvider } from "../src/context/ChatStateContext";
+import { LoreStateProvider } from "../src/context/LoreStateContext";
+import { StoryStateProvider } from "../src/context/StoryStateContext";
+import { loadInitialState } from "../src/utils/appHelpers";
+import { defaultPersonas } from "../src/constants/defaultData";
+
+/** Default initial state for tests when repository is mocked or unavailable. */
+function getTestInitialState() {
+  try {
+    const state = loadInitialState();
+    return {
+      ...state,
+      personas: (state as any).personas?.length ? (state as any).personas : defaultPersonas.map(normalizePersona),
+    };
+  } catch {
+    // Repository may be mocked — use minimal defaults
+    const fixtures = createAppFixtures();
+    return {
+      worlds: fixtures.worlds,
+      characters: fixtures.characters,
+      personas: fixtures.personas,
+      storyMetas: [],
+      activeStory: null,
+      activeView: "landing",
+      selectedCharacterSheetId: "",
+      selectedWorldSheetId: "",
+      chatHistory: [],
+      activeLoreMemory: [],
+    };
+  }
+}
+
+/** Wrapper for renderHook that provides required context providers. */
+export function TestProviders({ children }: { children: React.ReactNode }) {
+  const initial = getTestInitialState();
+
+  return React.createElement(ToastProvider, null,
+    React.createElement(UIProvider, null,
+      React.createElement(StoryStateProvider, { initialState: initial as any },
+        React.createElement(ChatStateProvider, null,
+          React.createElement(LoreStateProvider, null, children)
+        )
+      )
+    )
+  );
+}
 
 export function createAppFixtures() {
   const worlds = [

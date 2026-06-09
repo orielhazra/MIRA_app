@@ -142,11 +142,11 @@ export default function useStateUpdates() {
     }
 
     const nextContext = applyUpdatesToCurrentContext(activeStory.currentContext, selected, activeWorld);
-    const nextCastState = applyUpdatesToCastState(activeStory.castState, selected, activeStoryCharacters);
-    const nextStoryMemory = applyUpdatesToStoryMemory(activeStory.storyMemory, selected);
+    const nextCastState = applyUpdatesToCastState(activeStory.castState, selected, activeStory.castMembers, activeStoryCharacters);
+    const nextStoryMemory = applyUpdatesToStoryMemory(activeStory.storyMemory, selected, activeStory, activeStoryCharacters);
 
     const normalizedContext = normalizeCurrentContext(nextContext);
-    const normalizedCastState = normalizeCastState(nextCastState, activeStoryCharacters);
+    const normalizedCastState = normalizeCastState(nextCastState, activeStory.castMembers, activeStoryCharacters);
     const normalizedStoryMemory = normalizeStoryMemory(nextStoryMemory);
 
     saveActiveStory({

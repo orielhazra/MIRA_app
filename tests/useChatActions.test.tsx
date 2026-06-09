@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import useChatActions from "../src/hooks/useChatActions";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 describe("useChatActions", () => {
   it("saveMessageEdit updates the selected assistant alternative and persists it", async () => {
@@ -11,7 +11,7 @@ describe("useChatActions", () => {
     const setChatHistory = vi.fn();
     const saveChatForActiveStory = vi.fn();
 
-    const { result } = renderHook(() => useChatActions({ generateAssistantReply }));
+    const { result } = renderHook(() => useChatActions({ generateAssistantReply }), { wrapper: TestProviders });
 
     const chatHistory = [
       { role: "user", content: "Hello" },
@@ -53,7 +53,7 @@ describe("useChatActions", () => {
     const setEditingMessageIndex = vi.fn();
     const setChatHistory = vi.fn();
     const saveChatForActiveStory = vi.fn();
-    const { result } = renderHook(() => useChatActions({ generateAssistantReply }));
+    const { result } = renderHook(() => useChatActions({ generateAssistantReply }), { wrapper: TestProviders });
 
     const chatHistory = [
       { role: "assistant", content: "Opening" },
@@ -84,7 +84,7 @@ describe("useChatActions", () => {
   it("resetChat calls resetCurrentStoryState when confirmed", () => {
     const generateAssistantReply = vi.fn();
     const resetCurrentStoryState = vi.fn();
-    const { result } = renderHook(() => useChatActions({ generateAssistantReply }));
+    const { result } = renderHook(() => useChatActions({ generateAssistantReply }), { wrapper: TestProviders });
 
     act(() => {
       result.current.resetChat({
@@ -106,7 +106,7 @@ describe("useChatActions", () => {
     const { stories, worlds, characters } = createAppFixtures();
     const generateAssistantReply = vi.fn().mockResolvedValue(undefined);
     const saveChatForActiveStory = vi.fn();
-    const { result } = renderHook(() => useChatActions({ generateAssistantReply }));
+    const { result } = renderHook(() => useChatActions({ generateAssistantReply }), { wrapper: TestProviders });
 
     const chatHistory = [
       {

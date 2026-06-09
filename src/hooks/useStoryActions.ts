@@ -31,6 +31,7 @@ import {
 } from "../utils/appHelpers";
 import { createEmptyCharacterOverlay } from "../constants/defaultData";
 import { resolveEffectiveStoryCharacters } from "../services/storyCharacters";
+import { useToast } from "../context/ToastContext";
 
 interface ActiveStorySaveDeps {
   activeStory: Story | null;
@@ -57,6 +58,7 @@ interface SaveNotesDeps extends ActiveStorySaveDeps {
 }
 
 export default function useStoryActions() {
+  const { showToast } = useToast();
   function saveCurrentContext({ activeStory, saveActiveStory }: ActiveStorySaveDeps) {
     if (!activeStory || !saveActiveStory) return;
     const normalizedContext = normalizeCurrentContext(activeStory.currentContext);
@@ -96,7 +98,7 @@ export default function useStoryActions() {
     const { isGenerating, worlds = [], characters = [], activeWorld, setStoryDraft, setActiveView } = deps;
     if (isGenerating) return;
     if (worlds.length === 0 || characters.length === 0) {
-      alert("You need at least one world and one character to create a story.");
+      showToast("You need at least one world and one character to create a story.");
       return;
     }
 
@@ -142,13 +144,13 @@ export default function useStoryActions() {
     } = deps;
 
     if (isGenerating) {
-      alert("Please wait for the current reply to finish before switching stories.");
+      showToast("Please wait for the current reply to finish before switching stories.");
       return;
     }
 
     const loadedStory = await repository?.stories?.loadFull(storyId);
     if (!loadedStory) {
-      alert("Story not found.");
+      showToast("Story not found.");
       removeStoryMeta?.(storyId);
       return;
     }
@@ -278,10 +280,9 @@ export default function useStoryActions() {
 
   function deleteActiveStory({ activeStory, clearActiveStorySelection, repository, removeStoryMeta }: any) {
     if (!activeStory) {
-      alert("No active story to delete.");
+      showToast("No active story to delete.");
       return;
     }
-    if (!confirm(`Delete story "${activeStory.title}"? This will delete its chat and lore memory.`)) return;
 
     repository?.stories?.deleteStory?.(activeStory.id);
     repository?.maintenance?.removeStoryRuntimeData?.(activeStory.id);
@@ -303,8 +304,7 @@ export default function useStoryActions() {
 
     if (!activeStory || worldId === activeStory.templateWorldId) return;
     const world = getWorld?.(worldId);
-    if (!world) return alert("World not found.");
-    if (!confirm("Use this world in the active story? This will reset the story chat and rebuild Current Context for the new world.")) return;
+    if (!world) return showToast("World not found.");
 
     const effectiveCharacters = resolveEffectiveStoryCharacters(activeStory, characters);
     const rebuiltContext = createInitialCurrentContext(world, effectiveCharacters);

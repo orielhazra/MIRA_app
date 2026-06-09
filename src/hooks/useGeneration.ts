@@ -14,8 +14,9 @@ import {
 import { inspectLoreInjection } from "../services/lore";
 import { playCompletionSound } from "../utils/helpers";
 import { ChatMessage, LoreEntry, Story, World, Character } from "../types";
+import { useToast } from "../context/ToastContext";
 
-interface GenerationDeps {
+export interface GenerationDeps {
   visibleHistory: ChatMessage[];
   promptHistory: ChatMessage[];
   privateInstruction?: string;
@@ -44,6 +45,7 @@ interface LastRequest {
 }
 
 export default function useGeneration() {
+  const { showToast } = useToast();
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastGenerationRequestRef = useRef<LastRequest | null>(null);
 
@@ -179,7 +181,7 @@ export default function useGeneration() {
     if (deps.isGenerating) return;
     const request = lastGenerationRequestRef.current;
     if (!request) {
-      alert("There is no previous generation to retry yet.");
+      showToast("There is no previous generation to retry yet.");
       return;
     }
     await generateAssistantReply({ ...request, ...deps });

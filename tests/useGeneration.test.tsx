@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 const {
   inspectLoreInjectionMock,
@@ -85,7 +85,7 @@ describe("useGeneration", () => {
       return "Hello there";
     });
 
-    const { result } = renderHook(() => useGeneration());
+    const { result } = renderHook(() => useGeneration(), { wrapper: TestProviders });
 
     await act(async () => {
       await result.current.generateAssistantReply({
@@ -100,7 +100,6 @@ describe("useGeneration", () => {
         ] as any,
         activeStory: stories[0] as any,
         activeWorld: worlds[0] as any,
-        activeCharacter: characters[0] as any,
         activeStoryCharacters: [characters[0]] as any,
         activeLoreMemory: [],
         setChatHistory,
@@ -159,7 +158,6 @@ describe("useGeneration", () => {
       ] as any,
       activeStory: stories[0] as any,
       activeWorld: worlds[0] as any,
-      activeCharacter: characters[0] as any,
       activeStoryCharacters: [characters[0]] as any,
       activeLoreMemory: [],
       setChatHistory: vi.fn(),
@@ -174,7 +172,7 @@ describe("useGeneration", () => {
       isGenerating: false,
     };
 
-    const { result } = renderHook(() => useGeneration());
+    const { result } = renderHook(() => useGeneration(), { wrapper: TestProviders });
 
     await act(async () => {
       await result.current.generateAssistantReply(deps as any);
@@ -195,7 +193,7 @@ describe("useGeneration", () => {
 
     streamChatCompletionMock.mockRejectedValue(new Error("network failed"));
 
-    const { result } = renderHook(() => useGeneration());
+    const { result } = renderHook(() => useGeneration(), { wrapper: TestProviders });
 
     await act(async () => {
       await result.current.generateAssistantReply({
@@ -210,7 +208,6 @@ describe("useGeneration", () => {
         ] as any,
         activeStory: stories[0] as any,
         activeWorld: worlds[0] as any,
-        activeCharacter: characters[0] as any,
         activeStoryCharacters: [characters[0]] as any,
         activeLoreMemory: [],
         setChatHistory,

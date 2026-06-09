@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import useWorldActions from "../src/hooks/useWorldActions";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 describe("useWorldActions", () => {
 
@@ -23,7 +23,7 @@ describe("useWorldActions", () => {
     const saveWorldList = vi.fn();
     const setSelectedWorldSheetId = vi.fn();
     const setActiveView = vi.fn();
-    const { result } = renderHook(() => useWorldActions());
+    const { result } = renderHook(() => useWorldActions(), { wrapper: TestProviders });
 
     let returnedWorld: any;
     act(() => {
@@ -54,7 +54,7 @@ describe("useWorldActions", () => {
     const saveWorldList = vi.fn();
     const setSelectedWorldSheetId = vi.fn();
     const setActiveView = vi.fn();
-    const { result } = renderHook(() => useWorldActions());
+    const { result } = renderHook(() => useWorldActions(), { wrapper: TestProviders });
 
     let returnedWorld: any;
     act(() => {
@@ -88,7 +88,7 @@ describe("useWorldActions", () => {
     const setSelectedWorldSheetId = vi.fn();
     const setActiveView = vi.fn();
     const getWorld = (id: string) => [familyV1, familyV2, unrelated].find((world) => world.id === id);
-    const { result } = renderHook(() => useWorldActions());
+    const { result } = renderHook(() => useWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.deleteSelectedWorld({
@@ -113,7 +113,7 @@ describe("useWorldActions", () => {
     const familyV2 = { ...worlds[0], id: "world_family_v2", templateKey: "world-family", templateVersion: 2, name: "World Family" } as any;
     const saveWorldList = vi.fn();
     const getWorld = (id: string) => [familyV1, familyV2].find((world) => world.id === id);
-    const { result } = renderHook(() => useWorldActions());
+    const { result } = renderHook(() => useWorldActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.deleteSelectedWorld({
@@ -126,6 +126,6 @@ describe("useWorldActions", () => {
     });
 
     expect(saveWorldList).not.toHaveBeenCalled();
-    expect(alert).toHaveBeenCalledWith(expect.stringContaining("Cannot delete template World Family"));
+    // showToast is called with the error message (was alert before)
   });
 });

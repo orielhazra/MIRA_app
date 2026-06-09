@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 const { inspectLoreInjectionMock } = vi.hoisted(() => ({
   inspectLoreInjectionMock: vi.fn(),
@@ -22,7 +22,7 @@ describe("useLoreActions", () => {
   });
 
   it("updateWorldLore patches the selected lore entry and saves the next world list", () => {
-    const { worlds } = createAppFixtures();
+    const { worlds, stories, characters } = createAppFixtures();
     const activeWorld = {
       ...worlds[0],
       worldLorebook: [
@@ -31,13 +31,19 @@ describe("useLoreActions", () => {
     } as any;
 
     const saveWorldList = vi.fn();
-    const { result } = renderHook(() => useLoreActions());
+    const { result } = renderHook(() => useLoreActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.updateWorldLore({
         activeWorld,
         worlds: [activeWorld, worlds[1]] as any,
         saveWorldList,
+        activeStory: stories[0] as any,
+        characters: characters as any,
+        saveActiveStory: vi.fn(),
+        activeLoreMemory: [],
+        setActiveLoreMemory: vi.fn(),
+        saveLoreForActiveStory: vi.fn(),
         index: 0,
         patch: { content: "Updated content" },
       });
@@ -51,15 +57,20 @@ describe("useLoreActions", () => {
   });
 
   it("saveTemporaryLore normalizes and saves temporary lore to the active story", () => {
-    const { stories } = createAppFixtures();
+    const { stories, characters, worlds } = createAppFixtures();
     const activeStory = stories[0] as any;
     const saveActiveStory = vi.fn();
-    const { result } = renderHook(() => useLoreActions());
+    const { result } = renderHook(() => useLoreActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.saveTemporaryLore({
         activeStory,
+        activeWorld: worlds[0] as any,
+        characters: characters as any,
         saveActiveStory,
+        activeLoreMemory: [],
+        setActiveLoreMemory: vi.fn(),
+        saveLoreForActiveStory: vi.fn(),
         lorebook: [
           { name: "Temp Lore", keywords: ["temp"], content: "Temporary context", enabled: true, alwaysOn: false },
         ],
@@ -89,14 +100,15 @@ describe("useLoreActions", () => {
       selectedEntries: nextMemory,
     });
 
-    const { result } = renderHook(() => useLoreActions());
+    const { result } = renderHook(() => useLoreActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.refreshActiveLore({
         activeStory: stories[0] as any,
         activeWorld: worlds[0] as any,
-        activeCharacter: characters[0] as any,
         activeStoryCharacters: [characters[0]] as any,
+        characters: characters as any,
+        saveActiveStory: vi.fn(),
         chatHistory: [{ role: "user", content: "We are at the station." }] as any,
         activeLoreMemory: [],
         setActiveLoreMemory,

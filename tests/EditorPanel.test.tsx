@@ -14,31 +14,17 @@ describe("EditorPanel", () => {
       <EditorPanel
         activeStory={stories[0] as any}
         activeWorld={worlds[0] as any}
-        activeCharacter={characters[0] as any}
         activeCharacters={[characters[0]] as any}
-        activeLoreMemory={[] as any}
-        loreStatusText="Lore: none"
         isCollapsed
         onToggleCollapse={onToggleCollapse}
         onClearDirectorNotes={vi.fn()}
         onSaveSceneControl={vi.fn()}
-        onExportStory={vi.fn()}
-        onDeleteStory={vi.fn()}
-        onSaveCharacterIdentity={vi.fn()}
-        onExportCharacterTemplate={vi.fn()}
-        onImportCharacterTemplate={vi.fn()}
-        onUpdateStoryLore={vi.fn()}
-        onUpdateWorldLore={vi.fn()}
-        onUpdateCharacterLore={vi.fn()}
-        onSaveTemporaryLore={vi.fn()}
-        onClearTemporaryLore={vi.fn()}
-        onRefreshActiveLore={vi.fn()}
-        currentContext={stories[0].currentContext as any}
-        storyMemory={stories[0].storyMemory as any}
-        castState={stories[0].castState as any}
         onSaveStoryMemory={vi.fn()}
         onSaveCastState={vi.fn()}
+        onUpdateUserProfile={vi.fn()}
         onExtractUpdates={vi.fn()}
+        currentContext={stories[0].currentContext as any}
+        storyMemory={stories[0].storyMemory as any}
       />
     );
 

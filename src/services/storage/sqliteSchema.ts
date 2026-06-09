@@ -125,6 +125,8 @@ export function getMissingColumns(actualColumns: string[], expectedColumns: read
 }
 
 export async function ensureSqliteSchema(db: any): Promise<void> {
+  await db.execute("PRAGMA foreign_keys = ON");
+
   for (const statement of Object.values(SQLITE_CREATE_TABLE_STATEMENTS)) {
     await db.execute(statement);
   }

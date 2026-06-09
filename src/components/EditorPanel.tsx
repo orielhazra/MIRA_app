@@ -107,7 +107,6 @@ export default function EditorPanel({
           <ControlPanelHome
             activeStory={activeStory}
             activeWorld={activeWorld}
-            storyCharacters={storyCharacters}
             onOpenPanel={openPanel}
           />
         ) : (

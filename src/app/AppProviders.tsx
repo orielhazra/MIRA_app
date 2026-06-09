@@ -1,6 +1,16 @@
-import React, { useState } from "react";
+import React from "react";
 import { AppContext } from "../context/AppContext";
+import { ToastProvider } from "../context/ToastContext";
+import { UIProvider } from "../context/UIContext";
+import { ChatStateProvider } from "../context/ChatStateContext";
+import { LoreStateProvider } from "../context/LoreStateContext";
+import { StoryStateProvider } from "../context/StoryStateContext";
 import useAppManager from "../hooks/useAppManager";
+import { loadInitialState } from "../utils/appHelpers";
+import { normalizePersona } from "../services/normalizers";
+import { repository } from "../services/repository";
+import { defaultPersonas } from "../constants/defaultData";
+import { useMemo } from "react";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -31,6 +41,21 @@ class SafeErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundar
     }
     return this.props.children;
   }
+}
+
+function StoryStateInit({ children }: { children: React.ReactNode }) {
+  const initial = useMemo(() => {
+    const state = loadInitialState();
+    const personas = repository.personas.list(defaultPersonas).map(normalizePersona);
+    repository.personas.saveAll(personas);
+    return { ...state, personas };
+  }, []);
+
+  return (
+    <StoryStateProvider initialState={initial}>
+      {children}
+    </StoryStateProvider>
+  );
 }
 
 function AppContent({ children }: { children: React.ReactNode }) {
@@ -76,9 +101,19 @@ export default function AppProviders({ children }: { children: React.ReactNode }
 
   return (
     <SafeErrorBoundary fallback={fallback}>
-      <AppContent>
-        {children}
-      </AppContent>
+      <ToastProvider>
+        <UIProvider>
+          <StoryStateInit>
+            <ChatStateProvider>
+              <LoreStateProvider>
+                <AppContent>
+                  {children}
+                </AppContent>
+              </LoreStateProvider>
+            </ChatStateProvider>
+          </StoryStateInit>
+        </UIProvider>
+      </ToastProvider>
     </SafeErrorBoundary>
   );
 }

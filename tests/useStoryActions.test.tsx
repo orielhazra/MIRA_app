@@ -30,7 +30,7 @@ vi.mock("../src/services/repository", () => ({
 }));
 
 import useStoryActions from "../src/hooks/useStoryActions";
-import { createAppFixtures } from "./testFixtures";
+import { createAppFixtures, TestProviders } from "./testFixtures";
 
 describe("useStoryActions", () => {
   beforeEach(() => {
@@ -55,7 +55,7 @@ describe("useStoryActions", () => {
     });
     mockRepository.loreMemory.load.mockReturnValue([{ id: "l1", name: "Lore", keywords: [], content: "x", enabled: true, alwaysOn: false }]);
 
-    const { result } = renderHook(() => useStoryActions());
+    const { result } = renderHook(() => useStoryActions(), { wrapper: TestProviders });
 
     await act(async () => {
       await result.current.switchStory({
@@ -104,7 +104,7 @@ describe("useStoryActions", () => {
     const setActiveView = vi.fn();
 
     const targetWorld = { ...worlds[1], templateKey: "world-two", templateVersion: 3 } as any;
-    const { result } = renderHook(() => useStoryActions());
+    const { result } = renderHook(() => useStoryActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.startStoryFromCreationSheet({
@@ -176,7 +176,7 @@ describe("useStoryActions", () => {
       },
     } as any;
 
-    const { result } = renderHook(() => useStoryActions());
+    const { result } = renderHook(() => useStoryActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.assignWorldToStory({
@@ -218,7 +218,7 @@ describe("useStoryActions", () => {
     const maintenance = { removeStoryRuntimeData: vi.fn() };
     const storiesRepo = { deleteStory: vi.fn() };
 
-    const { result } = renderHook(() => useStoryActions());
+    const { result } = renderHook(() => useStoryActions(), { wrapper: TestProviders });
 
     act(() => {
       result.current.deleteActiveStory({
